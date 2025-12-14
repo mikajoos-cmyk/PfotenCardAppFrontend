@@ -1,0 +1,20 @@
+{
+  "short_name": "PfotenCard",
+  "name": "Dog-School Connect - PfotenCard",
+  "icons": [
+    {
+      "src": "/paw.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/paw.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#263238",
+  "background_color": "#F3F4F6"
+}
