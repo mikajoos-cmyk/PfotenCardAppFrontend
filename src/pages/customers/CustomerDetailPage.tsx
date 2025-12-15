@@ -270,16 +270,22 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <div className="level-accordion">
                             {levelsToUse.map((level: any, index: number) => {
                                 const currentLevelId = customer.level_id || 1;
+                                // Benutze den Index für die Logik, falls IDs durcheinander sind (Fallback)
                                 const isActive = currentLevelId === level.id;
                                 const isCompleted = currentLevelId > level.id;
                                 const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
+
+                                // Farbe zyklisch wiederholen (1-5), damit auch Level 6+ bunt sind
+                                const colorIndex = (index % 5) + 1;
+
                                 const requirements = level.requirements || LEVEL_REQUIREMENTS[level.id] || [];
 
-                                // Calculate if level up is possible
+                                // Prüfen ob Aufstieg möglich ist
                                 const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
                                     const progress = getProgressForLevel(customer, level.id);
                                     const allTx = transactions || [];
-                                    const count = allTx.filter((t: any) => t.training_type_id === r.training_type_id).length;
+                                    // Fallback für Backend vs Mock Datenstruktur
+                                    const count = (progress[r.id] || 0) + (progress[r.training_type_id] || 0);
                                     return count >= r.required_count;
                                 });
 
@@ -289,8 +295,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 return (
                                     <React.Fragment key={level.id}>
                                         <div className={`level-item state-${state}`}>
-                                            <div className={`level-header header-level-${level.id}`}>
-                                                <div className={`level-number level-${level.id}`}>{index + 1}</div>
+                                            {/* Hier nutzen wir den colorIndex für die CSS Klassen */}
+                                            <div className={`level-header header-level-${colorIndex}`}>
+                                                <div className={`level-number level-${colorIndex}`}>{index + 1}</div>
                                                 <div className="level-title">{level.name}</div>
                                                 <span className="level-status-badge">{isCompleted ? 'Abgeschlossen' : isActive ? 'Aktuell' : 'Gesperrt'}</span>
                                             </div>
