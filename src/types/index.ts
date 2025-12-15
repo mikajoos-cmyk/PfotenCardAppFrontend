@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'mitarbeiter' | 'customer';
+export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
 export type Page = 'dashboard' | 'customers' | 'reports' | 'users';
 export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions' };
 

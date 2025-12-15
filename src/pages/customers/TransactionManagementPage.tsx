@@ -2,7 +2,7 @@
 import React, { FC, useState } from 'react';
 import { Customer, View, User, Transaction } from '../../types';
 import Icon from '../../components/ui/Icon';
-import ConfirmationModal from '../../components/modals/ConfirmationModal';
+import TransactionConfirmationModal from '../../components/modals/TransactionConfirmationModal';
 
 interface TransactionManagementPageProps {
     customer: Customer;
@@ -132,13 +132,12 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ custome
                 </div>
             </div>
 
-            {modalData && <ConfirmationModal
-                title={modalData.amount >= 0 ? "Aufladung bestätigen" : "Abbuchung bestätigen"}
-                message={`Möchten Sie die Transaktion "${modalData.title}" über ${Math.abs(modalData.amount).toLocaleString('de-DE')} € wirklich durchführen?`}
+            {modalData && <TransactionConfirmationModal
+                customer={customer}
+                transaction={modalData as any}
+                onClose={() => setModalData(null)}
                 onConfirm={() => { onConfirmTransaction(modalData); setModalData(null); }}
-                onCancel={() => setModalData(null)}
-                confirmText={modalData.amount >= 0 ? "Aufladen" : "Abbuchen"}
-                isDestructive={modalData.amount < 0}
+                currentUser={currentUser}
             />}
         </>
     );

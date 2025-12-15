@@ -12,7 +12,7 @@ interface UsersPageProps {
 }
 
 const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick, onDeleteUserClick }) => {
-    const systemUsers = users.filter(u => u.role !== 'customer');
+    const systemUsers = users.filter(u => u.role === 'admin' || u.role === 'mitarbeiter');
 
     return (
         <>

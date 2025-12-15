@@ -74,7 +74,7 @@ const App: FC = () => {
     }, []);
 
     useEffect(() => {
-        if (loggedInUser && loggedInUser.role !== 'customer') {
+        if (loggedInUser && loggedInUser.role !== 'customer' && loggedInUser.role !== 'kunde') {
             const path = window.location.pathname;
             const match = path.match(/customer\/(\d+)/);
 
@@ -137,7 +137,7 @@ const App: FC = () => {
             const currentUser = await apiClient.get('/api/users/me', authToken);
             setLoggedInUser(currentUser);
 
-            if (currentUser.role === 'customer') {
+            if (currentUser.role === 'customer' || currentUser.role === 'kunde') {
                 const transactionsResponse = await apiClient.get('/api/transactions', authToken);
                 setTransactions(transactionsResponse);
                 setCustomers([currentUser]);
@@ -147,7 +147,7 @@ const App: FC = () => {
                     apiClient.get('/api/users', authToken),
                     apiClient.get('/api/transactions', authToken)
                 ]);
-                setCustomers(usersResponse.filter((user: any) => user.role === 'customer'));
+                setCustomers(usersResponse.filter((user: any) => user.role === 'customer' || user.role === 'kunde'));
                 setUsers(usersResponse);
                 setTransactions(transactionsResponse);
             }
@@ -484,7 +484,7 @@ const App: FC = () => {
             return { visibleCustomers: portfolioCustomers, visibleTransactions: staffTransactions };
         }
 
-        if (loggedInUser?.role === 'customer') {
+        if (loggedInUser?.role === 'customer' || loggedInUser?.role === 'kunde') {
             return { visibleCustomers: customers, visibleTransactions: transactions };
         }
 
@@ -527,7 +527,7 @@ const App: FC = () => {
         );
     }
 
-    if (loggedInUser.role === 'customer') {
+    if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
         const customer = customers.find(c => c.id === loggedInUser.id);
 
         if (customer) {
