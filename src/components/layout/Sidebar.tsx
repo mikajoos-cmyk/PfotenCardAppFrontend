@@ -11,9 +11,11 @@ interface SidebarProps {
     setView: (view: View) => void;
     onLogout: () => void;
     setSidebarOpen: (isOpen: boolean) => void;
+    logoUrl?: string;
+    schoolName?: string;
 }
 
-const Sidebar: FC<SidebarProps> = ({ user, activePage, setView, onLogout, setSidebarOpen }) => {
+const Sidebar: FC<SidebarProps> = ({ user, activePage, setView, onLogout, setSidebarOpen, logoUrl, schoolName }) => {
     const navItems = [
         { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', roles: ['admin', 'mitarbeiter'] },
         { id: 'customers', label: 'Kunden', icon: 'customers', roles: ['admin', 'mitarbeiter'] },
@@ -31,8 +33,8 @@ const Sidebar: FC<SidebarProps> = ({ user, activePage, setView, onLogout, setSid
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <img src="/paw.png" alt="PfotenCard Logo" className="logo" width="40" height="40" />
-                <h2>PfotenCard</h2>
+                <img src={logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" width="40" height="40" />
+                <h2>{schoolName || 'PfotenCard'}</h2>
                 <button className="sidebar-close-button" onClick={() => setSidebarOpen(false)} aria-label="Menü schließen">
                     <Icon name="x" />
                 </button>

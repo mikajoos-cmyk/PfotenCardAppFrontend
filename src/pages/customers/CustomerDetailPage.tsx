@@ -27,12 +27,13 @@ interface CustomerDetailPageProps {
     onUpdateStatus?: (userId: string, statusType: 'vip' | 'expert', value: boolean) => void;
     setDogFormModal: (modalState: { isOpen: boolean; dog: any | null }) => void;
     setDeletingDog: (dog: any | null) => void;
+    levels?: any[];
 }
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, onDeleteUserClick,
-    onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog
+    onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels
 }) => {
 
     const nameParts = customer.name ? customer.name.split(' ') : [''];
@@ -108,13 +109,15 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         }
     };
 
+    const levelsToUse = levels || LEVELS;
+
     const canLevelUp = areLevelRequirementsMet(customer);
     const customerTransactions = transactions.filter(t => t.user_id === customer.id);
     const creator = users.find(u => u.id === customer.createdBy);
     const currentLevelId = customer.level_id || 1;
     const showLevelUpButton = canLevelUp && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && currentLevelId < 5;
 
-    let displayLevel = LEVELS.find(l => l.id === currentLevelId) || LEVELS[0];
+    let displayLevel = levelsToUse.find((l: any) => l.id === currentLevelId) || levelsToUse[0];
     if (customer.is_vip) { displayLevel = VIP_LEVEL; }
     if (customer.is_expert) { displayLevel = EXPERT_LEVEL; }
 
@@ -265,29 +268,51 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     <div className="level-progress-container">
                         <h2>Level-Fortschritt</h2>
                         <div className="level-accordion">
-                            {LEVELS.map(level => {
+                            {levelsToUse.map((level: any, index: number) => {
                                 const currentLevelId = customer.level_id || 1;
                                 const isActive = currentLevelId === level.id;
                                 const isCompleted = currentLevelId > level.id;
                                 const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
-                                const requirements = LEVEL_REQUIREMENTS[level.id] || [];
-                                const canBecomeExpert = areLevelRequirementsMet(customer) && currentLevelId === 5;
+                                const requirements = level.requirements || LEVEL_REQUIREMENTS[level.id] || [];
+
+                                // Calculate if level up is possible
+                                const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
+                                    const progress = getProgressForLevel(customer, level.id);
+                                    const allTx = transactions || [];
+                                    const count = allTx.filter((t: any) => t.training_type_id === r.training_type_id).length;
+                                    return count >= r.required_count;
+                                });
+
+                                const canLevelUp = isActive && requirementsMet;
+                                const canBecomeExpert = isActive && level.id === 5 && requirementsMet;
+
                                 return (
                                     <React.Fragment key={level.id}>
                                         <div className={`level-item state-${state}`}>
                                             <div className={`level-header header-level-${level.id}`}>
-                                                <div className={`level-number level-${level.id}`}>{level.id}</div>
+                                                <div className={`level-number level-${level.id}`}>{index + 1}</div>
                                                 <div className="level-title">{level.name}</div>
                                                 <span className="level-status-badge">{isCompleted ? 'Abgeschlossen' : isActive ? 'Aktuell' : 'Gesperrt'}</span>
                                             </div>
 
-                                            {(isActive) && (
+                                            {isActive && (
                                                 <div className="level-content">
                                                     {requirements.length > 0 ? (
-                                                        <ul>{requirements.map(r => renderRequirement(r, () => getProgressForLevel(customer, level.id)))}</ul>
+                                                        <ul>{requirements.map((r: any) => renderRequirement(r, () => getProgressForLevel(customer, level.id)))}</ul>
                                                     ) : (
                                                         <p className="no-requirements">Keine besonderen Anforderungen in diesem Level.</p>
                                                     )}
+
+                                                    {/* Generic Level Up Button */}
+                                                    {canLevelUp && level.id < 5 && (
+                                                        <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
+                                                            <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), level.id + 1)}>
+                                                                Level Aufsteigen!
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Level 5 Expert Button */}
                                                     {level.id === 5 && (canBecomeExpert || customer.is_expert) && (
                                                         <div className="level-up-button-container">
                                                             {customer.is_expert ? (
@@ -304,7 +329,6 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                 </div>
                                             )}
                                         </div>
-                                        {isActive && showLevelUpButton && <LevelUpButtonComponent customerId={String(customer.id)} nextLevelId={level.id + 1} />}
                                     </React.Fragment>
                                 );
                             })}
@@ -318,7 +342,13 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
                 <div className="side-col">
                     <div className="side-card status-card">
-                        <img src={displayLevel?.imageUrl} alt={displayLevel?.name} />
+                        {(displayLevel?.badgeImage || displayLevel?.icon_url || displayLevel?.imageUrl) && (
+                            <img
+                                src={displayLevel.badgeImage || displayLevel.icon_url || displayLevel.imageUrl}
+                                alt={displayLevel.name}
+                                style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '1rem' }}
+                            />
+                        )}
                         <h3>{displayLevel?.name}</h3>
                         <p>Aktueller Status des Kunden</p>
                     </div>

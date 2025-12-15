@@ -9,9 +9,10 @@ interface TransactionManagementPageProps {
     setView: (view: View) => void;
     onConfirmTransaction: (tx: any) => void;
     currentUser: User;
+    services?: any[];
 }
 
-const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ customer, setView, onConfirmTransaction, currentUser }) => {
+const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ customer, setView, onConfirmTransaction, currentUser, services }) => {
     const [modalData, setModalData] = useState<(Omit<Transaction, 'id' | 'createdAt' | 'customerId' | 'createdBy'> & { baseAmount?: number, bonus?: number }) | null>(null);
 
     const [customTopup, setCustomTopup] = useState('');
@@ -25,7 +26,7 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ custome
         { title: 'Aufladung 300€', amount: 300, bonus: 150 },
     ];
 
-    const debits = [
+    const defaultDebits = [
         { title: 'Gruppenstunde', amount: -15, reqId: 'group_class' },
         { title: 'Trail', amount: -18, reqId: 'trail' },
         { title: 'Prüfungsstunde', amount: -15, reqId: 'exam' },
@@ -38,6 +39,10 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ custome
         { title: 'WS Stress & Impulskontrolle', amount: -15, reqId: 'ws_stress' },
         { title: 'Theorieabend Hundeführerschein', amount: -25, reqId: 'theory_license' },
     ];
+
+    const debits = services && services.length > 0
+        ? services.map(s => ({ title: s.name, amount: -Math.abs(s.price), reqId: String(s.id) }))
+        : defaultDebits;
 
     const handleTxClick = (data: { title: string, amount: number, bonus?: number, reqId?: string }) => {
         if (data.bonus !== undefined) {

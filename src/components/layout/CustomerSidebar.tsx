@@ -11,14 +11,16 @@ interface CustomerSidebarProps {
     setSidebarOpen: (isOpen: boolean) => void;
     activePage: 'overview' | 'transactions';
     setPage: (page: 'overview' | 'transactions') => void;
+    schoolName?: string;
+    logoUrl?: string;
 }
 
-const CustomerSidebar: FC<CustomerSidebarProps> = ({ user, onLogout, setSidebarOpen, activePage, setPage }) => {
+const CustomerSidebar: FC<CustomerSidebarProps> = ({ user, onLogout, setSidebarOpen, activePage, setPage, schoolName = 'PfotenCard', logoUrl }) => {
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <img src="/paw.png" alt="PfotenCard Logo" className="logo" width="40" height="40" />
-                <h2>PfotenCard</h2>
+                <img src={logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" width="40" height="40" />
+                <h2>{schoolName}</h2>
                 <button className="sidebar-close-button" onClick={() => setSidebarOpen(false)} aria-label="Menü schließen">
                     <Icon name="x" />
                 </button>

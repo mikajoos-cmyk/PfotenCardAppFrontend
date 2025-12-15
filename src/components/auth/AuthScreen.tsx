@@ -7,9 +7,11 @@ interface AuthScreenProps {
     onLoginStart: () => void;
     onLoginEnd: () => void;
     onLoginSuccess: (token: string, user: any) => void;
+    logoUrl?: string;
+    schoolName?: string;
 }
 
-const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSuccess }) => {
+const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSuccess, logoUrl, schoolName }) => {
     // State erweitert um 'verify'
     const [view, setView] = useState<'login' | 'register' | 'forgot' | 'verify'>('login');
     const [email, setEmail] = useState('');
@@ -135,8 +137,8 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
     return (
         <div className="auth-container">
             <div className="auth-card">
-                <img src="/paw.png" alt="PfotenCard Logo" style={{ width: '100px', height: '100px', margin: '0 auto 1rem', display: 'block' }} />
-                <h1>PfotenCard</h1>
+                <img src={logoUrl || "/paw.png"} alt="PfotenCard Logo" style={{ width: '100px', height: '100px', margin: '0 auto 1rem', display: 'block' }} />
+                <h1>{schoolName || "PfotenCard"}</h1>
                 <p className="subtitle">
                     {view === 'login' && 'Anmelden'}
                     {view === 'register' && 'Neues Konto erstellen'}

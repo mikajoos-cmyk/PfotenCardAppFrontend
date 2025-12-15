@@ -57,9 +57,17 @@ const App: FC = () => {
     const [customerPage, setCustomerPage] = useState<'overview' | 'transactions'>('overview');
     const [directAccessedCustomer, setDirectAccessedCustomer] = useState<any | null>(null);
 
-    // State für Passwort-Update Modal
     const [showPasswordReset, setShowPasswordReset] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+
+    // Config State for Preview / Customization
+    const [schoolName, setSchoolName] = useState('PfotenCard');
+    const [previewConfig, setPreviewConfig] = useState<{
+        logoUrl?: string;
+        viewMode: 'app' | 'login';
+        levels?: any[];
+        services?: any[];
+    }>({ viewMode: 'app' });
 
     useEffect(() => {
         const handleResize = () => {
@@ -99,12 +107,129 @@ const App: FC = () => {
     }, [loggedInUser, authToken]);
 
     useEffect(() => {
+        // Skip auth listener in Preview Mode to prevent Supabase connection errors
+        const isPreview = new URLSearchParams(window.location.search).get('mode') === 'preview';
+        if (isPreview) return;
+
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'PASSWORD_RECOVERY') {
                 setShowPasswordReset(true);
             }
         });
         return () => { authListener.subscription.unsubscribe(); };
+    }, []);
+
+    // --- PREVIEW MODE HANDLER ---
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('mode') === 'preview') {
+            console.log("Preview Mode Active");
+
+            const applyConfig = (payload: any) => {
+                console.log("Applying Preview Config:", payload);
+                const root = document.documentElement;
+
+                if (payload.primary_color) {
+                    root.style.setProperty('--brand-green', payload.primary_color);
+                    root.style.setProperty('--sidebar-active-bg', payload.primary_color);
+                }
+                if (payload.secondary_color) {
+                    root.style.setProperty('--brand-blue', payload.secondary_color);
+                }
+                if (payload.school_name) setSchoolName(payload.school_name);
+
+                setPreviewConfig(prev => ({
+                    ...prev,
+                    logoUrl: payload.logo || prev.logoUrl,
+                    levels: payload.levels || prev.levels,
+                    services: payload.services || prev.services,
+                    viewMode: payload.view_mode || prev.viewMode
+                }));
+
+                // Handle Role Switching
+                if (payload.role) {
+                    const mockUser = {
+                        id: 'preview-user',
+                        name: payload.role === 'admin' ? 'Max Admin' : 'Max Mustermann',
+                        email: payload.role === 'admin' ? 'admin@beispiel.de' : 'max@beispiel.de',
+                        role: payload.role === 'admin' ? 'admin' : 'customer',
+                        createdAt: new Date(),
+                    };
+                    setLoggedInUser(mockUser as User);
+                }
+            };
+
+            // 1. Initial Setup with Mock Data
+            const mockUser: User = {
+                id: 'preview-user',
+                name: 'Max Mustermann',
+                email: 'max@beispiel.de',
+                role: 'customer',
+                createdAt: new Date(),
+            };
+
+            const mockCustomer = {
+                id: 'preview-user',
+                name: 'Max Mustermann',
+                email: 'max@beispiel.de',
+                role: 'customer',
+                balance: 150,
+                dogs: [{ name: 'Bello', breed: 'Goldie', birth_date: '2022-01-01' }],
+                is_vip: false,
+                is_expert: false
+            };
+
+            setLoggedInUser(mockUser);
+            setCustomers([mockCustomer]);
+            setTransactions([
+                {
+                    id: 'tx-1',
+                    user_id: 'preview-user',
+                    amount: -25,
+                    title: 'Einzeltraining',
+                    description: 'Einzeltraining',
+                    date: new Date().toISOString(),
+                    type: 'debit'
+                },
+                {
+                    id: 'tx-2',
+                    user_id: 'preview-user',
+                    amount: 200,
+                    title: 'Aufladung',
+                    description: 'Aufladung',
+                    date: new Date(Date.now() - 86400000).toISOString(),
+                    type: 'topup'
+                }
+            ]);
+
+            setAuthToken('preview-mode-token');
+            setIsLoading(false);
+
+            // 2. Check for Hash Config (Persistence for New Tab)
+            if (window.location.hash) {
+                try {
+                    const hashConfig = window.location.hash.substring(1); // Remove #
+                    // Only try to parse if it looks like config params (we use 'config=' prefix)
+                    if (hashConfig.startsWith('config=')) {
+                        const encoded = hashConfig.replace('config=', '');
+                        const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+                        applyConfig(decoded);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse config from hash", e);
+                }
+            }
+
+            // 3. Listen for Config Updates via PostMessage
+            const handleMessage = (event: MessageEvent) => {
+                if (event.data?.type === 'UPDATE_CONFIG') {
+                    applyConfig(event.data.payload);
+                }
+            };
+
+            window.addEventListener('message', handleMessage);
+            return () => window.removeEventListener('message', handleMessage);
+        }
     }, []);
 
     const handlePasswordUpdate = async () => {
@@ -128,6 +253,11 @@ const App: FC = () => {
     };
 
     const fetchAppData = async () => {
+        // Skip fetch in Preview Mode
+        if (new URLSearchParams(window.location.search).get('mode') === 'preview') {
+            return;
+        }
+
         if (!authToken) {
             setIsLoading(false);
             return;
@@ -504,6 +634,8 @@ const App: FC = () => {
                     onLoginStart={() => setServerLoading({ active: true, message: 'Verbinde mit Server...' })}
                     onLoginEnd={() => setServerLoading({ active: false, message: '' })}
                     onLoginSuccess={handleLoginSuccess}
+                    logoUrl={previewConfig.logoUrl}
+                    schoolName={schoolName}
                 />
 
                 {showPasswordReset && (
@@ -527,6 +659,22 @@ const App: FC = () => {
         );
     }
 
+    if (previewConfig.viewMode === 'login') {
+        return (
+            <AuthScreen
+                onLoginStart={() => { }}
+                onLoginEnd={() => { }}
+                onLoginSuccess={(token) => {
+                    // In view-only mode, we might just switch back to app ?
+                    // For now, let's just make it switch to app view
+                    setPreviewConfig(prev => ({ ...prev, viewMode: 'app' }));
+                }}
+                logoUrl={previewConfig.logoUrl}
+                schoolName={schoolName}
+            />
+        );
+    }
+
     if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
         const customer = customers.find(c => c.id === loggedInUser.id);
 
@@ -539,6 +687,8 @@ const App: FC = () => {
                         setSidebarOpen={setIsSidebarOpen}
                         activePage={customerPage}
                         setPage={setCustomerPage}
+                        schoolName={schoolName}
+                        logoUrl={previewConfig.logoUrl}
                     />
 
                     <main className="main-content">
@@ -548,8 +698,8 @@ const App: FC = () => {
                                     <Icon name="menu" />
                                 </button>
                                 <div className="mobile-header-logo">
-                                    <img src="/paw.png" alt="PfotenCard Logo" className="logo" style={{ width: '32px', height: '32px' }} />
-                                    <h2>PfotenCard</h2>
+                                    <img src={previewConfig.logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                                    <h2>{schoolName}</h2>
                                 </div>
                             </header>
                         )}
@@ -572,6 +722,7 @@ const App: FC = () => {
                                 onDeleteUserClick={setDeleteUserModal}
                                 setDogFormModal={setDogFormModal}
                                 setDeletingDog={setDeletingDog}
+                                levels={previewConfig.levels}
                             />
                         ) : (
                             <CustomerTransactionsPage transactions={transactions} />
@@ -608,6 +759,7 @@ const App: FC = () => {
                 onToggleExpertStatus={onToggleExpertStatus}
                 setDogFormModal={setDogFormModal}
                 setDeletingDog={setDeletingDog}
+                levels={previewConfig.levels}
             />;
         }
         if (view.page === 'customers' && view.subPage === 'transactions' && view.customerId) {
@@ -621,6 +773,7 @@ const App: FC = () => {
                     setView={handleSetView}
                     onConfirmTransaction={handleConfirmTransaction}
                     currentUser={loggedInUser}
+                    services={previewConfig.services}
                 />;
             }
 
@@ -676,7 +829,15 @@ const App: FC = () => {
     return (
         <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
             {isServerLoading.active && <LoadingSpinner message={isServerLoading.message} />}
-            <Sidebar user={loggedInUser} activePage={view.page} setView={handleSetView} onLogout={() => setLoggedInUser(null)} setSidebarOpen={setIsSidebarOpen} />
+            <Sidebar
+                user={loggedInUser}
+                activePage={view.page}
+                setView={handleSetView}
+                onLogout={() => setLoggedInUser(null)}
+                setSidebarOpen={setIsSidebarOpen}
+                logoUrl={previewConfig.logoUrl}
+                schoolName={schoolName}
+            />
             <main className="main-content">
                 {isMobileView && (
                     <header className="mobile-header">
@@ -684,8 +845,8 @@ const App: FC = () => {
                             <Icon name="menu" />
                         </button>
                         <div className="mobile-header-logo">
-                            <img src="/paw.png" alt="PfotenCard Logo" className="logo" width="32" height="32" />
-                            <h2>PfotenCard</h2>
+                            <img src={previewConfig.logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" width="32" height="32" />
+                            <h2>{schoolName}</h2>
                         </div>
                     </header>
                 )}
