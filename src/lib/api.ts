@@ -1,108 +1,97 @@
+// src/lib/api.ts
+
+// Die Basis-URL deines Backends (z.B. https://pfotencardbackendmultipletenants.onrender.com oder https://api.pfotencard.de)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
-// Helper function to extract subdomain from current URL
+// Hilfsfunktion: Ermittelt die Subdomain aus der aktuellen URL
 const getSubdomain = () => {
     const hostname = window.location.hostname;
-    // For localhost/dev, you might want to return a hardcoded test value or null
+
+    // Für lokale Tests (localhost):
+    // Hier kannst du 'bello' oder eine andere Test-Subdomain festlegen
     if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-        return null; // Or return 'bello' for testing if you have a tenant 'bello'
+        // HINWEIS: Ändere dies zum Testen lokal auf den Namen eines existierenden Tenants!
+        // return 'bello'; 
+        return null; 
     }
+
+    // Für Produktion (z.B. bello.pfotencard.de)
     const parts = hostname.split('.');
+    // Wir erwarten mindestens: subdomain.domain.tld (3 Teile)
     if (parts.length >= 3) {
-        return parts[0];
+        return parts[0]; // Gibt 'bello' zurück
     }
     return null;
 };
 
+// Generiert die Header für jede Anfrage
+const getHeaders = (token: string | null = null, hasBody: boolean = false) => {
+    const headers: any = {};
+    
+    if (hasBody) {
+        headers['Content-Type'] = 'application/json';
+    }
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // --- WICHTIG: Hier wird die Subdomain angehängt ---
+    const subdomain = getSubdomain();
+    if (subdomain) {
+        headers['x-tenant-subdomain'] = subdomain;
+    }
+
+    return headers;
+};
+
 export const apiClient = {
     get: async (path: string, token: string | null) => {
-        // Allow calls without token (e.g. config), but require it for others
-        const headers: any = {
-            'Content-Type': 'application/json',
-        };
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        // --- FIX: Add Tenant Header ---
-        const subdomain = getSubdomain();
-        if (subdomain) {
-            headers['x-tenant-subdomain'] = subdomain;
-        }
-
         const response = await fetch(`${API_BASE_URL}${path}`, {
             method: 'GET',
-            headers: headers,
+            headers: getHeaders(token),
         });
         
         if (!response.ok) {
-            // Handle 404 specifically for Tenant/User not found
+            // Spezielle Behandlung für 404 (Tenant nicht gefunden)
             if (response.status === 404) {
-               console.warn("Resource or Tenant not found (404)");
+               console.warn("Ressource oder Hundeschule nicht gefunden (404). Subdomain:", getSubdomain());
             }
-            throw new Error(`API request failed: ${response.statusText}`);
+            throw new Error(`API request failed: ${response.statusText} (${response.status})`);
         }
         return response.json();
     },
 
     post: async (path: string, data: any, token: string | null) => {
-        const headers: any = {
-            'Content-Type': 'application/json',
-        };
-
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        // --- FIX: Add Tenant Header ---
-        const subdomain = getSubdomain();
-        if (subdomain) {
-            headers['x-tenant-subdomain'] = subdomain;
-        }
-
         const response = await fetch(`${API_BASE_URL}${path}`, {
             method: 'POST',
-            headers: headers,
+            headers: getHeaders(token, true), // true = hat Body
             body: JSON.stringify(data),
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || `API request failed: ${response.statusText}`);
         }
         return response.json();
     },
 
     put: async (path: string, data: any, token: string | null) => {
-        if (!token) throw new Error("No auth token provided");
-        
-        const headers: any = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        };
-
-        // --- FIX: Add Tenant Header ---
-        const subdomain = getSubdomain();
-        if (subdomain) {
-            headers['x-tenant-subdomain'] = subdomain;
-        }
-
         const response = await fetch(`${API_BASE_URL}${path}`, {
             method: 'PUT',
-            headers: headers,
+            headers: getHeaders(token, true),
             body: JSON.stringify(data),
         });
+        
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || `API request failed: ${response.statusText}`);
         }
         return response.json();
     },
-
-    // ... (Add the header logic to setVipStatus, setExpertStatus, delete, upload as well) ...
     
+    // Wrapper-Methoden für spezifische Funktionen
     setVipStatus: async (userId: string, isVip: boolean, token: string | null) => {
-        // Re-use the put method above which now has the header logic
         return apiClient.put(`/api/users/${userId}/vip`, { is_vip: isVip }, token);
     },
     
@@ -111,31 +100,25 @@ export const apiClient = {
     },
 
     delete: async (path: string, token: string | null) => {
-        if (!token) throw new Error("No auth token provided");
-        
-        const headers: any = {
-            'Authorization': `Bearer ${token}`,
-        };
-        const subdomain = getSubdomain();
-        if (subdomain) headers['x-tenant-subdomain'] = subdomain;
-
         const response = await fetch(`${API_BASE_URL}${path}`, {
             method: 'DELETE',
-            headers: headers,
+            headers: getHeaders(token),
         });
+        
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || `API request failed`);
         }
         return response.json();
     },
 
     upload: async (path: string, file: File, token: string | null) => {
-        if (!token) throw new Error("No auth token provided");
         const formData = new FormData();
         formData.append("upload_file", file);
 
-        const headers: any = { 'Authorization': `Bearer ${token}` };
+        // Header ohne Content-Type (macht der Browser bei FormData automatisch)
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const subdomain = getSubdomain();
         if (subdomain) headers['x-tenant-subdomain'] = subdomain;
 
@@ -146,7 +129,7 @@ export const apiClient = {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || `File upload failed`);
         }
         return response.json();
