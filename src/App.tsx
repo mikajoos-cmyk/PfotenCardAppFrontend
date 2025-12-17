@@ -86,6 +86,8 @@ const App: FC = () => {
         services?: any[];
     } | null>(null);
 
+    const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
+
     // NEU: Konfiguration beim Start laden
     useEffect(() => {
         const loadConfig = async () => {
@@ -391,10 +393,46 @@ const App: FC = () => {
         meta?: { requirementId?: string };
         baseAmount?: number;
     }) => {
+        // --- PREVIEW MODE SIMULATION ---
+        if (isPreviewMode) {
+            const newTx = {
+                id: `tx-preview-${Date.now()}`,
+                user_id: view.customerId, // ID als String lassen
+                type: txData.type === 'topup' ? 'Aufladung' : txData.title,
+                description: txData.title,
+                amount: txData.amount, // Im Preview vereinfacht: Betrag = Änderung
+                date: new Date().toISOString(),
+                booked_by_id: loggedInUser?.id
+            };
+
+            // 1. Transaktion hinzufügen
+            setTransactions(prev => [newTx, ...prev]);
+
+            // 2. Kunden-Guthaben aktualisieren
+            setCustomers(prev => prev.map(c => {
+                if (String(c.id) === view.customerId) {
+                    return { ...c, balance: c.balance + txData.amount };
+                }
+                return c;
+            }));
+
+            // 3. User State aktualisieren falls wir selbst der Kunde sind
+            if (loggedInUser?.id === view.customerId) {
+                // @ts-ignore
+                setLoggedInUser(prev => ({ ...prev, balance: (prev.balance || 0) + txData.amount }));
+            }
+
+            console.log('Preview-Transaktion erfolgreich simuliert!');
+            return;
+        }
+        // --- ENDE PREVIEW SIMULATION ---
+
         if (!view.customerId || !authToken) return;
 
+        // ... (Original Code für Backend-Call) ...
         const transactionPayload = {
-            user_id: parseInt(view.customerId.replace('cust-', ''), 10),
+            // FIX: Robusteres Parsing für IDs
+            user_id: parseInt(view.customerId.replace('cust-', ''), 10) || 0,
             type: txData.type === 'topup' ? 'Aufladung' : txData.title,
             description: txData.title,
             amount: txData.baseAmount || txData.amount,
@@ -514,6 +552,21 @@ const App: FC = () => {
     };
 
     const handleSaveCustomerDetails = async (userToUpdate: any, dogToUpdate: any) => {
+        if (isPreviewMode) {
+            setCustomers(prev => prev.map(c => {
+                if (c.id === userToUpdate.id) {
+                    const updatedC = { ...c, ...userToUpdate };
+                    // Update Dog if present
+                    if (dogToUpdate) {
+                        updatedC.dogs = [dogToUpdate];
+                    }
+                    return updatedC;
+                }
+                return c;
+            }));
+            console.log('Preview-Daten erfolgreich lokal gespeichert!');
+            return;
+        }
         try {
             const userPayload = {
                 name: userToUpdate.name,
@@ -816,7 +869,8 @@ const App: FC = () => {
         if (view.page === 'customers' && view.subPage === 'detail' && view.customerId) {
             const customer = (directAccessedCustomer && String(directAccessedCustomer.id) === view.customerId)
                 ? directAccessedCustomer
-                : visibleCustomers.find(c => c.id === parseInt(view.customerId));
+                : visibleCustomers.find(c => String(c.id) === view.customerId);
+
             if (customer) return <CustomerDetailPage
                 customer={customer}
                 transactions={transactions}
@@ -840,8 +894,8 @@ const App: FC = () => {
         if (view.page === 'customers' && view.subPage === 'transactions' && view.customerId) {
             const customer = (directAccessedCustomer && String(directAccessedCustomer.id) === view.customerId)
                 ? directAccessedCustomer
-                : visibleCustomers.find(c => c.id === parseInt(view.customerId));
-
+                : visibleCustomers.find(c => String(c.id) === view.customerId);
+            
             if (customer) {
                 return <TransactionManagementPage
                     customer={customer}
