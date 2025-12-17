@@ -1,4 +1,5 @@
-import { LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from './constants';
+// src/lib/utils.ts
+import { LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS, LEVELS } from './constants';
 
 export const getInitials = (firstName: string, lastName: string = '') => {
     const first = firstName ? firstName.charAt(0) : '';
@@ -14,7 +15,8 @@ export const getAvatarColorClass = (name: string) => {
     return `avatar-${colors[colorIndex]}`;
 };
 
-// Level Logic
+// --- Level Logic (Dynamisch & Statisch) ---
+
 export const getPrereqProgress = (customer: any, untilDate?: Date) => {
     const progress: { [key: string]: number } = {};
     const prereqIds = new Set(DOGLICENSE_PREREQS.map(p => p.id));
@@ -25,35 +27,77 @@ export const getPrereqProgress = (customer: any, untilDate?: Date) => {
     }
 
     achievementsToConsider.forEach((ach: any) => {
-        if (prereqIds.has(ach.requirement_id)) {
+        // Fallback für alte String-IDs
+        if (ach.requirement_id && prereqIds.has(ach.requirement_id)) {
             progress[ach.requirement_id] = (progress[ach.requirement_id] || 0) + 1;
         }
     });
     return progress;
 };
 
-export const getProgressForLevel = (customer: any, levelId: number) => {
+// Berechnet den Fortschritt basierend auf dynamischen Level-Daten ODER Konstanten
+export const getProgressForLevel = (customer: any, levelId: number, dynamicLevels?: any[]) => {
     const progress: { [key: string]: number } = {};
-    const requirements = levelId === 5 ? DOGLICENSE_PREREQS : (LEVEL_REQUIREMENTS[levelId] || []);
+
+    // 1. Anforderungen ermitteln (Dynamisch oder Statisch)
+    let requirements: any[] = [];
+
+    if (dynamicLevels && dynamicLevels.length > 0) {
+        const level = dynamicLevels.find(l => l.id === levelId);
+        if (level) requirements = level.requirements || [];
+    } else {
+        // Fallback auf Konstanten
+        requirements = levelId === 5 ? DOGLICENSE_PREREQS : (LEVEL_REQUIREMENTS[levelId] || []);
+    }
+
     if (requirements.length === 0) return progress;
 
     const unconsumedAchievements = (customer.achievements || []).filter((ach: any) => !ach.is_consumed);
 
     unconsumedAchievements.forEach((ach: any) => {
-        progress[ach.requirement_id] = (progress[ach.requirement_id] || 0) + 1;
+        // Fall A: Dynamisches Backend (training_type_id ist Zahl)
+        if (ach.training_type_id) {
+            const key = String(ach.training_type_id);
+            progress[key] = (progress[key] || 0) + 1;
+        }
+        // Fall B: Alte Mock-Daten (requirement_id ist String)
+        if (ach.requirement_id) {
+            progress[ach.requirement_id] = (progress[ach.requirement_id] || 0) + 1;
+        }
     });
 
     return progress;
 };
 
-export const areLevelRequirementsMet = (customer: any): boolean => {
+export const areLevelRequirementsMet = (customer: any, dynamicLevels?: any[]): boolean => {
     const currentLevelId = customer.level_id || 1;
 
+    // 1. Dynamische Prüfung (Vorrangig)
+    if (dynamicLevels && dynamicLevels.length > 0) {
+        const currentLevel = dynamicLevels.find(l => l.id === currentLevelId);
+
+        // Wenn Level nicht gefunden oder keine Anforderungen -> Level Up möglich (oder letztes Level)
+        if (!currentLevel) return false;
+
+        const requirements = currentLevel.requirements || [];
+        if (requirements.length === 0) return true; // Keine Anforderungen = geschafft
+
+        const progress = getProgressForLevel(customer, currentLevelId, dynamicLevels);
+
+        return requirements.every((req: any) => {
+            // Backend liefert training_type_id, wir nutzen das als Key
+            const reqKey = String(req.training_type_id);
+            const currentCount = progress[reqKey] || 0;
+            return currentCount >= req.required_count;
+        });
+    }
+
+    // 2. Statische Fallback-Logik (Legacy Code)
     // Fall 1: Level 5
     if (currentLevelId === 5) {
         const examReqs = LEVEL_REQUIREMENTS[5];
         const examProgress = getProgressForLevel(customer, 5);
-        const prereqProgress = getProgressForLevel(customer, 5);
+        const prereqProgress = getPrereqProgress(customer); // Nutzt separate Logik für Zusatzkurse
 
         const examMet = examReqs.every(req => (examProgress[req.id] || 0) >= req.required);
         const prereqsMet = DOGLICENSE_PREREQS.every(req => (prereqProgress[req.id] || 0) >= req.required);

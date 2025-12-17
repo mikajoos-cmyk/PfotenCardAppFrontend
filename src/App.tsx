@@ -29,6 +29,13 @@ import CustomerTransactionsPage from './pages/customers/CustomerTransactionsPage
 import ReportsPage from './pages/reports/ReportsPage';
 import UsersPage from './pages/admin/UsersPage';
 
+const getFullImageUrl = (url?: string) => {
+    if (!url) return "/paw.png"; // Fallback
+    if (url.startsWith("http")) return url;
+    // API_BASE_URL aus deinem Environment oder Konstante
+    return `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}${url}`;
+};
+
 const App: FC = () => {
     const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
@@ -68,6 +75,74 @@ const App: FC = () => {
         levels?: any[];
         services?: any[];
     }>({ viewMode: 'app' });
+
+    // Config State für die ECHTE App (nicht nur Preview)
+    const [appConfigData, setAppConfigData] = useState<{
+        schoolName: string;
+        logoUrl: string;
+        primaryColor: string;
+        secondaryColor: string;
+        levels?: any[];
+        services?: any[];
+    } | null>(null);
+
+    // NEU: Konfiguration beim Start laden
+    useEffect(() => {
+        const loadConfig = async () => {
+            // Wenn wir im Preview-Modus (Iframe) sind, überspringen wir den Fetch,
+            // da die Daten per postMessage kommen (siehe bestehender useEffect).
+            const isPreview = new URLSearchParams(window.location.search).get('mode') === 'preview';
+            if (isPreview) return;
+
+            try {
+                const config = await apiClient.getConfig();
+                const tenant = config.tenant;
+                const branding = tenant.config?.branding || {};
+
+                // 1. Daten in State speichern
+                const loadedConfig = {
+                    schoolName: tenant.name,
+                    logoUrl: branding.logo_url, // Backend liefert URL, ggf. Pfad anpassen wenn relativ
+                    primaryColor: branding.primary_color || '#22C55E',
+                    secondaryColor: branding.secondary_color || '#3B82F6',
+                    levels: config.levels,
+                    services: config.training_types
+                };
+
+                setAppConfigData(loadedConfig);
+                setSchoolName(loadedConfig.schoolName); // Bestehenden State nutzen
+
+                // 2. CSS Variablen setzen (Branding anwenden)
+                const root = document.documentElement;
+                if (loadedConfig.primaryColor) {
+                    root.style.setProperty('--brand-green', loadedConfig.primaryColor);
+                    root.style.setProperty('--sidebar-active-bg', loadedConfig.primaryColor);
+                    root.style.setProperty('--button-primary-bg', loadedConfig.primaryColor); // Falls verwendet
+                }
+                if (loadedConfig.secondaryColor) {
+                    root.style.setProperty('--brand-blue', loadedConfig.secondaryColor);
+                }
+
+                // 3. Favicon dynamisch ändern (optional)
+                if (loadedConfig.logoUrl) {
+                    const link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+                    if (link) {
+                        // Falls URL relativ ist, Basis-URL davor hängen
+                        const fullLogoUrl = loadedConfig.logoUrl.startsWith('http')
+                            ? loadedConfig.logoUrl
+                            : `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}${loadedConfig.logoUrl}`;
+                        link.href = fullLogoUrl;
+                    }
+                }
+
+            } catch (error) {
+                console.error("Fehler beim Laden der Konfiguration:", error);
+                // Fallback: Default Branding behalten
+            }
+        };
+
+        loadConfig();
+    }, []);
 
     useEffect(() => {
         const handleResize = () => {
@@ -634,8 +709,8 @@ const App: FC = () => {
                     onLoginStart={() => setServerLoading({ active: true, message: 'Verbinde mit Server...' })}
                     onLoginEnd={() => setServerLoading({ active: false, message: '' })}
                     onLoginSuccess={handleLoginSuccess}
-                    logoUrl={previewConfig.logoUrl}
-                    schoolName={schoolName}
+                    logoUrl={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)}
+                    schoolName={appConfigData?.schoolName || schoolName}
                 />
 
                 {showPasswordReset && (
@@ -669,8 +744,8 @@ const App: FC = () => {
                     // For now, let's just make it switch to app view
                     setPreviewConfig(prev => ({ ...prev, viewMode: 'app' }));
                 }}
-                logoUrl={previewConfig.logoUrl}
-                schoolName={schoolName}
+                logoUrl={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)}
+                schoolName={appConfigData?.schoolName || schoolName}
             />
         );
     }
@@ -687,8 +762,8 @@ const App: FC = () => {
                         setSidebarOpen={setIsSidebarOpen}
                         activePage={customerPage}
                         setPage={setCustomerPage}
-                        schoolName={schoolName}
-                        logoUrl={previewConfig.logoUrl}
+                        schoolName={appConfigData?.schoolName || schoolName}
+                        logoUrl={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)}
                     />
 
                     <main className="main-content">
@@ -698,8 +773,8 @@ const App: FC = () => {
                                     <Icon name="menu" />
                                 </button>
                                 <div className="mobile-header-logo">
-                                    <img src={previewConfig.logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" style={{ width: '32px', height: '32px' }} />
-                                    <h2>{schoolName}</h2>
+                                    <img src={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)} alt="PfotenCard Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                                    <h2>{appConfigData?.schoolName || schoolName}</h2>
                                 </div>
                             </header>
                         )}
@@ -722,7 +797,7 @@ const App: FC = () => {
                                 onDeleteUserClick={setDeleteUserModal}
                                 setDogFormModal={setDogFormModal}
                                 setDeletingDog={setDeletingDog}
-                                levels={previewConfig.levels}
+                                levels={appConfigData?.levels || previewConfig.levels}
                             />
                         ) : (
                             <CustomerTransactionsPage transactions={transactions} />
@@ -759,7 +834,7 @@ const App: FC = () => {
                 onToggleExpertStatus={onToggleExpertStatus}
                 setDogFormModal={setDogFormModal}
                 setDeletingDog={setDeletingDog}
-                levels={previewConfig.levels}
+                levels={appConfigData?.levels || previewConfig.levels}
             />;
         }
         if (view.page === 'customers' && view.subPage === 'transactions' && view.customerId) {
@@ -773,7 +848,7 @@ const App: FC = () => {
                     setView={handleSetView}
                     onConfirmTransaction={handleConfirmTransaction}
                     currentUser={loggedInUser}
-                    services={previewConfig.services}
+                    services={appConfigData?.services || previewConfig.services}
                 />;
             }
 
@@ -835,8 +910,8 @@ const App: FC = () => {
                 setView={handleSetView}
                 onLogout={() => setLoggedInUser(null)}
                 setSidebarOpen={setIsSidebarOpen}
-                logoUrl={previewConfig.logoUrl}
-                schoolName={schoolName}
+                logoUrl={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)}
+                schoolName={appConfigData?.schoolName || schoolName}
             />
             <main className="main-content">
                 {isMobileView && (
@@ -845,8 +920,8 @@ const App: FC = () => {
                             <Icon name="menu" />
                         </button>
                         <div className="mobile-header-logo">
-                            <img src={previewConfig.logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" width="32" height="32" />
-                            <h2>{schoolName}</h2>
+                            <img src={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)} alt="PfotenCard Logo" className="logo" width="32" height="32" />
+                            <h2>{appConfigData?.schoolName || schoolName}</h2>
                         </div>
                     </header>
                 )}

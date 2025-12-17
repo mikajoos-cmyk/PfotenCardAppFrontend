@@ -41,7 +41,7 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ custome
     ];
 
     const debits = services && services.length > 0
-        ? services.map(s => ({ title: s.name, amount: -Math.abs(s.price), reqId: String(s.id) }))
+        ? services.map(s => ({ title: s.name, amount: -Math.abs(s.default_price || s.price || 0), reqId: String(s.id) }))
         : defaultDebits;
 
     const handleTxClick = (data: { title: string, amount: number, bonus?: number, reqId?: string }) => {

@@ -110,11 +110,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     };
 
     const levelsToUse = levels || LEVELS;
-
-    const canLevelUp = areLevelRequirementsMet(customer);
+    const canLevelUp = areLevelRequirementsMet(customer, levelsToUse);
     const customerTransactions = transactions.filter(t => t.user_id === customer.id);
     const creator = users.find(u => u.id === customer.createdBy);
-    const currentLevelId = customer.level_id || 1;
+    const firstLevelId = levelsToUse.length > 0 ? levelsToUse[0].id : 1;
+    const currentLevelId = customer.level_id || firstLevelId;
     const showLevelUpButton = canLevelUp && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && currentLevelId < 5;
 
     let displayLevel = levelsToUse.find((l: any) => l.id === currentLevelId) || levelsToUse[0];
@@ -232,7 +232,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     </div>
                                 </div>
                                 <div className="data-field">
-                                    <img src="/paw.png" alt="Paw" style={{ width: '24px', height: '24px' }} />
+                                    <img src="/paw_icon.png" alt="Paw" style={{ width: '24px', height: '24px' }} />
                                     <div className="field-content">
                                         <label>Rasse</label>
                                         {isEditing ? <input type="text" name="breed" value={editedData.breed} onChange={handleInputChange} /> : <p>{dog?.breed || '-'}</p>}
@@ -269,7 +269,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <h2>Level-Fortschritt</h2>
                         <div className="level-accordion">
                             {levelsToUse.map((level: any, index: number) => {
-                                const currentLevelId = customer.level_id || 1;
+                                const firstLevelId = levelsToUse.length > 0 ? levelsToUse[0].id : 1;
+                                const currentLevelId = customer.level_id || firstLevelId;
                                 // Benutze den Index für die Logik, falls IDs durcheinander sind (Fallback)
                                 const isActive = currentLevelId === level.id;
                                 const isCompleted = currentLevelId > level.id;
@@ -305,7 +306,20 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             {isActive && (
                                                 <div className="level-content">
                                                     {requirements.length > 0 ? (
-                                                        <ul>{requirements.map((r: any) => renderRequirement(r, () => getProgressForLevel(customer, level.id)))}</ul>
+                                                        <ul>
+                                                            {requirements.map((r: any) => {
+                                                                // Mapping für Backend-Daten auf Frontend-Struktur
+                                                                const reqId = r.id ? String(r.id) : String(r.training_type_id); // Fallback für ID
+                                                                // Name kann direkt im Objekt sein oder über training_type relation (vom Backend Config)
+                                                                const reqName = r.name || (r.training_type ? r.training_type.name : 'Anforderung');
+                                                                const requiredCount = r.required || r.required_count;
+
+                                                                // Hilfsobjekt für renderRequirement
+                                                                const renderObj = { id: reqId, name: reqName, required: requiredCount };
+
+                                                                return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
+                                                            })}
+                                                        </ul>
                                                     ) : (
                                                         <p className="no-requirements">Keine besonderen Anforderungen in diesem Level.</p>
                                                     )}
