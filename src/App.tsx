@@ -224,6 +224,7 @@ const App: FC = () => {
             console.log("Preview Mode Active");
 
             const applyConfig = (payload: any) => {
+                // ... (Config Logic bleibt gleich) ...
                 console.log("Applying Preview Config:", payload);
                 const root = document.documentElement;
 
@@ -244,70 +245,97 @@ const App: FC = () => {
                     viewMode: payload.view_mode || prev.viewMode
                 }));
 
-                // Handle Role Switching
                 if (payload.role) {
-                    const mockUser = {
-                        id: 'preview-user',
-                        name: payload.role === 'admin' ? 'Max Admin' : 'Max Mustermann',
-                        email: payload.role === 'admin' ? 'admin@beispiel.de' : 'max@beispiel.de',
-                        role: payload.role === 'admin' ? 'admin' : 'customer',
-                        createdAt: new Date(),
-                    };
-                    setLoggedInUser(mockUser as User);
+                     // Update current logged in user role based on toggle
+                     setLoggedInUser(prev => prev ? { ...prev, role: payload.role } : null);
                 }
             };
 
-            // 1. Initial Setup with Mock Data
-            const mockUser: User = {
+            // --- 1. MOCK DATEN DEFINITION ---
+            
+            // Der Kunde (Max)
+            const mockUserCustomer: User = {
                 id: 'preview-user',
                 name: 'Max Mustermann',
                 email: 'max@beispiel.de',
-                role: 'customer',
-                createdAt: new Date(),
+                role: 'customer', // Standard-Startrolle
+                createdAt: new Date('2024-01-01'),
             };
 
-            const mockCustomer = {
-                id: 'preview-user',
-                name: 'Max Mustermann',
-                email: 'max@beispiel.de',
-                role: 'customer',
-                balance: 150,
-                dogs: [{ name: 'Bello', breed: 'Goldie', birth_date: '2022-01-01' }],
+            // Der Admin (für die Benutzerliste)
+            const mockUserAdmin: User = {
+                id: 'preview-admin',
+                name: 'Anna Admin',
+                email: 'admin@hundeschule.de',
+                role: 'admin',
+                createdAt: new Date('2023-01-01'),
+            };
+
+            // Das Kunden-Objekt mit Guthaben und Hunden
+            const mockCustomerData = {
+                ...mockUserCustomer, // Erbt ID, Name etc.
+                balance: 150.00, // 150€ Aufladung + 30€ Bonus - 30€ Training = 150€
+                level_id: 2, // Level 1 abgeschlossen -> In Level 2
+                dogs: [
+                    { name: 'Bello', breed: 'Golden Retriever', birth_date: '2022-05-10', chip: '123456789' }
+                ],
                 is_vip: false,
-                is_expert: false
+                is_expert: false,
+                customer_since: new Date('2024-01-15'),
+                // HIER: Achievements für den Fortschritt in Level 2 (2x Gruppenstunde)
+                achievements: [
+                    { requirement_id: 'group_class', date_achieved: new Date(Date.now() - 86400000 * 2), is_consumed: false },
+                    { requirement_id: 'group_class', date_achieved: new Date(Date.now() - 86400000), is_consumed: false }
+                ]
             };
 
-            setLoggedInUser(mockUser);
-            setCustomers([mockCustomer]);
-            setTransactions([
+            // Passende Transaktionen
+            const mockTransactions = [
                 {
-                    id: 'tx-1',
+                    id: 'tx-3',
                     user_id: 'preview-user',
-                    amount: -25,
-                    title: 'Einzeltraining',
-                    description: 'Einzeltraining',
-                    date: new Date().toISOString(),
+                    booked_by_id: 'preview-admin',
+                    amount: -15, // Preis für Gruppenstunde
+                    title: 'Gruppenstunde',
+                    description: 'Gruppenstunde',
+                    date: new Date().toISOString(), // Heute
                     type: 'debit'
                 },
                 {
                     id: 'tx-2',
                     user_id: 'preview-user',
-                    amount: 200,
-                    title: 'Aufladung',
-                    description: 'Aufladung',
-                    date: new Date(Date.now() - 86400000).toISOString(),
+                    booked_by_id: 'preview-admin',
+                    amount: -15, // Preis für Gruppenstunde
+                    title: 'Gruppenstunde',
+                    description: 'Gruppenstunde',
+                    date: new Date(Date.now() - 86400000).toISOString(), // Gestern
+                    type: 'debit'
+                },
+                {
+                    id: 'tx-1',
+                    user_id: 'preview-user',
+                    booked_by_id: 'preview-admin',
+                    amount: 180, // 150€ + 30€ Bonus
+                    title: 'Aufladung 150€',
+                    description: 'Aufladung inkl. Bonus',
+                    date: new Date(Date.now() - 86400000 * 7).toISOString(), // Vor einer Woche
                     type: 'topup'
                 }
-            ]);
+            ];
 
+            // --- STATE SETZEN ---
+            setLoggedInUser(mockUserCustomer);
+            setCustomers([mockCustomerData]);
+            setUsers([mockUserCustomer, mockUserAdmin]); // Jetzt sind beide in der Liste
+            setTransactions(mockTransactions);
+            
             setAuthToken('preview-mode-token');
             setIsLoading(false);
 
-            // 2. Check for Hash Config (Persistence for New Tab)
+            // 2. Check for Hash Config (Persistence)
             if (window.location.hash) {
                 try {
-                    const hashConfig = window.location.hash.substring(1); // Remove #
-                    // Only try to parse if it looks like config params (we use 'config=' prefix)
+                    const hashConfig = window.location.hash.substring(1);
                     if (hashConfig.startsWith('config=')) {
                         const encoded = hashConfig.replace('config=', '');
                         const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
@@ -318,7 +346,7 @@ const App: FC = () => {
                 }
             }
 
-            // 3. Listen for Config Updates via PostMessage
+            // 3. Listen for Config Updates
             const handleMessage = (event: MessageEvent) => {
                 if (event.data?.type === 'UPDATE_CONFIG') {
                     applyConfig(event.data.payload);
