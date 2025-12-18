@@ -60,6 +60,24 @@ const Sidebar: FC<SidebarProps> = ({
                     </a>
                 ))}
             </nav>
+
+            {isPreviewMode && onToggleRole && (
+                <div className="preview-role-switch-container">
+                    <div className="preview-role-label">Preview Modus</div>
+                    <div className="role-toggle-row">
+                        <span className="role-toggle-text">Admin-Ansicht</span>
+                        <label className="switch">
+                            <input
+                                type="checkbox"
+                                checked={true}
+                                onChange={onToggleRole}
+                            />
+                            <span className="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            )}
+
             <div className="sidebar-footer">
                 <div className="user-profile-container">
                     <div className="user-profile">
@@ -72,23 +90,6 @@ const Sidebar: FC<SidebarProps> = ({
                         </div>
                     </div>
                 </div>
-
-                {isPreviewMode && onToggleRole && (
-                    <div className="preview-role-switch-container">
-                        <div className="preview-role-label">Preview Modus</div>
-                        <div className="role-toggle-row">
-                            <span className="role-toggle-text">Admin-Ansicht</span>
-                            <label className="switch">
-                                <input
-                                    type="checkbox"
-                                    checked={true}
-                                    onChange={onToggleRole}
-                                />
-                                <span className="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                )}
 
                 <button className="logout-button" onClick={onLogout} aria-label="Abmelden">
                     <Icon name="logout" />
