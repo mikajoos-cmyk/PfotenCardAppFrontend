@@ -74,6 +74,10 @@ const App: FC = () => {
         viewMode: 'app' | 'login';
         levels?: any[];
         services?: any[];
+        balance?: {
+            allow_custom_top_up: boolean;
+            top_up_options: { amount: number; bonus: number }[];
+        };
     }>({ viewMode: 'app' });
 
     // Config State für die ECHTE App (nicht nur Preview)
@@ -84,16 +88,20 @@ const App: FC = () => {
         secondaryColor: string;
         levels?: any[];
         services?: any[];
+        balance?: {
+            allow_custom_top_up: boolean;
+            top_up_options: { amount: number; bonus: number }[];
+        };
     } | null>(null);
 
     const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
 
     const togglePreviewRole = () => {
         if (!loggedInUser) return;
-        
+
         // Rolle wechseln
         const newRole = loggedInUser.role === 'admin' ? 'customer' : 'admin';
-        
+
         // User Objekt aktualisieren
         const updatedUser = {
             ...loggedInUser,
@@ -103,9 +111,9 @@ const App: FC = () => {
         };
 
         setLoggedInUser(updatedUser as any);
-        
+
         // WICHTIG: View zurücksetzen, damit man nicht auf einer Admin-Seite als Kunde landet (403 Fehler)
-        setView({ page: 'dashboard' }); 
+        setView({ page: 'dashboard' });
         setCustomerPage('overview'); // Reset Customer Page State
     };
 
@@ -129,7 +137,8 @@ const App: FC = () => {
                     primaryColor: branding.primary_color || '#22C55E',
                     secondaryColor: branding.secondary_color || '#3B82F6',
                     levels: config.levels,
-                    services: config.training_types
+                    services: config.training_types,
+                    balance: tenant.config?.balance
                 };
 
                 setAppConfigData(loadedConfig);
@@ -242,17 +251,18 @@ const App: FC = () => {
                     logoUrl: payload.logo || prev.logoUrl,
                     levels: payload.levels || prev.levels,
                     services: payload.services || prev.services,
-                    viewMode: payload.view_mode || prev.viewMode
+                    viewMode: payload.view_mode || prev.viewMode,
+                    balance: payload.balance || prev.balance
                 }));
 
                 if (payload.role) {
-                     // Update current logged in user role based on toggle
-                     setLoggedInUser(prev => prev ? { ...prev, role: payload.role } : null);
+                    // Update current logged in user role based on toggle
+                    setLoggedInUser(prev => prev ? { ...prev, role: payload.role } : null);
                 }
             };
 
             // --- 1. MOCK DATEN DEFINITION ---
-            
+
             // Der Kunde (Max)
             const mockUserCustomer: User = {
                 id: 'preview-user',
@@ -328,7 +338,7 @@ const App: FC = () => {
             setCustomers([mockCustomerData]);
             setUsers([mockUserCustomer, mockUserAdmin]); // Jetzt sind beide in der Liste
             setTransactions(mockTransactions);
-            
+
             setAuthToken('preview-mode-token');
             setIsLoading(false);
 
@@ -946,7 +956,7 @@ const App: FC = () => {
             const customer = (directAccessedCustomer && String(directAccessedCustomer.id) === view.customerId)
                 ? directAccessedCustomer
                 : visibleCustomers.find(c => String(c.id) === view.customerId);
-            
+
             if (customer) {
                 return <TransactionManagementPage
                     customer={customer}
@@ -954,6 +964,7 @@ const App: FC = () => {
                     onConfirmTransaction={handleConfirmTransaction}
                     currentUser={loggedInUser}
                     services={appConfigData?.services || previewConfig.services}
+                    balanceConfig={appConfigData?.balance || previewConfig.balance}
                 />;
             }
 

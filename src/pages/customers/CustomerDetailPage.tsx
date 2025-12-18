@@ -2,7 +2,7 @@
 import React, { FC, useState, useEffect, useRef, ChangeEvent } from 'react';
 import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
-import { getInitials, getAvatarColorClass, getProgressForLevel, getPrereqProgress, areLevelRequirementsMet } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet } from '../../lib/utils';
 import { API_BASE_URL } from '../../lib/api';
 import Icon from '../../components/ui/Icon';
 import InfoModal from '../../components/modals/InfoModal';
@@ -267,98 +267,115 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
                     <div className="level-progress-container">
                         <h2>Level-Fortschritt</h2>
-                        <div className="level-accordion">
-                            {levelsToUse.map((level: any, index: number) => {
-                                const firstLevelId = levelsToUse.length > 0 ? levelsToUse[0].id : 1;
-                                const currentLevelId = customer.level_id || firstLevelId;
-                                // Benutze den Index für die Logik, falls IDs durcheinander sind (Fallback)
-                                const isActive = currentLevelId === level.id;
-                                const isCompleted = currentLevelId > level.id;
-                                const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
+                        <div className="levels-accordion">
+                            {(() => {
+                                const activeLevel = levelsToUse.find(l => l.id === customer.level_id);
+                                return levelsToUse.map((level: any, index: number) => {
+                                    const isActive = customer.level_id === level.id;
+                                    const isCompleted = customer.level_id > level.id;
+                                    const isNext = customer.level_id + 1 === level.id;
+                                    const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
+                                    const colorIndex = (index % 5) + 1;
 
-                                // Farbe zyklisch wiederholen (1-5), damit auch Level 6+ bunt sind
-                                const colorIndex = (index % 5) + 1;
+                                    const requirements = level.requirements || LEVEL_REQUIREMENTS[level.id] || [];
 
-                                const requirements = level.requirements || LEVEL_REQUIREMENTS[level.id] || [];
+                                    // Prüfen ob Aufstieg möglich ist (nur für das aktuelle Level relevant)
+                                    // Wir filtern hier die "is_additional" raus, 
+                                    // außer wir wollen dass sie auch für areLevelRequirementsMet zählen.
+                                    // areLevelRequirementsMet nutzt alle requirements, also sollten wir das hier auch tun.
+                                    const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
+                                        const progress = getProgressForLevel(customer, level.id, levelsToUse);
+                                        const reqKey = r.id ? String(r.id) : String(r.training_type_id);
+                                        const count = progress[reqKey] || 0;
+                                        return count >= (r.required || r.required_count);
+                                    });
 
-                                // Prüfen ob Aufstieg möglich ist
-                                const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
-                                    const progress = getProgressForLevel(customer, level.id);
-                                    const allTx = transactions || [];
-                                    // Fallback für Backend vs Mock Datenstruktur
-                                    const count = (progress[r.id] || 0) + (progress[r.training_type_id] || 0);
-                                    return count >= r.required_count;
-                                });
+                                    const canLevelUp = isActive && requirementsMet;
+                                    const canBecomeExpert = isActive && level.id === 5 && requirementsMet;
 
-                                const canLevelUp = isActive && requirementsMet;
-                                const canBecomeExpert = isActive && level.id === 5 && requirementsMet;
 
-                                return (
-                                    <React.Fragment key={level.id}>
-                                        <div className={`level-item state-${state}`}>
-                                            {/* Hier nutzen wir den colorIndex für die CSS Klassen */}
-                                            <div className={`level-header header-level-${colorIndex}`}>
-                                                <div className={`level-number level-${colorIndex}`}>{index + 1}</div>
-                                                <div className="level-title">{level.name}</div>
-                                                <span className="level-status-badge">{isCompleted ? 'Abgeschlossen' : isActive ? 'Aktuell' : 'Gesperrt'}</span>
-                                            </div>
-
-                                            {isActive && (
-                                                <div className="level-content">
-                                                    {requirements.length > 0 ? (
-                                                        <ul>
-                                                            {requirements.map((r: any) => {
-                                                                // Mapping für Backend-Daten auf Frontend-Struktur
-                                                                const reqId = r.id ? String(r.id) : String(r.training_type_id); // Fallback für ID
-                                                                // Name kann direkt im Objekt sein oder über training_type relation (vom Backend Config)
-                                                                const reqName = r.name || (r.training_type ? r.training_type.name : 'Anforderung');
-                                                                const requiredCount = r.required || r.required_count;
-
-                                                                // Hilfsobjekt für renderRequirement
-                                                                const renderObj = { id: reqId, name: reqName, required: requiredCount };
-
-                                                                return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
-                                                            })}
-                                                        </ul>
-                                                    ) : (
-                                                        <p className="no-requirements">Keine besonderen Anforderungen in diesem Level.</p>
-                                                    )}
-
-                                                    {/* Generic Level Up Button */}
-                                                    {canLevelUp && level.id < 5 && (
-                                                        <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
-                                                            <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), level.id + 1)}>
-                                                                Level Aufsteigen!
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Level 5 Expert Button */}
-                                                    {level.id === 5 && (canBecomeExpert || customer.is_expert) && (
-                                                        <div className="level-up-button-container">
-                                                            {customer.is_expert ? (
-                                                                <button className="button button-outline button-small" onClick={() => onToggleExpertStatus(customer)}>
-                                                                    Experten-Status aberkennen
-                                                                </button>
-                                                            ) : (
-                                                                <button className="button button-secondary button-small" onClick={() => onToggleExpertStatus(customer)}>
-                                                                    Zum Experten ernennen
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                    return (
+                                        <React.Fragment key={level.id}>
+                                            <div className={`level-item state-${state}`}>
+                                                {/* Hier nutzen wir den colorIndex für die CSS Klassen */}
+                                                <div className={`level-header header-level-${colorIndex}`}>
+                                                    <div className={`level-number level-${colorIndex}`}>{index + 1}</div>
+                                                    <div className="level-title">{level.name}</div>
+                                                    <span className="level-status-badge">{isCompleted ? 'Abgeschlossen' : isActive ? 'Aktuell' : 'Gesperrt'}</span>
                                                 </div>
-                                            )}
-                                        </div>
-                                    </React.Fragment>
-                                );
-                            })}
+
+                                                {isActive && (
+                                                    <div className="level-content">
+                                                        {requirements.length > 0 ? (
+                                                            <ul>
+                                                                {requirements.map((r: any) => {
+                                                                    // Mapping für Backend-Daten auf Frontend-Struktur
+                                                                    const reqId = r.id ? String(r.id) : String(r.training_type_id); // Fallback für ID
+                                                                    // Name kann direkt im Objekt sein oder über training_type relation (vom Backend Config)
+                                                                    const reqName = r.name || (r.training_type ? r.training_type.name : 'Anforderung');
+                                                                    const requiredCount = r.required || r.required_count;
+
+                                                                    // Hilfsobjekt für renderRequirement
+                                                                    const renderObj = { id: reqId, name: reqName, required: requiredCount };
+
+                                                                    return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
+                                                                })}
+                                                            </ul>
+                                                        ) : (
+                                                            <p className="no-requirements">Keine besonderen Anforderungen in diesem Level.</p>
+                                                        )}
+
+                                                        {/* Generic Level Up Button */}
+                                                        {canLevelUp && level.id < 5 && (
+                                                            <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
+                                                                <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), level.id + 1)}>
+                                                                    Level Aufsteigen!
+                                                                </button>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Level 5 Expert Button */}
+                                                        {level.id === 5 && (canBecomeExpert || customer.is_expert) && (
+                                                            <div className="level-up-button-container">
+                                                                {customer.is_expert ? (
+                                                                    <button className="button button-outline button-small" onClick={() => onToggleExpertStatus(customer)}>
+                                                                        Experten-Status aberkennen
+                                                                    </button>
+                                                                ) : (
+                                                                    <button className="button button-secondary button-small" onClick={() => onToggleExpertStatus(customer)}>
+                                                                        Zum Experten ernennen
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </React.Fragment>
+                                    );
+                                });
+                            })()}
                         </div>
                     </div>
-                    <div className="level-progress-container" style={{ marginTop: '1.5rem' }}>
-                        <h2>Zusatz-Veranstaltungen (für Hundeführerschein)</h2>
-                        <div className="level-content" style={{ padding: 0 }}><ul>{DOGLICENSE_PREREQS.map(r => renderRequirement(r, () => getPrereqProgress(customer)))}</ul></div>
-                    </div>
+                    {levelsToUse.find(l => l.id === customer.level_id)?.has_additional_requirements && (
+                        <div className="level-progress-container" style={{ marginTop: '1.5rem' }}>
+                            <h2>Zusatz-Veranstaltungen</h2>
+                            <div className="level-content" style={{ padding: 0 }}>
+                                <ul>
+                                    {levelsToUse.find(l => l.id === customer.level_id)?.requirements
+                                        .filter((r: any) => r.is_additional)
+                                        .map((r: any) => {
+                                            const reqId = r.id ? String(r.id) : String(r.training_type_id);
+                                            const reqName = r.name || (r.training_type ? r.training_type.name : 'Zusatzleistung');
+                                            const requiredCount = r.required || r.required_count;
+                                            const renderObj = { id: reqId, name: reqName, required: requiredCount };
+                                            return renderRequirement(renderObj, () => getProgressForLevel(customer, customer.level_id, levelsToUse));
+                                        })
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="side-col">

@@ -10,21 +10,31 @@ interface TransactionManagementPageProps {
     onConfirmTransaction: (tx: any) => void;
     currentUser: User;
     services?: any[];
+    balanceConfig?: {
+        allow_custom_top_up: boolean;
+        top_up_options: { amount: number; bonus: number }[];
+    };
 }
 
-const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ customer, setView, onConfirmTransaction, currentUser, services }) => {
+const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ customer, setView, onConfirmTransaction, currentUser, services, balanceConfig }) => {
     const [modalData, setModalData] = useState<(Omit<Transaction, 'id' | 'createdAt' | 'customerId' | 'createdBy'> & { baseAmount?: number, bonus?: number }) | null>(null);
 
     const [customTopup, setCustomTopup] = useState('');
     const [customDebitAmount, setCustomDebitAmount] = useState('');
     const [customDebitDesc, setCustomDebitDesc] = useState('');
 
-    const topups = [
-        { title: 'Aufladung 50€', amount: 50, bonus: 5 },
-        { title: 'Aufladung 100€', amount: 100, bonus: 15 },
-        { title: 'Aufladung 150€', amount: 150, bonus: 30 },
-        { title: 'Aufladung 300€', amount: 300, bonus: 150 },
-    ];
+    const topups = balanceConfig?.top_up_options && balanceConfig.top_up_options.length > 0
+        ? balanceConfig.top_up_options.map(opt => ({
+            title: `Aufladung ${opt.amount}€`,
+            amount: opt.amount,
+            bonus: opt.bonus
+        }))
+        : [
+            { title: 'Aufladung 50€', amount: 50, bonus: 5 },
+            { title: 'Aufladung 100€', amount: 100, bonus: 15 },
+            { title: 'Aufladung 150€', amount: 150, bonus: 30 },
+            { title: 'Aufladung 300€', amount: 300, bonus: 150 },
+        ];
 
     const defaultDebits = [
         { title: 'Gruppenstunde', amount: -15, reqId: 'group_class' },
@@ -60,10 +70,6 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ custome
             return;
         }
         let bonus = 0;
-        if (amount >= 300) { bonus = 150 }
-        else if (amount >= 150) { bonus = 30 }
-        else if (amount >= 100) { bonus = 15 }
-        else if (amount >= 50) { bonus = 5 }
         setModalData({ title: `Individuelle Aufladung`, amount: amount + bonus, type: 'topup', baseAmount: amount, bonus: bonus } as any);
         setCustomTopup('');
     };
@@ -108,16 +114,18 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({ custome
                         </button>
                     ))}
                 </div>
-                <div className="custom-entry-form" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <input
-                        type="number"
-                        className="form-input"
-                        placeholder="Individueller Betrag"
-                        value={customTopup}
-                        onChange={e => setCustomTopup(e.target.value)}
-                    />
-                    <button className="button button-primary" onClick={handleCustomTopup}>Aufladen</button>
-                </div>
+                {balanceConfig?.allow_custom_top_up !== false && (
+                    <div className="custom-entry-form" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <input
+                            type="number"
+                            className="form-input"
+                            placeholder="Individueller Betrag"
+                            value={customTopup}
+                            onChange={e => setCustomTopup(e.target.value)}
+                        />
+                        <button className="button button-primary" onClick={handleCustomTopup}>Aufladen</button>
+                    </div>
+                )}
             </div>
 
             <div className="tx-section debits">
