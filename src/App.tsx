@@ -7,6 +7,7 @@ import { User, UserRole, View, Customer, Transaction } from './types';
 // Components
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import Icon from './components/ui/Icon';
+import { getContrastColor, getAdjustedColor, isDarkColor } from './lib/utils';
 import Sidebar from './components/layout/Sidebar';
 import CustomerSidebar from './components/layout/CustomerSidebar';
 import AuthScreen from './components/auth/AuthScreen';
@@ -80,12 +81,12 @@ const App: FC = () => {
         };
     }>({ viewMode: 'app' });
 
-    // Config State für die ECHTE App (nicht nur Preview)
     const [appConfigData, setAppConfigData] = useState<{
         schoolName: string;
         logoUrl: string;
         primaryColor: string;
         secondaryColor: string;
+        backgroundColor: string;
         levels?: any[];
         services?: any[];
         balance?: {
@@ -133,9 +134,10 @@ const App: FC = () => {
                 // 1. Daten in State speichern
                 const loadedConfig = {
                     schoolName: tenant.name,
-                    logoUrl: branding.logo_url, // Backend liefert URL, ggf. Pfad anpassen wenn relativ
+                    logoUrl: branding.logo_url,
                     primaryColor: branding.primary_color || '#22C55E',
                     secondaryColor: branding.secondary_color || '#3B82F6',
+                    backgroundColor: branding.background_color || '#F8FAFC',
                     levels: config.levels,
                     services: config.training_types,
                     balance: tenant.config?.balance
@@ -146,13 +148,37 @@ const App: FC = () => {
 
                 // 2. CSS Variablen setzen (Branding anwenden)
                 const root = document.documentElement;
+
                 if (loadedConfig.primaryColor) {
                     root.style.setProperty('--brand-green', loadedConfig.primaryColor);
                     root.style.setProperty('--sidebar-active-bg', loadedConfig.primaryColor);
-                    root.style.setProperty('--button-primary-bg', loadedConfig.primaryColor); // Falls verwendet
                 }
                 if (loadedConfig.secondaryColor) {
                     root.style.setProperty('--brand-blue', loadedConfig.secondaryColor);
+                }
+
+                if (branding.background_color) {
+                    const bgColor = branding.background_color;
+                    const isDark = isDarkColor(bgColor);
+                    const contrastColor = getContrastColor(bgColor);
+
+                    root.style.setProperty('--background-color', bgColor);
+                    root.style.setProperty('--text-primary', contrastColor);
+                    root.style.setProperty('--card-background', isDark ? getAdjustedColor(bgColor, 5) : '#ffffff');
+                    root.style.setProperty('--border-color', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
+                    root.style.setProperty('--text-secondary', isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)');
+
+                    // Sidebar Anpassung
+                    if (isDark) {
+                        root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -2));
+                        root.style.setProperty('--sidebar-text', 'rgba(255,255,255,0.6)');
+                    } else {
+                        // Bei hellem Background lassen wir die Sidebar ggf. dunkel oder machen sie auch hell?
+                        // "alles an diese Farbe angepasst werden" -> machen wir sie auch hell
+                        root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -5));
+                        root.style.setProperty('--sidebar-text', 'rgba(0,0,0,0.6)');
+                        root.style.setProperty('--sidebar-text-hover', '#000000');
+                    }
                 }
 
                 // 3. Favicon dynamisch ändern (optional)
@@ -244,6 +270,28 @@ const App: FC = () => {
                 if (payload.secondary_color) {
                     root.style.setProperty('--brand-blue', payload.secondary_color);
                 }
+
+                if (payload.background_color) {
+                    const bgColor = payload.background_color;
+                    const isDark = isDarkColor(bgColor);
+                    const contrastColor = getContrastColor(bgColor);
+
+                    root.style.setProperty('--background-color', bgColor);
+                    root.style.setProperty('--text-primary', contrastColor);
+                    root.style.setProperty('--card-background', isDark ? getAdjustedColor(bgColor, 5) : '#ffffff');
+                    root.style.setProperty('--border-color', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
+                    root.style.setProperty('--text-secondary', isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)');
+
+                    if (isDark) {
+                        root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -2));
+                        root.style.setProperty('--sidebar-text', 'rgba(255,255,255,0.6)');
+                    } else {
+                        root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -5));
+                        root.style.setProperty('--sidebar-text', 'rgba(0,0,0,0.6)');
+                        root.style.setProperty('--sidebar-text-hover', '#000000');
+                    }
+                }
+
                 if (payload.school_name) setSchoolName(payload.school_name);
 
                 setPreviewConfig(prev => ({

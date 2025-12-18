@@ -120,3 +120,36 @@ export const areLevelRequirementsMet = (customer: any, dynamicLevels?: any[]): b
 
     return requirements.every(req => (progress[req.id] || 0) >= req.required);
 };
+
+export const getContrastColor = (hexColor: string) => {
+    if (!hexColor) return '#0F172A';
+    const hex = hexColor.replace('#', '');
+    if (hex.length !== 6) return '#0F172A';
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#0F172A' : '#FFFFFF';
+};
+
+export const getAdjustedColor = (hex: string, percent: number) => {
+    let hexClean = hex.replace('#', '');
+    if (hexClean.length !== 6) hexClean = 'FFFFFF';
+    const num = parseInt(hexClean, 16),
+        amt = Math.round(2.55 * percent),
+        R = (num >> 16) + amt,
+        G = (num >> 8 & 0x00FF) + amt,
+        B = (num & 0x0000FF) + amt;
+    return '#' + (0x1000000 + (R < 255 ? R < 0 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 0 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 0 ? 0 : B : 255)).toString(16).slice(1);
+};
+
+export const isDarkColor = (hexColor: string) => {
+    if (!hexColor) return false;
+    const hex = hexColor.replace('#', '');
+    if (hex.length !== 6) return false;
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance <= 0.5;
+};

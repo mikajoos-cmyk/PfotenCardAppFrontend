@@ -51,6 +51,13 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const [deletingDocument, setDeletingDocument] = useState<DocumentFile | null>(null);
     const [isTxModalOpen, setIsTxModalOpen] = useState(false);
     const [canShare, setCanShare] = useState(false);
+    const [previewLevelId, setPreviewLevelId] = useState<number>(customer.level_id || 1);
+
+    useEffect(() => {
+        if (customer.level_id) {
+            setPreviewLevelId(customer.level_id);
+        }
+    }, [customer.level_id]);
 
     useEffect(() => {
         if (navigator.share) {
@@ -266,14 +273,30 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     </div>
 
                     <div className="level-progress-container">
-                        <h2>Level-Fortschritt</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h2>Level-Fortschritt</h2>
+                            {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                <div className="preview-selector" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Vorschau:</span>
+                                    <select
+                                        value={previewLevelId}
+                                        onChange={(e) => setPreviewLevelId(parseInt(e.target.value))}
+                                        className="form-input"
+                                        style={{ padding: '0.25rem 0.5rem', width: 'auto', fontSize: '0.875rem' }}
+                                    >
+                                        {levelsToUse.map(l => (
+                                            <option key={l.id} value={l.id}>{l.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                        </div>
                         <div className="levels-accordion">
                             {(() => {
-                                const activeLevel = levelsToUse.find(l => l.id === customer.level_id);
                                 return levelsToUse.map((level: any, index: number) => {
-                                    const isActive = customer.level_id === level.id;
-                                    const isCompleted = customer.level_id > level.id;
-                                    const isNext = customer.level_id + 1 === level.id;
+                                    const isActive = previewLevelId === level.id;
+                                    const isCompleted = previewLevelId > level.id;
+                                    const isNext = previewLevelId + 1 === level.id;
                                     const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
                                     const colorIndex = (index % 5) + 1;
 
@@ -357,23 +380,30 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             })()}
                         </div>
                     </div>
-                    {levelsToUse.find(l => l.id === customer.level_id)?.has_additional_requirements && (
+                    {levelsToUse.some(l => l.has_additional_requirements) && (
                         <div className="level-progress-container" style={{ marginTop: '1.5rem' }}>
-                            <h2>Zusatz-Veranstaltungen</h2>
-                            <div className="level-content" style={{ padding: 0 }}>
-                                <ul>
-                                    {levelsToUse.find(l => l.id === customer.level_id)?.requirements
-                                        .filter((r: any) => r.is_additional)
-                                        .map((r: any) => {
-                                            const reqId = r.id ? String(r.id) : String(r.training_type_id);
-                                            const reqName = r.name || (r.training_type ? r.training_type.name : 'Zusatzleistung');
-                                            const requiredCount = r.required || r.required_count;
-                                            const renderObj = { id: reqId, name: reqName, required: requiredCount };
-                                            return renderRequirement(renderObj, () => getProgressForLevel(customer, customer.level_id, levelsToUse));
-                                        })
-                                    }
-                                </ul>
-                            </div>
+                            <h2 style={{ marginBottom: '1rem' }}>Zusatz-Veranstaltungen</h2>
+                            {levelsToUse.filter(l => l.has_additional_requirements).map(level => (
+                                <div key={`additional-${level.id}`} style={{ marginBottom: '1.5rem' }}>
+                                    <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                                        für "{level.name}"
+                                    </h3>
+                                    <div className="level-content" style={{ padding: 0 }}>
+                                        <ul>
+                                            {level.requirements
+                                                .filter((r: any) => r.is_additional)
+                                                .map((r: any) => {
+                                                    const reqId = r.id ? String(r.id) : String(r.training_type_id);
+                                                    const reqName = r.name || (r.training_type ? r.training_type.name : 'Zusatzleistung');
+                                                    const requiredCount = r.required || r.required_count;
+                                                    const renderObj = { id: reqId, name: reqName, required: requiredCount };
+                                                    return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
+                                                })
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
