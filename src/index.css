@@ -208,7 +208,7 @@ body {
 }
 
 .nav-link:hover {
-    background-color: #334155;
+    background-color: var(--sidebar-hover-bg, #334155);
     color: var(--sidebar-text-hover);
 }
 
@@ -277,7 +277,7 @@ body {
 }
 
 .logout-button:hover {
-    background-color: #334155;
+    background-color: var(--sidebar-hover-bg, #334155);
 }
 
 .main-content {
@@ -342,7 +342,7 @@ body {
 }
 
 .nav-link:hover {
-    background-color: #334155;
+    background-color: var(--sidebar-hover-bg, #334155);
     color: var(--sidebar-text-hover);
 }
 
@@ -411,7 +411,7 @@ body {
 }
 
 .logout-button:hover {
-    background-color: #334155;
+    background-color: var(--sidebar-hover-bg, #334155);
 }
 
 .preview-action-button {
@@ -487,7 +487,7 @@ body {
 }
 
 .button-primary:hover {
-    background-color: #16a34a;
+    background-color: var(--button-primary-hover, #16a34a);
 }
 
 .button-secondary {
@@ -496,7 +496,7 @@ body {
 }
 
 .button-secondary:hover {
-    background-color: #2563eb;
+    background-color: var(--button-secondary-hover, #2563eb);
 }
 
 .button-outline {
@@ -506,7 +506,7 @@ body {
 }
 
 .button-outline:hover {
-    background-color: var(--background-color);
+    background-color: var(--card-background-hover);
 }
 
 .button.button-small {
@@ -643,8 +643,8 @@ body {
 }
 
 .kpi-card.green {
-    background: #F0FDF4;
-    border-color: #A7F3D0;
+    background: var(--primary-bg-light, #F0FDF4);
+    border-color: var(--primary-bg-light, #A7F3D0);
 }
 
 .kpi-card.green .icon-bg {
@@ -652,8 +652,8 @@ body {
 }
 
 .kpi-card.orange {
-    background: #FFF7ED;
-    border-color: #FED7AA;
+    background: var(--brand-orange-light, #FFF7ED);
+    border-color: var(--brand-orange-light, #FED7AA);
 }
 
 .kpi-card.orange .icon-bg {
@@ -661,8 +661,8 @@ body {
 }
 
 .kpi-card.blue {
-    background: #EFF6FF;
-    border-color: #BFDBFE;
+    background: var(--secondary-bg-light, #EFF6FF);
+    border-color: var(--secondary-bg-light, #BFDBFE);
 }
 
 .kpi-card.blue .icon-bg {
@@ -670,8 +670,8 @@ body {
 }
 
 .kpi-card.purple {
-    background: #F5F3FF;
-    border-color: #DDD6FE;
+    background: var(--brand-purple-light, #F5F3FF);
+    border-color: var(--brand-purple-light, #DDD6FE);
 }
 
 .kpi-card.purple .icon-bg {
@@ -752,7 +752,7 @@ body {
 }
 
 .active-customer-list li.clickable:hover {
-    background-color: #f9fafb;
+    background-color: var(--card-background-hover);
 }
 
 .transaction-list .icon {
@@ -767,12 +767,12 @@ body {
 }
 
 .transaction-list .icon.down {
-    background-color: var(--danger-bg-light);
+    background-color: var(--brand-red-light, var(--danger-bg-light));
     color: var(--brand-red);
 }
 
 .transaction-list .icon.up {
-    background-color: #dcfce7;
+    background-color: var(--primary-bg-light, #dcfce7);
     color: var(--brand-green);
     transform: rotate(180deg);
 }
@@ -1234,17 +1234,17 @@ body {
 }
 
 .level-item.state-completed .level-status-badge {
-    background-color: #dcfce7;
+    background-color: var(--primary-bg-light, #dcfce7);
     color: var(--level-completed-text);
 }
 
 .level-item.state-active .level-status-badge {
-    background-color: #dcfce7;
+    background-color: var(--primary-bg-light, #dcfce7);
     color: var(--level-active-text);
 }
 
 .level-item.state-locked .level-status-badge {
-    background-color: #fee2e2;
+    background-color: var(--brand-red-light, #fee2e2);
     color: var(--level-locked-text);
 }
 
@@ -1453,8 +1453,8 @@ body {
 }
 
 .tx-button.topup {
-    background-color: #f0fdf4;
-    border-color: #bbf7d0;
+    background-color: var(--primary-bg-light, #f0fdf4);
+    border-color: var(--primary-bg-light, #bbf7d0);
 }
 
 .tx-button.topup .amount {
@@ -1462,8 +1462,8 @@ body {
 }
 
 .tx-button.debit {
-    background-color: #fff1f2;
-    border-color: #fecdd3;
+    background-color: var(--brand-red-light, #fff1f2);
+    border-color: var(--brand-red-light, #fecdd3);
 }
 
 .tx-button.debit .amount {
@@ -1564,12 +1564,12 @@ body {
 }
 
 .detailed-transaction-list .tx-icon.topup {
-    background-color: #dcfce7;
+    background-color: var(--primary-bg-light, #dcfce7);
     color: var(--brand-green);
 }
 
 .detailed-transaction-list .tx-icon.debit {
-    background-color: var(--danger-bg-light);
+    background-color: var(--brand-red-light, var(--danger-bg-light));
     color: var(--brand-red);
 }
 
@@ -1625,8 +1625,8 @@ body {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: #FEF3C7;
-    color: #92400E;
+    background: var(--brand-orange-light, #FEF3C7);
+    color: var(--brand-orange, #92400E);
     font-weight: 600;
     display: flex;
     align-items: center;

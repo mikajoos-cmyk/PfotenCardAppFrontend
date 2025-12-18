@@ -150,12 +150,32 @@ const App: FC = () => {
                 const root = document.documentElement;
 
                 if (loadedConfig.primaryColor) {
-                    root.style.setProperty('--brand-green', loadedConfig.primaryColor);
-                    root.style.setProperty('--sidebar-active-bg', loadedConfig.primaryColor);
+                    const primary = loadedConfig.primaryColor;
+                    root.style.setProperty('--brand-green', primary);
+                    root.style.setProperty('--sidebar-active-bg', primary);
+                    root.style.setProperty('--button-primary-hover', getAdjustedColor(primary, -15));
+                    root.style.setProperty('--primary-bg-light', isDarkColor(primary) ? 'rgba(255,255,255,0.1)' : getAdjustedColor(primary, 90));
                 }
                 if (loadedConfig.secondaryColor) {
-                    root.style.setProperty('--brand-blue', loadedConfig.secondaryColor);
+                    const secondary = loadedConfig.secondaryColor;
+                    root.style.setProperty('--brand-blue', secondary);
+                    root.style.setProperty('--button-secondary-hover', getAdjustedColor(secondary, -15));
+                    root.style.setProperty('--secondary-bg-light', isDarkColor(secondary) ? 'rgba(255,255,255,0.1)' : getAdjustedColor(secondary, 90));
                 }
+
+                // Additional Brand Accents (Adaptive)
+                const orange = '#F97316';
+                const purple = '#8B5CF6';
+                const red = '#ef4444';
+                root.style.setProperty('--brand-orange-light', isDarkColor(branding.background_color) ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED');
+                root.style.setProperty('--brand-purple-light', isDarkColor(branding.background_color) ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF');
+                root.style.setProperty('--brand-red-light', isDarkColor(branding.background_color) ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2');
+
+                // Level colors adaptive backgrounds
+                const levelColors = ['#DA70D6', '#32CD32', '#87CEEB', '#CD853F', '#FFD700'];
+                levelColors.forEach((color, i) => {
+                    root.style.setProperty(`--level-${i + 1}-color-bg`, isDarkColor(branding.background_color) ? 'rgba(255,255,255,0.03)' : getAdjustedColor(color, 90));
+                });
 
                 if (branding.background_color) {
                     const bgColor = branding.background_color;
@@ -165,6 +185,7 @@ const App: FC = () => {
                     root.style.setProperty('--background-color', bgColor);
                     root.style.setProperty('--text-primary', contrastColor);
                     root.style.setProperty('--card-background', isDark ? getAdjustedColor(bgColor, 5) : '#ffffff');
+                    root.style.setProperty('--card-background-hover', isDark ? getAdjustedColor(bgColor, 10) : '#f9fafb');
                     root.style.setProperty('--border-color', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
                     root.style.setProperty('--text-secondary', isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)');
 
@@ -172,12 +193,13 @@ const App: FC = () => {
                     if (isDark) {
                         root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -2));
                         root.style.setProperty('--sidebar-text', 'rgba(255,255,255,0.6)');
+                        root.style.setProperty('--sidebar-text-hover', '#ffffff');
+                        root.style.setProperty('--sidebar-hover-bg', 'rgba(255,255,255,0.05)');
                     } else {
-                        // Bei hellem Background lassen wir die Sidebar ggf. dunkel oder machen sie auch hell?
-                        // "alles an diese Farbe angepasst werden" -> machen wir sie auch hell
                         root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -5));
                         root.style.setProperty('--sidebar-text', 'rgba(0,0,0,0.6)');
                         root.style.setProperty('--sidebar-text-hover', '#000000');
+                        root.style.setProperty('--sidebar-hover-bg', 'rgba(0,0,0,0.05)');
                     }
                 }
 
@@ -264,12 +286,29 @@ const App: FC = () => {
                 const root = document.documentElement;
 
                 if (payload.primary_color) {
-                    root.style.setProperty('--brand-green', payload.primary_color);
-                    root.style.setProperty('--sidebar-active-bg', payload.primary_color);
+                    const primary = payload.primary_color;
+                    root.style.setProperty('--brand-green', primary);
+                    root.style.setProperty('--sidebar-active-bg', primary);
+                    root.style.setProperty('--button-primary-hover', getAdjustedColor(primary, -15));
+                    root.style.setProperty('--primary-bg-light', isDarkColor(primary) ? 'rgba(255,255,255,0.1)' : getAdjustedColor(primary, 90));
                 }
                 if (payload.secondary_color) {
-                    root.style.setProperty('--brand-blue', payload.secondary_color);
+                    const secondary = payload.secondary_color;
+                    root.style.setProperty('--brand-blue', secondary);
+                    root.style.setProperty('--button-secondary-hover', getAdjustedColor(secondary, -15));
+                    root.style.setProperty('--secondary-bg-light', isDarkColor(secondary) ? 'rgba(255,255,255,0.1)' : getAdjustedColor(secondary, 90));
                 }
+
+                // Additional Brand Accents (Adaptive)
+                root.style.setProperty('--brand-orange-light', isDarkColor(payload.background_color) ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED');
+                root.style.setProperty('--brand-purple-light', isDarkColor(payload.background_color) ? 'rgba(139, 92, 246, 0.15)' : '#F5F3FF');
+                root.style.setProperty('--brand-red-light', isDarkColor(payload.background_color) ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2');
+
+                // Level colors adaptive backgrounds
+                const levelColorsPreview = ['#DA70D6', '#32CD32', '#87CEEB', '#CD853F', '#FFD700'];
+                levelColorsPreview.forEach((color, i) => {
+                    root.style.setProperty(`--level-${i + 1}-color-bg`, isDarkColor(payload.background_color) ? 'rgba(255,255,255,0.03)' : getAdjustedColor(color, 90));
+                });
 
                 if (payload.background_color) {
                     const bgColor = payload.background_color;
@@ -279,16 +318,20 @@ const App: FC = () => {
                     root.style.setProperty('--background-color', bgColor);
                     root.style.setProperty('--text-primary', contrastColor);
                     root.style.setProperty('--card-background', isDark ? getAdjustedColor(bgColor, 5) : '#ffffff');
+                    root.style.setProperty('--card-background-hover', isDark ? getAdjustedColor(bgColor, 10) : '#f9fafb');
                     root.style.setProperty('--border-color', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
                     root.style.setProperty('--text-secondary', isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)');
 
                     if (isDark) {
                         root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -2));
                         root.style.setProperty('--sidebar-text', 'rgba(255,255,255,0.6)');
+                        root.style.setProperty('--sidebar-text-hover', '#ffffff');
+                        root.style.setProperty('--sidebar-hover-bg', 'rgba(255,255,255,0.05)');
                     } else {
                         root.style.setProperty('--sidebar-bg', getAdjustedColor(bgColor, -5));
                         root.style.setProperty('--sidebar-text', 'rgba(0,0,0,0.6)');
                         root.style.setProperty('--sidebar-text-hover', '#000000');
+                        root.style.setProperty('--sidebar-hover-bg', 'rgba(0,0,0,0.05)');
                     }
                 }
 
