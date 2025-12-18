@@ -74,10 +74,20 @@ const Sidebar: FC<SidebarProps> = ({
                 </div>
 
                 {isPreviewMode && onToggleRole && (
-                    <button className="preview-action-button" onClick={onToggleRole} title="Zu Kunden-Ansicht wechseln">
-                        <Icon name="refresh" />
-                        <span>Zu Kunden-Ansicht</span>
-                    </button>
+                    <div className="preview-role-switch-container">
+                        <div className="preview-role-label">Preview Modus</div>
+                        <div className="role-toggle-row">
+                            <span className="role-toggle-text">Admin-Ansicht</span>
+                            <label className="switch">
+                                <input
+                                    type="checkbox"
+                                    checked={true}
+                                    onChange={onToggleRole}
+                                />
+                                <span className="slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 )}
 
                 <button className="logout-button" onClick={onLogout} aria-label="Abmelden">

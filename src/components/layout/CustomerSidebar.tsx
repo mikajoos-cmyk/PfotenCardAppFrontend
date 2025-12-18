@@ -48,10 +48,14 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
             {isPreviewMode && onToggleRole && (
                 <div className="preview-role-switch-container">
                     <div className="preview-role-label">Preview Modus</div>
-                    <div className="role-toggle-wrapper">
+                    <div className="role-toggle-row">
                         <span className="role-toggle-text">Kunden-Ansicht</span>
                         <label className="switch">
-                            <input type="checkbox" checked={false} onChange={onToggleRole} />
+                            <input 
+                                type="checkbox" 
+                                checked={false} 
+                                onChange={onToggleRole} 
+                            />
                             <span className="slider"></span>
                         </label>
                     </div>
