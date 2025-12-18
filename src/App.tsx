@@ -88,6 +88,27 @@ const App: FC = () => {
 
     const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
 
+    const togglePreviewRole = () => {
+        if (!loggedInUser) return;
+        
+        // Rolle wechseln
+        const newRole = loggedInUser.role === 'admin' ? 'customer' : 'admin';
+        
+        // User Objekt aktualisieren
+        const updatedUser = {
+            ...loggedInUser,
+            role: newRole,
+            // Optional: Name anpassen zur Verdeutlichung
+            name: newRole === 'admin' ? 'Max Admin' : 'Max Mustermann'
+        };
+
+        setLoggedInUser(updatedUser as any);
+        
+        // WICHTIG: View zurücksetzen, damit man nicht auf einer Admin-Seite als Kunde landet (403 Fehler)
+        setView({ page: 'dashboard' }); 
+        setCustomerPage('overview'); // Reset Customer Page State
+    };
+
     // NEU: Konfiguration beim Start laden
     useEffect(() => {
         const loadConfig = async () => {
@@ -817,6 +838,8 @@ const App: FC = () => {
                         setPage={setCustomerPage}
                         schoolName={appConfigData?.schoolName || schoolName}
                         logoUrl={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)}
+                        isPreviewMode={isPreviewMode}
+                        onToggleRole={togglePreviewRole}
                     />
 
                     <main className="main-content">
@@ -966,6 +989,8 @@ const App: FC = () => {
                 setSidebarOpen={setIsSidebarOpen}
                 logoUrl={getFullImageUrl(appConfigData?.logoUrl || previewConfig.logoUrl)}
                 schoolName={appConfigData?.schoolName || schoolName}
+                isPreviewMode={isPreviewMode}
+                onToggleRole={togglePreviewRole}
             />
             <main className="main-content">
                 {isMobileView && (

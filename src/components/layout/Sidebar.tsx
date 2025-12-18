@@ -13,9 +13,21 @@ interface SidebarProps {
     setSidebarOpen: (isOpen: boolean) => void;
     logoUrl?: string;
     schoolName?: string;
+    isPreviewMode?: boolean;
+    onToggleRole?: () => void;
 }
 
-const Sidebar: FC<SidebarProps> = ({ user, activePage, setView, onLogout, setSidebarOpen, logoUrl, schoolName }) => {
+const Sidebar: FC<SidebarProps> = ({
+    user,
+    activePage,
+    setView,
+    onLogout,
+    setSidebarOpen,
+    logoUrl,
+    schoolName,
+    isPreviewMode,
+    onToggleRole
+}) => {
     const navItems = [
         { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', roles: ['admin', 'mitarbeiter'] },
         { id: 'customers', label: 'Kunden', icon: 'customers', roles: ['admin', 'mitarbeiter'] },
@@ -52,7 +64,7 @@ const Sidebar: FC<SidebarProps> = ({ user, activePage, setView, onLogout, setSid
                 <div className="user-profile-container">
                     <div className="user-profile">
                         <div className={`initials-avatar small ${getAvatarColorClass(user.name)}`}>
-                            {getInitials(user.name.split(' ')[0], user.name.split(' ')[1])}
+                            {getInitials(user.name.split(' ')[0], user.name.split(' ')[1] || '')}
                         </div>
                         <div className="user-info">
                             <span className="user-name">{user.name}</span>
@@ -60,6 +72,14 @@ const Sidebar: FC<SidebarProps> = ({ user, activePage, setView, onLogout, setSid
                         </div>
                     </div>
                 </div>
+
+                {isPreviewMode && onToggleRole && (
+                    <button className="preview-action-button" onClick={onToggleRole} title="Zu Kunden-Ansicht wechseln">
+                        <Icon name="refresh" />
+                        <span>Zu Kunden-Ansicht</span>
+                    </button>
+                )}
+
                 <button className="logout-button" onClick={onLogout} aria-label="Abmelden">
                     <Icon name="logout" />
                     <span>Abmelden</span>
