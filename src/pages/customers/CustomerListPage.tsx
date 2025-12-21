@@ -65,7 +65,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                             const lastName = nameParts.slice(1).join(' ');
 
                             return (
-                                <tr key={customer.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: customer.id })}>
+                                <tr key={customer.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: String(customer.id) })}>
                                     <td data-label="Kunde">
                                         <div className="customer-info">
                                             <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
