@@ -7,11 +7,7 @@ import { User, View } from './types';
 // Components
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import Icon from './components/ui/Icon';
-<<<<<<< HEAD
 import { isDarkColor, getAdjustedColor, getContrastColor } from './lib/utils';
-=======
-import { isDarkColor, getAdjustedColor } from './lib/utils';
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
 import Sidebar from './components/layout/Sidebar';
 import CustomerSidebar from './components/layout/CustomerSidebar';
 import AuthScreen from './components/auth/AuthScreen';
@@ -80,10 +76,7 @@ const App: FC = () => {
         levels?: any[];
         services?: any[];
         balance?: { allow_custom_top_up: boolean; top_up_options: { amount: number; bonus: number }[]; };
-<<<<<<< HEAD
         activeModules?: string[];
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
     }>({ viewMode: 'app' });
 
     const [appConfigData, setAppConfigData] = useState<any>(null);
@@ -113,11 +106,7 @@ const App: FC = () => {
 
         // 1. Primärfarbe (Buttons & Akzente)
         if (primary) {
-<<<<<<< HEAD
             root.style.setProperty('--primary-color', primary);
-=======
-            root.style.setProperty('--brand-green', primary);
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
             root.style.setProperty('--button-primary-hover', getAdjustedColor(primary, -20));
             root.style.setProperty('--sidebar-active-bg', primary);
         }
@@ -125,7 +114,6 @@ const App: FC = () => {
         // 2. Seitenleiste (Separat vom Main Background)
         if (sidebar) {
             root.style.setProperty('--sidebar-bg', sidebar);
-<<<<<<< HEAD
 
             // Berechne optimale Kontrastfarbe (Weiß oder Dunkel)
             const contrastColor = getContrastColor(sidebar);
@@ -134,23 +122,13 @@ const App: FC = () => {
             if (isDark) {
                 // Hintergrund ist Dunkel -> Helle Schrift
                 root.style.setProperty('--sidebar-text', 'rgba(255, 255, 255, 0.7)');
-=======
-            const isSbDark = isDarkColor(sidebar);
-            if (isSbDark) {
-                root.style.setProperty('--sidebar-text', '#94A3B8');
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
                 root.style.setProperty('--sidebar-text-hover', '#FFFFFF');
                 root.style.setProperty('--sidebar-hover-bg', 'rgba(255,255,255,0.1)');
                 root.style.setProperty('--sidebar-border', 'rgba(255,255,255,0.1)');
             } else {
-<<<<<<< HEAD
                 // Hintergrund ist Hell -> Dunkle Schrift
                 root.style.setProperty('--sidebar-text', 'rgba(15, 23, 42, 0.7)'); // slate-950 mit Opacity
                 root.style.setProperty('--sidebar-text-hover', '#0F172A'); // slate-950 volldeckend
-=======
-                root.style.setProperty('--sidebar-text', '#475569');
-                root.style.setProperty('--sidebar-text-hover', '#0F172A');
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
                 root.style.setProperty('--sidebar-hover-bg', 'rgba(0,0,0,0.05)');
                 root.style.setProperty('--sidebar-border', 'rgba(0,0,0,0.1)');
             }
@@ -169,7 +147,6 @@ const App: FC = () => {
                 root.style.setProperty('--card-background-hover', getAdjustedColor(bg, 20));
                 root.style.setProperty('--border-color', 'rgba(255, 255, 255, 0.15)');
 
-<<<<<<< HEAD
                 // Farbige Akzente (Dunkler/Subtiler für Darkmode)
                 root.style.setProperty('--bg-accent-green', 'rgba(34, 197, 94, 0.15)');
                 root.style.setProperty('--bg-accent-orange', 'rgba(249, 115, 22, 0.15)');
@@ -183,21 +160,6 @@ const App: FC = () => {
                 root.style.setProperty('--text-accent-blue', '#DBEAFE'); // Light Blue
                 root.style.setProperty('--text-accent-purple', '#F3E8FF'); // Light Purple
                 root.style.setProperty('--text-accent-yellow', '#FEF9C3'); // Light Yellow
-=======
-                // Farbige Akzente (Transparent für Darkmode)
-                root.style.setProperty('--bg-accent-green', 'rgba(34, 197, 94, 0.2)');
-                root.style.setProperty('--bg-accent-orange', 'rgba(249, 115, 22, 0.2)');
-                root.style.setProperty('--bg-accent-blue', 'rgba(59, 130, 246, 0.2)');
-                root.style.setProperty('--bg-accent-purple', 'rgba(168, 85, 247, 0.2)');
-                root.style.setProperty('--bg-accent-yellow', 'rgba(234, 179, 8, 0.2)');
-
-                // Textfarben auf Akzenten (Heller für Kontrast)
-                root.style.setProperty('--text-accent-green', '#86EFAC');
-                root.style.setProperty('--text-accent-orange', '#FDBA74');
-                root.style.setProperty('--text-accent-blue', '#93C5FD');
-                root.style.setProperty('--text-accent-purple', '#D8B4FE');
-                root.style.setProperty('--text-accent-yellow', '#FDE047');
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
             } else {
                 // Light Mode Logik
                 root.style.setProperty('--text-primary', '#0F172A');
@@ -220,7 +182,6 @@ const App: FC = () => {
                 root.style.setProperty('--text-accent-purple', '#6B21A8');
                 root.style.setProperty('--text-accent-yellow', '#854D0E');
             }
-<<<<<<< HEAD
 
             // 4. Level Colors Mapping (to adapt to Dark Mode)
             // Level 1: Purple
@@ -268,8 +229,6 @@ const App: FC = () => {
                 root.style.setProperty('--level-locked-bg', '#FEF2F2');
                 root.style.setProperty('--level-locked-text', '#991B1B');
             }
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
         }
     };
 
@@ -303,12 +262,8 @@ const App: FC = () => {
                     levels: payload.levels,
                     services: payload.services,
                     viewMode: payload.view_mode,
-<<<<<<< HEAD
                     balance: payload.balance,
                     activeModules: payload.active_modules
-=======
-                    balance: payload.balance
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
                 }));
                 if (payload.role && loggedInUser) {
                     setLoggedInUser((prev: any) => prev ? { ...prev, role: payload.role } : null);
@@ -773,60 +728,91 @@ const App: FC = () => {
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--background-color)' }}>
-<<<<<<< HEAD
-                <LoadingSpinner message="Lade App..." />
-=======
-                <LoadingSpinner />
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-            </div>
+        <LoadingSpinner message="Lade App..." />
+            </div >
         );
     }
 
-    if (!authToken || !loggedInUser) {
+if (!authToken || !loggedInUser) {
+    return (
+        <AuthScreen
+            onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
+            onLoginEnd={() => setServerLoading({ active: false, message: '' })}
+            onLoginSuccess={handleLoginSuccess}
+            logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+            schoolName={schoolName}
+        />
+    );
+}
+
+if (previewConfig.viewMode === 'login') {
+    return (
+        <AuthScreen
+            onLoginStart={() => { }}
+            onLoginEnd={() => { }}
+            onLoginSuccess={() => { }}
+            logoUrl={getFullImageUrl(previewConfig.logoUrl)}
+            schoolName={schoolName}
+        />
+    );
+}
+
+const renderContent = () => {
+    if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
+        const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
+        // In Preview/Demo mode, loggedInUser might be the mock customer itself, so we use it if search fails.
+        if (!customer) return <div>Lade Daten...</div>;
+
+        if (customerPage === 'transactions') {
+            return <CustomerTransactionsPage transactions={transactions.filter(t => t.user_id === loggedInUser.id)} />;
+        }
+
+        if (customerPage === 'appointments') {
+            return <AppointmentsPage user={loggedInUser} token={authToken} />;
+        }
+
         return (
-            <AuthScreen
-                onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
-                onLoginEnd={() => setServerLoading({ active: false, message: '' })}
-                onLoginSuccess={handleLoginSuccess}
-                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-                schoolName={schoolName}
+            <CustomerDetailPage
+                customer={customer}
+                transactions={transactions}
+                setView={handleSetView}
+                handleLevelUp={handleLevelUp}
+                onSave={handleSaveCustomerDetails}
+                currentUser={loggedInUser}
+                users={users}
+                onUploadDocuments={handleUploadDocuments}
+                onDeleteDocument={handleDeleteDocument}
+                fetchAppData={fetchAppData}
+                authToken={authToken}
+                onDeleteUserClick={() => { }}
+                onToggleVipStatus={onToggleVipStatus}
+                onToggleExpertStatus={onToggleExpertStatus}
+                setDogFormModal={setDogFormModal}
+                setDeletingDog={setDeletingDog}
+                levels={appConfigData?.levels || previewConfig.levels}
             />
         );
     }
 
-    if (previewConfig.viewMode === 'login') {
+    if (view.page === 'dashboard') {
         return (
-            <AuthScreen
-                onLoginStart={() => { }}
-                onLoginEnd={() => { }}
-                onLoginSuccess={() => { }}
-                logoUrl={getFullImageUrl(previewConfig.logoUrl)}
-                schoolName={schoolName}
+            <DashboardPage
+                customers={customers}
+                transactions={transactions}
+                currentUser={loggedInUser}
+                onKpiClick={(kpi) => {
+                    if (kpi === 'customers') setView({ page: 'customers' });
+                }}
+                setView={handleSetView}
             />
         );
     }
 
-    const renderContent = () => {
-        if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
-<<<<<<< HEAD
-            const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
-            // In Preview/Demo mode, loggedInUser might be the mock customer itself, so we use it if search fails.
-=======
-            const customer = customers.find(c => c.id === loggedInUser.id);
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-            if (!customer) return <div>Lade Daten...</div>;
+    if (view.page === 'customers') {
+        if (view.subPage === 'detail' && view.customerId) {
+            const customer = directAccessedCustomer || customers.find(c => String(c.id) === view.customerId);
+            if (!customer) return <div>Kunde nicht gefunden</div>;
 
-            if (customerPage === 'transactions') {
-                return <CustomerTransactionsPage transactions={transactions.filter(t => t.user_id === loggedInUser.id)} />;
-            }
-
-<<<<<<< HEAD
-            if (customerPage === 'appointments') {
-                return <AppointmentsPage user={loggedInUser} token={authToken} />;
-            }
-
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
             return (
                 <CustomerDetailPage
                     customer={customer}
@@ -840,7 +826,7 @@ const App: FC = () => {
                     onDeleteDocument={handleDeleteDocument}
                     fetchAppData={fetchAppData}
                     authToken={authToken}
-                    onDeleteUserClick={() => { }}
+                    onDeleteUserClick={(user) => setDeleteUserModal(user)}
                     onToggleVipStatus={onToggleVipStatus}
                     onToggleExpertStatus={onToggleExpertStatus}
                     setDogFormModal={setDogFormModal}
@@ -850,216 +836,150 @@ const App: FC = () => {
             );
         }
 
-        if (view.page === 'dashboard') {
+        if (view.subPage === 'transactions' && view.customerId) {
+            const customer = customers.find(c => String(c.id) === view.customerId);
+            if (!customer) return <div>Kunde nicht gefunden</div>;
+
             return (
-                <DashboardPage
-                    customers={customers}
-                    transactions={transactions}
+                <TransactionManagementPage
+                    customer={customer}
+                    onConfirmTransaction={handleConfirmTransaction}
+                    setView={handleSetView}
                     currentUser={loggedInUser}
-                    onKpiClick={(kpi) => {
-                        if (kpi === 'customers') setView({ page: 'customers' });
-                    }}
-                    setView={handleSetView}
+                    services={appConfigData?.training_types || previewConfig.services || []}
+                    balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
                 />
             );
         }
 
-        if (view.page === 'customers') {
-            if (view.subPage === 'detail' && view.customerId) {
-                const customer = directAccessedCustomer || customers.find(c => String(c.id) === view.customerId);
-                if (!customer) return <div>Kunde nicht gefunden</div>;
+        return (
+            <CustomerListPage
+                customers={customers}
+                transactions={transactions}
+                setView={handleSetView}
+                onKpiClick={(kpi) => { }}
+                onAddCustomerClick={() => setAddCustomerModalOpen(true)}
+                currentUser={loggedInUser}
+            />
+        );
+    }
 
-                return (
-                    <CustomerDetailPage
-                        customer={customer}
-                        transactions={transactions}
-                        setView={handleSetView}
-                        handleLevelUp={handleLevelUp}
-                        onSave={handleSaveCustomerDetails}
-                        currentUser={loggedInUser}
-                        users={users}
-                        onUploadDocuments={handleUploadDocuments}
-                        onDeleteDocument={handleDeleteDocument}
-                        fetchAppData={fetchAppData}
-                        authToken={authToken}
-                        onDeleteUserClick={(user) => setDeleteUserModal(user)}
-                        onToggleVipStatus={onToggleVipStatus}
-                        onToggleExpertStatus={onToggleExpertStatus}
-                        setDogFormModal={setDogFormModal}
-                        setDeletingDog={setDeletingDog}
-                        levels={appConfigData?.levels || previewConfig.levels}
-                    />
-                );
-            }
+    if (view.page === 'reports') {
+        return <ReportsPage transactions={transactions} customers={customers} users={users} currentUser={loggedInUser} />;
+    }
 
-            if (view.subPage === 'transactions' && view.customerId) {
-                const customer = customers.find(c => String(c.id) === view.customerId);
-                if (!customer) return <div>Kunde nicht gefunden</div>;
+    if (view.page === 'appointments') {
+        return (
+            <AppointmentsPage user={loggedInUser} token={authToken} />
+        );
+    }
 
-                return (
-                    <TransactionManagementPage
-                        customer={customer}
-                        onConfirmTransaction={handleConfirmTransaction}
-                        setView={handleSetView}
-<<<<<<< HEAD
-                        currentUser={loggedInUser}
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-                        services={appConfigData?.training_types || previewConfig.services || []}
-                        balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
-                    />
-                );
-            }
+    if (view.page === 'users') {
+        return (
+            <UsersPage
+                users={users}
+                onAddUserClick={() => setUserModal({ isOpen: true, user: null })}
+                onEditUserClick={(user) => setUserModal({ isOpen: true, user })}
+                onDeleteUserClick={(user) => setDeleteUserModal(user)}
+            />
+        );
+    }
 
-            return (
-                <CustomerListPage
-                    customers={customers}
-                    transactions={transactions}
-                    setView={handleSetView}
-                    onKpiClick={(kpi) => { }}
-                    onAddCustomerClick={() => setAddCustomerModalOpen(true)}
-                    currentUser={loggedInUser}
-                />
-            );
-        }
+    return <div>Seite nicht gefunden</div>;
+};
 
-        if (view.page === 'reports') {
-            return <ReportsPage transactions={transactions} customers={customers} users={users} currentUser={loggedInUser} />;
-        }
+const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
 
-<<<<<<< HEAD
-        if (view.page === 'appointments') {
-            return (
-                <AppointmentsPage user={loggedInUser} token={authToken} />
-            );
-        }
+return (
+    <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
+        {loggedInUser.role === 'customer' || loggedInUser.role === 'kunde' ? (
+            <CustomerSidebar
+                user={loggedInUser}
+                onLogout={handleLogout}
+                setSidebarOpen={setIsSidebarOpen}
+                activePage={customerPage}
+                setPage={setCustomerPage}
+                schoolName={schoolName}
+                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+                isPreviewMode={isPreviewMode}
+                onToggleRole={togglePreviewRole}
+                activeModules={activeModules}
+            />
+        ) : (
+            <Sidebar
+                user={loggedInUser}
+                activePage={view.page}
+                setView={handleSetView}
+                onLogout={handleLogout}
+                setSidebarOpen={setIsSidebarOpen}
+                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+                schoolName={schoolName}
+                isPreviewMode={isPreviewMode}
+                onToggleRole={togglePreviewRole}
+                activeModules={activeModules}
+            />
+        )}
 
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-        if (view.page === 'users') {
-            return (
-                <UsersPage
-                    users={users}
-                    onAddUserClick={() => setUserModal({ isOpen: true, user: null })}
-                    onEditUserClick={(user) => setUserModal({ isOpen: true, user })}
-                    onDeleteUserClick={(user) => setDeleteUserModal(user)}
-                />
-            );
-        }
-
-        return <div>Seite nicht gefunden</div>;
-    };
-
-    const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
-
-    return (
-        <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
-            {loggedInUser.role === 'customer' || loggedInUser.role === 'kunde' ? (
-                <CustomerSidebar
-                    user={loggedInUser}
-                    onLogout={handleLogout}
-                    setSidebarOpen={setIsSidebarOpen}
-                    activePage={customerPage}
-                    setPage={setCustomerPage}
-                    schoolName={schoolName}
-                    logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-                    isPreviewMode={isPreviewMode}
-                    onToggleRole={togglePreviewRole}
-<<<<<<< HEAD
-                    activeModules={activeModules}
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-                />
-            ) : (
-                <Sidebar
-                    user={loggedInUser}
-                    activePage={view.page}
-                    setView={handleSetView}
-                    onLogout={handleLogout}
-                    setSidebarOpen={setIsSidebarOpen}
-                    logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-                    schoolName={schoolName}
-                    isPreviewMode={isPreviewMode}
-                    onToggleRole={togglePreviewRole}
-<<<<<<< HEAD
-                    activeModules={activeModules}
-=======
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-                />
-            )}
-
-            <main className="main-content">
-                {isMobileView && (
-                    <header className="mobile-header">
-                        <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">
-                            <Icon name="menu" />
-                        </button>
-                        <div className="mobile-header-logo">
-                            <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
-                            <h2>{schoolName}</h2>
-                        </div>
-                    </header>
-                )}
-                {renderContent()}
-            </main>
-
-            {isMobileView && isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
-
-            {modal.isOpen && (
-                <InfoModal title={modal.title} color={modal.color} onClose={() => setModal({ ...modal, isOpen: false })}>
-                    {modal.content}
-                </InfoModal>
-            )}
-
-            {addCustomerModalOpen && (
-<<<<<<< HEAD
-                <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onAddCustomer={handleAddCustomer} />
-=======
-                <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onSubmit={handleAddCustomer} />
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-            )}
-
-            {userModal.isOpen && (
-                <UserFormModal user={userModal.user} onClose={() => setUserModal({ isOpen: false, user: null })} onSave={handleSaveUser} />
-            )}
-
-            {deleteUserModal && (
-                <DeleteUserModal user={deleteUserModal} onClose={() => setDeleteUserModal(null)} onConfirm={handleDeleteUser} />
-            )}
-
-            {deletingDocument && (
-                <DeleteDocumentModal document={deletingDocument} onClose={() => setDeletingDocument(null)} onConfirm={() => { handleDeleteDocument(deletingDocument.id); setDeletingDocument(null); }} />
-            )}
-
-            {dogFormModal.isOpen && (
-<<<<<<< HEAD
-                <DogFormModal
-                    dog={dogFormModal.dog}
-                    onClose={() => setDogFormModal({ isOpen: false, dog: null })}
-                    onSave={(dogData) => handleSaveDog(dogData, view.customerId || loggedInUser.id)}
-                />
-=======
-                <DogFormModal dog={dogFormModal.dog} customerId={view.customerId || loggedInUser.id} onClose={() => setDogFormModal({ isOpen: false, dog: null })} onSave={handleSaveDog} />
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-            )}
-
-            {deletingDog && (
-                <DeleteDogModal dog={deletingDog} onClose={() => setDeletingDog(null)} onConfirm={() => { handleDeleteDog(deletingDog.id); setDeletingDog(null); }} />
-            )}
-
-            {isServerLoading.active && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-                    <div style={{ backgroundColor: 'var(--card-background)', padding: '2rem', borderRadius: '1rem', textAlign: 'center' }}>
-<<<<<<< HEAD
-                        <LoadingSpinner message={isServerLoading.message} />
-=======
-                        <LoadingSpinner />
->>>>>>> b9ca41ed1320c944a0f1f076191a2c8d42f41022
-                        <p style={{ marginTop: '1rem', color: 'var(--text-primary)' }}>{isServerLoading.message}</p>
+        <main className="main-content">
+            {isMobileView && (
+                <header className="mobile-header">
+                    <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">
+                        <Icon name="menu" />
+                    </button>
+                    <div className="mobile-header-logo">
+                        <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                        <h2>{schoolName}</h2>
                     </div>
-                </div>
+                </header>
             )}
-        </div>
+            {renderContent()}
+        </main>
+
+        {isMobileView && isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
+
+        {modal.isOpen && (
+            <InfoModal title={modal.title} color={modal.color} onClose={() => setModal({ ...modal, isOpen: false })}>
+                {modal.content}
+            </InfoModal>
+        )}
+
+        {addCustomerModalOpen && (
+            <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onAddCustomer={handleAddCustomer} />
+        )}
+
+        {userModal.isOpen && (
+            <UserFormModal user={userModal.user} onClose={() => setUserModal({ isOpen: false, user: null })} onSave={handleSaveUser} />
+        )}
+
+        {deleteUserModal && (
+            <DeleteUserModal user={deleteUserModal} onClose={() => setDeleteUserModal(null)} onConfirm={handleDeleteUser} />
+        )}
+
+        {deletingDocument && (
+            <DeleteDocumentModal document={deletingDocument} onClose={() => setDeletingDocument(null)} onConfirm={() => { handleDeleteDocument(deletingDocument.id); setDeletingDocument(null); }} />
+        )}
+
+        {dogFormModal.isOpen && (
+            <DogFormModal
+                dog={dogFormModal.dog}
+                onClose={() => setDogFormModal({ isOpen: false, dog: null })}
+                onSave={(dogData) => handleSaveDog(dogData, view.customerId || loggedInUser.id)}
+            />
+        )}
+
+        {deletingDog && (
+            <DeleteDogModal dog={deletingDog} onClose={() => setDeletingDog(null)} onConfirm={() => { handleDeleteDog(deletingDog.id); setDeletingDog(null); }} />
+        )}
+
+        {isServerLoading.active && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+                <div style={{ backgroundColor: 'var(--card-background)', padding: '2rem', borderRadius: '1rem', textAlign: 'center' }}>
+                        <LoadingSpinner message={isServerLoading.message} />
+                        <p style={{ marginTop: '1rem', color: 'var(--text-primary)' }}>{isServerLoading.message}</p>
+                    </div >
+                </div >
+            )}
+        </div >
     );
 };
 
