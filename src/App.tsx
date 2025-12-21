@@ -236,7 +236,32 @@ const App: FC = () => {
     useEffect(() => {
         const loadConfig = async () => {
             const isPreview = new URLSearchParams(window.location.search).get('mode') === 'preview';
-            if (isPreview) return;
+
+            if (isPreview) {
+                // Check if config is passed via hash (e.g. when opening in new tab)
+                const hash = window.location.hash;
+                if (hash.startsWith('#config=')) {
+                    try {
+                        const encoded = hash.substring(8);
+                        const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+
+                        applyTheme(decoded);
+                        setSchoolName(decoded.school_name || 'PfotenCard');
+                        setPreviewConfig(prev => ({
+                            ...prev,
+                            logoUrl: decoded.logo,
+                            levels: decoded.levels,
+                            services: decoded.services,
+                            viewMode: decoded.view_mode || 'app',
+                            balance: decoded.balance,
+                            activeModules: decoded.active_modules
+                        }));
+                    } catch (e) {
+                        console.error("Failed to parse config from hash", e);
+                    }
+                }
+                return;
+            }
 
             try {
                 const config = await apiClient.getConfig();
@@ -728,90 +753,48 @@ const App: FC = () => {
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--background-color)' }}>
-        <LoadingSpinner message="Lade App..." />
+                <LoadingSpinner message="Lade App..." />
             </div >
         );
     }
 
-if (!authToken || !loggedInUser) {
-    return (
-        <AuthScreen
-            onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
-            onLoginEnd={() => setServerLoading({ active: false, message: '' })}
-            onLoginSuccess={handleLoginSuccess}
-            logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-            schoolName={schoolName}
-        />
-    );
-}
-
-if (previewConfig.viewMode === 'login') {
-    return (
-        <AuthScreen
-            onLoginStart={() => { }}
-            onLoginEnd={() => { }}
-            onLoginSuccess={() => { }}
-            logoUrl={getFullImageUrl(previewConfig.logoUrl)}
-            schoolName={schoolName}
-        />
-    );
-}
-
-const renderContent = () => {
-    if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
-        const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
-        // In Preview/Demo mode, loggedInUser might be the mock customer itself, so we use it if search fails.
-        if (!customer) return <div>Lade Daten...</div>;
-
-        if (customerPage === 'transactions') {
-            return <CustomerTransactionsPage transactions={transactions.filter(t => t.user_id === loggedInUser.id)} />;
-        }
-
-        if (customerPage === 'appointments') {
-            return <AppointmentsPage user={loggedInUser} token={authToken} />;
-        }
-
+    if (!authToken || !loggedInUser) {
         return (
-            <CustomerDetailPage
-                customer={customer}
-                transactions={transactions}
-                setView={handleSetView}
-                handleLevelUp={handleLevelUp}
-                onSave={handleSaveCustomerDetails}
-                currentUser={loggedInUser}
-                users={users}
-                onUploadDocuments={handleUploadDocuments}
-                onDeleteDocument={handleDeleteDocument}
-                fetchAppData={fetchAppData}
-                authToken={authToken}
-                onDeleteUserClick={() => { }}
-                onToggleVipStatus={onToggleVipStatus}
-                onToggleExpertStatus={onToggleExpertStatus}
-                setDogFormModal={setDogFormModal}
-                setDeletingDog={setDeletingDog}
-                levels={appConfigData?.levels || previewConfig.levels}
+            <AuthScreen
+                onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
+                onLoginEnd={() => setServerLoading({ active: false, message: '' })}
+                onLoginSuccess={handleLoginSuccess}
+                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+                schoolName={schoolName}
             />
         );
     }
 
-    if (view.page === 'dashboard') {
+    if (previewConfig.viewMode === 'login') {
         return (
-            <DashboardPage
-                customers={customers}
-                transactions={transactions}
-                currentUser={loggedInUser}
-                onKpiClick={(kpi) => {
-                    if (kpi === 'customers') setView({ page: 'customers' });
-                }}
-                setView={handleSetView}
+            <AuthScreen
+                onLoginStart={() => { }}
+                onLoginEnd={() => { }}
+                onLoginSuccess={() => { }}
+                logoUrl={getFullImageUrl(previewConfig.logoUrl)}
+                schoolName={schoolName}
             />
         );
     }
 
-    if (view.page === 'customers') {
-        if (view.subPage === 'detail' && view.customerId) {
-            const customer = directAccessedCustomer || customers.find(c => String(c.id) === view.customerId);
-            if (!customer) return <div>Kunde nicht gefunden</div>;
+    const renderContent = () => {
+        if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
+            const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
+            // In Preview/Demo mode, loggedInUser might be the mock customer itself, so we use it if search fails.
+            if (!customer) return <div>Lade Daten...</div>;
+
+            if (customerPage === 'transactions') {
+                return <CustomerTransactionsPage transactions={transactions.filter(t => t.user_id === loggedInUser.id)} />;
+            }
+
+            if (customerPage === 'appointments') {
+                return <AppointmentsPage user={loggedInUser} token={authToken} />;
+            }
 
             return (
                 <CustomerDetailPage
@@ -826,7 +809,7 @@ const renderContent = () => {
                     onDeleteDocument={handleDeleteDocument}
                     fetchAppData={fetchAppData}
                     authToken={authToken}
-                    onDeleteUserClick={(user) => setDeleteUserModal(user)}
+                    onDeleteUserClick={() => { }}
                     onToggleVipStatus={onToggleVipStatus}
                     onToggleExpertStatus={onToggleExpertStatus}
                     setDogFormModal={setDogFormModal}
@@ -836,144 +819,186 @@ const renderContent = () => {
             );
         }
 
-        if (view.subPage === 'transactions' && view.customerId) {
-            const customer = customers.find(c => String(c.id) === view.customerId);
-            if (!customer) return <div>Kunde nicht gefunden</div>;
-
+        if (view.page === 'dashboard') {
             return (
-                <TransactionManagementPage
-                    customer={customer}
-                    onConfirmTransaction={handleConfirmTransaction}
-                    setView={handleSetView}
+                <DashboardPage
+                    customers={customers}
+                    transactions={transactions}
                     currentUser={loggedInUser}
-                    services={appConfigData?.training_types || previewConfig.services || []}
-                    balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
+                    onKpiClick={(kpi) => {
+                        if (kpi === 'customers') setView({ page: 'customers' });
+                    }}
+                    setView={handleSetView}
                 />
             );
         }
 
-        return (
-            <CustomerListPage
-                customers={customers}
-                transactions={transactions}
-                setView={handleSetView}
-                onKpiClick={(kpi) => { }}
-                onAddCustomerClick={() => setAddCustomerModalOpen(true)}
-                currentUser={loggedInUser}
-            />
-        );
-    }
+        if (view.page === 'customers') {
+            if (view.subPage === 'detail' && view.customerId) {
+                const customer = directAccessedCustomer || customers.find(c => String(c.id) === view.customerId);
+                if (!customer) return <div>Kunde nicht gefunden</div>;
 
-    if (view.page === 'reports') {
-        return <ReportsPage transactions={transactions} customers={customers} users={users} currentUser={loggedInUser} />;
-    }
+                return (
+                    <CustomerDetailPage
+                        customer={customer}
+                        transactions={transactions}
+                        setView={handleSetView}
+                        handleLevelUp={handleLevelUp}
+                        onSave={handleSaveCustomerDetails}
+                        currentUser={loggedInUser}
+                        users={users}
+                        onUploadDocuments={handleUploadDocuments}
+                        onDeleteDocument={handleDeleteDocument}
+                        fetchAppData={fetchAppData}
+                        authToken={authToken}
+                        onDeleteUserClick={(user) => setDeleteUserModal(user)}
+                        onToggleVipStatus={onToggleVipStatus}
+                        onToggleExpertStatus={onToggleExpertStatus}
+                        setDogFormModal={setDogFormModal}
+                        setDeletingDog={setDeletingDog}
+                        levels={appConfigData?.levels || previewConfig.levels}
+                    />
+                );
+            }
 
-    if (view.page === 'appointments') {
-        return (
-            <AppointmentsPage user={loggedInUser} token={authToken} />
-        );
-    }
+            if (view.subPage === 'transactions' && view.customerId) {
+                const customer = customers.find(c => String(c.id) === view.customerId);
+                if (!customer) return <div>Kunde nicht gefunden</div>;
 
-    if (view.page === 'users') {
-        return (
-            <UsersPage
-                users={users}
-                onAddUserClick={() => setUserModal({ isOpen: true, user: null })}
-                onEditUserClick={(user) => setUserModal({ isOpen: true, user })}
-                onDeleteUserClick={(user) => setDeleteUserModal(user)}
-            />
-        );
-    }
+                return (
+                    <TransactionManagementPage
+                        customer={customer}
+                        onConfirmTransaction={handleConfirmTransaction}
+                        setView={handleSetView}
+                        currentUser={loggedInUser}
+                        services={appConfigData?.training_types || previewConfig.services || []}
+                        balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
+                    />
+                );
+            }
 
-    return <div>Seite nicht gefunden</div>;
-};
+            return (
+                <CustomerListPage
+                    customers={customers}
+                    transactions={transactions}
+                    setView={handleSetView}
+                    onKpiClick={(kpi) => { }}
+                    onAddCustomerClick={() => setAddCustomerModalOpen(true)}
+                    currentUser={loggedInUser}
+                />
+            );
+        }
 
-const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
+        if (view.page === 'reports') {
+            return <ReportsPage transactions={transactions} customers={customers} users={users} currentUser={loggedInUser} />;
+        }
 
-return (
-    <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
-        {loggedInUser.role === 'customer' || loggedInUser.role === 'kunde' ? (
-            <CustomerSidebar
-                user={loggedInUser}
-                onLogout={handleLogout}
-                setSidebarOpen={setIsSidebarOpen}
-                activePage={customerPage}
-                setPage={setCustomerPage}
-                schoolName={schoolName}
-                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-                isPreviewMode={isPreviewMode}
-                onToggleRole={togglePreviewRole}
-                activeModules={activeModules}
-            />
-        ) : (
-            <Sidebar
-                user={loggedInUser}
-                activePage={view.page}
-                setView={handleSetView}
-                onLogout={handleLogout}
-                setSidebarOpen={setIsSidebarOpen}
-                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-                schoolName={schoolName}
-                isPreviewMode={isPreviewMode}
-                onToggleRole={togglePreviewRole}
-                activeModules={activeModules}
-            />
-        )}
+        if (view.page === 'appointments') {
+            return (
+                <AppointmentsPage user={loggedInUser} token={authToken} />
+            );
+        }
 
-        <main className="main-content">
-            {isMobileView && (
-                <header className="mobile-header">
-                    <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">
-                        <Icon name="menu" />
-                    </button>
-                    <div className="mobile-header-logo">
-                        <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
-                        <h2>{schoolName}</h2>
-                    </div>
-                </header>
+        if (view.page === 'users') {
+            return (
+                <UsersPage
+                    users={users}
+                    onAddUserClick={() => setUserModal({ isOpen: true, user: null })}
+                    onEditUserClick={(user) => setUserModal({ isOpen: true, user })}
+                    onDeleteUserClick={(user) => setDeleteUserModal(user)}
+                />
+            );
+        }
+
+        return <div>Seite nicht gefunden</div>;
+    };
+
+    const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
+
+    return (
+        <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
+            {loggedInUser.role === 'customer' || loggedInUser.role === 'kunde' ? (
+                <CustomerSidebar
+                    user={loggedInUser}
+                    onLogout={handleLogout}
+                    setSidebarOpen={setIsSidebarOpen}
+                    activePage={customerPage}
+                    setPage={setCustomerPage}
+                    schoolName={schoolName}
+                    logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+                    isPreviewMode={isPreviewMode}
+                    onToggleRole={togglePreviewRole}
+                    activeModules={activeModules}
+                />
+            ) : (
+                <Sidebar
+                    user={loggedInUser}
+                    activePage={view.page}
+                    setView={handleSetView}
+                    onLogout={handleLogout}
+                    setSidebarOpen={setIsSidebarOpen}
+                    logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+                    schoolName={schoolName}
+                    isPreviewMode={isPreviewMode}
+                    onToggleRole={togglePreviewRole}
+                    activeModules={activeModules}
+                />
             )}
-            {renderContent()}
-        </main>
 
-        {isMobileView && isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
+            <main className="main-content">
+                {isMobileView && (
+                    <header className="mobile-header">
+                        <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">
+                            <Icon name="menu" />
+                        </button>
+                        <div className="mobile-header-logo">
+                            <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                            <h2>{schoolName}</h2>
+                        </div>
+                    </header>
+                )}
+                {renderContent()}
+            </main>
 
-        {modal.isOpen && (
-            <InfoModal title={modal.title} color={modal.color} onClose={() => setModal({ ...modal, isOpen: false })}>
-                {modal.content}
-            </InfoModal>
-        )}
+            {isMobileView && isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
 
-        {addCustomerModalOpen && (
-            <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onAddCustomer={handleAddCustomer} />
-        )}
+            {modal.isOpen && (
+                <InfoModal title={modal.title} color={modal.color} onClose={() => setModal({ ...modal, isOpen: false })}>
+                    {modal.content}
+                </InfoModal>
+            )}
 
-        {userModal.isOpen && (
-            <UserFormModal user={userModal.user} onClose={() => setUserModal({ isOpen: false, user: null })} onSave={handleSaveUser} />
-        )}
+            {addCustomerModalOpen && (
+                <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onAddCustomer={handleAddCustomer} />
+            )}
 
-        {deleteUserModal && (
-            <DeleteUserModal user={deleteUserModal} onClose={() => setDeleteUserModal(null)} onConfirm={handleDeleteUser} />
-        )}
+            {userModal.isOpen && (
+                <UserFormModal user={userModal.user} onClose={() => setUserModal({ isOpen: false, user: null })} onSave={handleSaveUser} />
+            )}
 
-        {deletingDocument && (
-            <DeleteDocumentModal document={deletingDocument} onClose={() => setDeletingDocument(null)} onConfirm={() => { handleDeleteDocument(deletingDocument.id); setDeletingDocument(null); }} />
-        )}
+            {deleteUserModal && (
+                <DeleteUserModal user={deleteUserModal} onClose={() => setDeleteUserModal(null)} onConfirm={handleDeleteUser} />
+            )}
 
-        {dogFormModal.isOpen && (
-            <DogFormModal
-                dog={dogFormModal.dog}
-                onClose={() => setDogFormModal({ isOpen: false, dog: null })}
-                onSave={(dogData) => handleSaveDog(dogData, view.customerId || loggedInUser.id)}
-            />
-        )}
+            {deletingDocument && (
+                <DeleteDocumentModal document={deletingDocument} onClose={() => setDeletingDocument(null)} onConfirm={() => { handleDeleteDocument(deletingDocument.id); setDeletingDocument(null); }} />
+            )}
 
-        {deletingDog && (
-            <DeleteDogModal dog={deletingDog} onClose={() => setDeletingDog(null)} onConfirm={() => { handleDeleteDog(deletingDog.id); setDeletingDog(null); }} />
-        )}
+            {dogFormModal.isOpen && (
+                <DogFormModal
+                    dog={dogFormModal.dog}
+                    onClose={() => setDogFormModal({ isOpen: false, dog: null })}
+                    onSave={(dogData) => handleSaveDog(dogData, view.customerId || loggedInUser.id)}
+                />
+            )}
 
-        {isServerLoading.active && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
-                <div style={{ backgroundColor: 'var(--card-background)', padding: '2rem', borderRadius: '1rem', textAlign: 'center' }}>
+            {deletingDog && (
+                <DeleteDogModal dog={deletingDog} onClose={() => setDeletingDog(null)} onConfirm={() => { handleDeleteDog(deletingDog.id); setDeletingDog(null); }} />
+            )}
+
+            {isServerLoading.active && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
+                    <div style={{ backgroundColor: 'var(--card-background)', padding: '2rem', borderRadius: '1rem', textAlign: 'center' }}>
                         <LoadingSpinner message={isServerLoading.message} />
                         <p style={{ marginTop: '1rem', color: 'var(--text-primary)' }}>{isServerLoading.message}</p>
                     </div >
