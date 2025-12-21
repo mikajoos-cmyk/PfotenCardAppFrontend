@@ -140,6 +140,25 @@ export const apiClient = {
         return response.json();
     },
 
+    uploadDocuments: async (userId: string, formData: FormData, token: string | null) => {
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const subdomain = getSubdomain();
+        if (subdomain) headers['x-tenant-subdomain'] = subdomain;
+
+        const response = await fetch(`${API_BASE_URL}/api/users/${userId}/documents`, {
+            method: 'POST',
+            headers: headers, // FormData sets Content-Type boundary automatically
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `File upload failed`);
+        }
+        return response.json();
+    },
+
     // NEU: Konfiguration laden (öffentlich, ohne Token)
     getConfig: async () => {
         // Hier kein Token nötig, Header für Subdomain wird durch getHeaders automatisch gesetzt (sofern getHeaders angepasst ist oder wir es hier manuell machen)
@@ -161,6 +180,54 @@ export const apiClient = {
         }
         return response.json();
     },
+
+    // --- APPOINTMENTS ---
+    getAppointments: async (token: string | null) => {
+        return apiClient.get('/api/appointments', token);
+    },
+
+    createAppointment: async (data: any, token: string | null) => {
+        return apiClient.post('/api/appointments', data, token);
+    },
+
+    bookAppointment: async (appointmentId: number, token: string | null) => {
+        return apiClient.post(`/api/appointments/${appointmentId}/book`, {}, token);
+    },
+
+    cancelAppointment: async (appointmentId: number, token: string | null) => {
+        return apiClient.delete(`/api/appointments/${appointmentId}/book`, token);
+    },
+
+    getParticipants: async (appointmentId: number, token: string | null) => {
+        return apiClient.get(`/api/appointments/${appointmentId}/participants`, token);
+    },
+
+    toggleAttendance: async (bookingId: number, token: string | null) => {
+        return apiClient.put(`/api/bookings/${bookingId}/attendance`, {}, token);
+    }
 };
+
+export interface Appointment {
+    id: number;
+    title: string;
+    description?: string;
+    start_time: string;
+    end_time: string;
+    location?: string;
+    max_participants: number;
+    participants_count?: number;
+    created_at: string;
+}
+
+export interface Booking {
+    id: number;
+    appointment_id: number;
+    user_id: number;
+    status: string;
+    attended: boolean;
+    user?: any; // User object embedded
+    created_at: string;
+}
+
 
 export { API_BASE_URL };

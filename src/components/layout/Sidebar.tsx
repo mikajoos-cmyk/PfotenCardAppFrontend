@@ -15,6 +15,7 @@ interface SidebarProps {
     schoolName?: string;
     isPreviewMode?: boolean;
     onToggleRole?: () => void;
+    activeModules?: string[];
 }
 
 const Sidebar: FC<SidebarProps> = ({
@@ -26,11 +27,13 @@ const Sidebar: FC<SidebarProps> = ({
     logoUrl,
     schoolName,
     isPreviewMode,
-    onToggleRole
+    onToggleRole,
+    activeModules = ['news', 'documents', 'calendar']
 }) => {
     const navItems = [
         { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', roles: ['admin', 'mitarbeiter'] },
         { id: 'customers', label: 'Kunden', icon: 'customers', roles: ['admin', 'mitarbeiter'] },
+        { id: 'appointments', label: 'Termine', icon: 'calendar', roles: ['admin', 'mitarbeiter'], moduleId: 'calendar' },
         { id: 'reports', label: 'Berichte', icon: 'reports', roles: ['admin', 'mitarbeiter'] },
         { id: 'users', label: 'Benutzer', icon: 'users', roles: ['admin'] },
     ];
@@ -53,12 +56,15 @@ const Sidebar: FC<SidebarProps> = ({
             </div>
             <OnlineStatus />
             <nav className="sidebar-nav">
-                {navItems.filter(item => item.roles.includes(user.role)).map(item => (
-                    <a key={item.id} href="#" className={`nav-link ${activePage === item.id ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNavClick({ page: item.id as Page }); }}>
-                        <Icon name={item.icon} />
-                        <span>{item.label}</span>
-                    </a>
-                ))}
+                {navItems
+                    .filter(item => item.roles.includes(user.role))
+                    .filter(item => !item.moduleId || activeModules.includes(item.moduleId))
+                    .map(item => (
+                        <a key={item.id} href="#" className={`nav-link ${activePage === item.id ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNavClick({ page: item.id as Page }); }}>
+                            <Icon name={item.icon} />
+                            <span>{item.label}</span>
+                        </a>
+                    ))}
             </nav>
 
             {isPreviewMode && onToggleRole && (

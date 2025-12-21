@@ -1,5 +1,5 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
-export type Page = 'dashboard' | 'customers' | 'reports' | 'users';
+export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments';
 export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions' };
 
 export interface User {

@@ -7,7 +7,7 @@ import { User, View } from './types';
 // Components
 import LoadingSpinner from './components/ui/LoadingSpinner';
 import Icon from './components/ui/Icon';
-import { isDarkColor, getAdjustedColor } from './lib/utils';
+import { isDarkColor, getAdjustedColor, getContrastColor } from './lib/utils';
 import Sidebar from './components/layout/Sidebar';
 import CustomerSidebar from './components/layout/CustomerSidebar';
 import AuthScreen from './components/auth/AuthScreen';
@@ -29,6 +29,7 @@ import TransactionManagementPage from './pages/customers/TransactionManagementPa
 import CustomerTransactionsPage from './pages/customers/CustomerTransactionsPage';
 import ReportsPage from './pages/reports/ReportsPage';
 import UsersPage from './pages/admin/UsersPage';
+import AppointmentsPage from './pages/AppointmentsPage';
 
 const getFullImageUrl = (url?: string) => {
     if (!url) return "/paw.png";
@@ -60,7 +61,8 @@ const App: FC = () => {
     const [deletingDog, setDeletingDog] = useState<any | null>(null);
 
     const [isServerLoading, setServerLoading] = useState<{ active: boolean; message: string }>({ active: false, message: '' });
-    const [customerPage, setCustomerPage] = useState<'overview' | 'transactions'>('overview');
+    // State for customer view sub-navigation
+    const [customerPage, setCustomerPage] = useState<'overview' | 'transactions' | 'appointments'>('overview');
     const [directAccessedCustomer, setDirectAccessedCustomer] = useState<any | null>(null);
 
     const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -74,6 +76,7 @@ const App: FC = () => {
         levels?: any[];
         services?: any[];
         balance?: { allow_custom_top_up: boolean; top_up_options: { amount: number; bonus: number }[]; };
+        activeModules?: string[];
     }>({ viewMode: 'app' });
 
     const [appConfigData, setAppConfigData] = useState<any>(null);
@@ -103,7 +106,7 @@ const App: FC = () => {
 
         // 1. Primärfarbe (Buttons & Akzente)
         if (primary) {
-            root.style.setProperty('--brand-green', primary);
+            root.style.setProperty('--primary-color', primary);
             root.style.setProperty('--button-primary-hover', getAdjustedColor(primary, -20));
             root.style.setProperty('--sidebar-active-bg', primary);
         }
@@ -111,15 +114,21 @@ const App: FC = () => {
         // 2. Seitenleiste (Separat vom Main Background)
         if (sidebar) {
             root.style.setProperty('--sidebar-bg', sidebar);
-            const isSbDark = isDarkColor(sidebar);
-            if (isSbDark) {
-                root.style.setProperty('--sidebar-text', '#94A3B8');
+
+            // Berechne optimale Kontrastfarbe (Weiß oder Dunkel)
+            const contrastColor = getContrastColor(sidebar);
+            const isDark = contrastColor === '#FFFFFF';
+
+            if (isDark) {
+                // Hintergrund ist Dunkel -> Helle Schrift
+                root.style.setProperty('--sidebar-text', 'rgba(255, 255, 255, 0.7)');
                 root.style.setProperty('--sidebar-text-hover', '#FFFFFF');
                 root.style.setProperty('--sidebar-hover-bg', 'rgba(255,255,255,0.1)');
                 root.style.setProperty('--sidebar-border', 'rgba(255,255,255,0.1)');
             } else {
-                root.style.setProperty('--sidebar-text', '#475569');
-                root.style.setProperty('--sidebar-text-hover', '#0F172A');
+                // Hintergrund ist Hell -> Dunkle Schrift
+                root.style.setProperty('--sidebar-text', 'rgba(15, 23, 42, 0.7)'); // slate-950 mit Opacity
+                root.style.setProperty('--sidebar-text-hover', '#0F172A'); // slate-950 volldeckend
                 root.style.setProperty('--sidebar-hover-bg', 'rgba(0,0,0,0.05)');
                 root.style.setProperty('--sidebar-border', 'rgba(0,0,0,0.1)');
             }
@@ -138,19 +147,19 @@ const App: FC = () => {
                 root.style.setProperty('--card-background-hover', getAdjustedColor(bg, 20));
                 root.style.setProperty('--border-color', 'rgba(255, 255, 255, 0.15)');
 
-                // Farbige Akzente (Transparent für Darkmode)
-                root.style.setProperty('--bg-accent-green', 'rgba(34, 197, 94, 0.2)');
-                root.style.setProperty('--bg-accent-orange', 'rgba(249, 115, 22, 0.2)');
-                root.style.setProperty('--bg-accent-blue', 'rgba(59, 130, 246, 0.2)');
-                root.style.setProperty('--bg-accent-purple', 'rgba(168, 85, 247, 0.2)');
-                root.style.setProperty('--bg-accent-yellow', 'rgba(234, 179, 8, 0.2)');
+                // Farbige Akzente (Dunkler/Subtiler für Darkmode)
+                root.style.setProperty('--bg-accent-green', 'rgba(34, 197, 94, 0.15)');
+                root.style.setProperty('--bg-accent-orange', 'rgba(249, 115, 22, 0.15)');
+                root.style.setProperty('--bg-accent-blue', 'rgba(59, 130, 246, 0.15)');
+                root.style.setProperty('--bg-accent-purple', 'rgba(168, 85, 247, 0.15)');
+                root.style.setProperty('--bg-accent-yellow', 'rgba(234, 179, 8, 0.15)');
 
-                // Textfarben auf Akzenten (Heller für Kontrast)
-                root.style.setProperty('--text-accent-green', '#86EFAC');
-                root.style.setProperty('--text-accent-orange', '#FDBA74');
-                root.style.setProperty('--text-accent-blue', '#93C5FD');
-                root.style.setProperty('--text-accent-purple', '#D8B4FE');
-                root.style.setProperty('--text-accent-yellow', '#FDE047');
+                // Textfarben auf Akzenten (Hell für Kontrast auf dunklem Grund)
+                root.style.setProperty('--text-accent-green', '#DCFCE7'); // Light Green
+                root.style.setProperty('--text-accent-orange', '#FFEDD5'); // Light Orange
+                root.style.setProperty('--text-accent-blue', '#DBEAFE'); // Light Blue
+                root.style.setProperty('--text-accent-purple', '#F3E8FF'); // Light Purple
+                root.style.setProperty('--text-accent-yellow', '#FEF9C3'); // Light Yellow
             } else {
                 // Light Mode Logik
                 root.style.setProperty('--text-primary', '#0F172A');
@@ -172,6 +181,53 @@ const App: FC = () => {
                 root.style.setProperty('--text-accent-blue', '#1E40AF');
                 root.style.setProperty('--text-accent-purple', '#6B21A8');
                 root.style.setProperty('--text-accent-yellow', '#854D0E');
+            }
+
+            // 4. Level Colors Mapping (to adapt to Dark Mode)
+            // Level 1: Purple
+            root.style.setProperty('--level-1-color-bg', 'var(--bg-accent-purple)');
+            root.style.setProperty('--level-1-color', 'var(--text-accent-purple)');
+
+            // Level 2: Green
+            root.style.setProperty('--level-2-color-bg', 'var(--bg-accent-green)');
+            root.style.setProperty('--level-2-color', 'var(--text-accent-green)');
+
+            // Level 3: Blue
+            root.style.setProperty('--level-3-color-bg', 'var(--bg-accent-blue)');
+            root.style.setProperty('--level-3-color', 'var(--text-accent-blue)');
+
+            // Level 4: Orange
+            root.style.setProperty('--level-4-color-bg', 'var(--bg-accent-orange)');
+            root.style.setProperty('--level-4-color', 'var(--text-accent-orange)');
+
+            // Level 5: Yellow
+            root.style.setProperty('--level-5-color-bg', 'var(--bg-accent-yellow)');
+            root.style.setProperty('--level-5-color', 'var(--text-accent-yellow)');
+
+            // Generic Level States - DECOUPLED from Accent Colors for Badge Readability
+            // Badges need Light BG + Dark Text even in Dark Mode (or Dark BG + Light Text, but user wanted "rückgängig")
+            // Assuming user wants legibility:
+            if (isBgDark) {
+                // Explicitly set readable colors for badges in Dark Mode
+                root.style.setProperty('--level-completed-bg', '#DCFCE7'); // Light Green
+                root.style.setProperty('--level-completed-text', '#166534'); // Dark Green
+
+                root.style.setProperty('--level-active-bg', '#DCFCE7'); // Light Green
+                root.style.setProperty('--level-active-text', '#166534'); // Dark Green
+            } else {
+                root.style.setProperty('--level-completed-bg', 'var(--bg-accent-green)');
+                root.style.setProperty('--level-completed-text', 'var(--text-accent-green)');
+
+                root.style.setProperty('--level-active-bg', 'var(--bg-accent-green)');
+                root.style.setProperty('--level-active-text', 'var(--text-accent-green)');
+            }
+
+            if (isBgDark) {
+                root.style.setProperty('--level-locked-bg', 'rgba(254, 242, 242, 0.1)');
+                root.style.setProperty('--level-locked-text', '#FCA5A5');
+            } else {
+                root.style.setProperty('--level-locked-bg', '#FEF2F2');
+                root.style.setProperty('--level-locked-text', '#991B1B');
             }
         }
     };
@@ -206,7 +262,8 @@ const App: FC = () => {
                     levels: payload.levels,
                     services: payload.services,
                     viewMode: payload.view_mode,
-                    balance: payload.balance
+                    balance: payload.balance,
+                    activeModules: payload.active_modules
                 }));
                 if (payload.role && loggedInUser) {
                     setLoggedInUser((prev: any) => prev ? { ...prev, role: payload.role } : null);
@@ -671,7 +728,7 @@ const App: FC = () => {
     if (isLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--background-color)' }}>
-                <LoadingSpinner />
+                <LoadingSpinner message="Lade App..." />
             </div>
         );
     }
@@ -702,11 +759,16 @@ const App: FC = () => {
 
     const renderContent = () => {
         if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
-            const customer = customers.find(c => c.id === loggedInUser.id);
+            const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
+            // In Preview/Demo mode, loggedInUser might be the mock customer itself, so we use it if search fails.
             if (!customer) return <div>Lade Daten...</div>;
 
             if (customerPage === 'transactions') {
                 return <CustomerTransactionsPage transactions={transactions.filter(t => t.user_id === loggedInUser.id)} />;
+            }
+
+            if (customerPage === 'appointments') {
+                return <AppointmentsPage user={loggedInUser} token={authToken} />;
             }
 
             return (
@@ -783,6 +845,7 @@ const App: FC = () => {
                         customer={customer}
                         onConfirmTransaction={handleConfirmTransaction}
                         setView={handleSetView}
+                        currentUser={loggedInUser}
                         services={appConfigData?.training_types || previewConfig.services || []}
                         balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
                     />
@@ -805,6 +868,12 @@ const App: FC = () => {
             return <ReportsPage transactions={transactions} customers={customers} users={users} currentUser={loggedInUser} />;
         }
 
+        if (view.page === 'appointments') {
+            return (
+                <AppointmentsPage user={loggedInUser} token={authToken} />
+            );
+        }
+
         if (view.page === 'users') {
             return (
                 <UsersPage
@@ -819,6 +888,8 @@ const App: FC = () => {
         return <div>Seite nicht gefunden</div>;
     };
 
+    const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
+
     return (
         <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
             {loggedInUser.role === 'customer' || loggedInUser.role === 'kunde' ? (
@@ -832,6 +903,7 @@ const App: FC = () => {
                     logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
                     isPreviewMode={isPreviewMode}
                     onToggleRole={togglePreviewRole}
+                    activeModules={activeModules}
                 />
             ) : (
                 <Sidebar
@@ -844,6 +916,7 @@ const App: FC = () => {
                     schoolName={schoolName}
                     isPreviewMode={isPreviewMode}
                     onToggleRole={togglePreviewRole}
+                    activeModules={activeModules}
                 />
             )}
 
@@ -871,7 +944,7 @@ const App: FC = () => {
             )}
 
             {addCustomerModalOpen && (
-                <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onSubmit={handleAddCustomer} />
+                <AddCustomerModal onClose={() => setAddCustomerModalOpen(false)} onAddCustomer={handleAddCustomer} />
             )}
 
             {userModal.isOpen && (
@@ -887,7 +960,11 @@ const App: FC = () => {
             )}
 
             {dogFormModal.isOpen && (
-                <DogFormModal dog={dogFormModal.dog} customerId={view.customerId || loggedInUser.id} onClose={() => setDogFormModal({ isOpen: false, dog: null })} onSave={handleSaveDog} />
+                <DogFormModal
+                    dog={dogFormModal.dog}
+                    onClose={() => setDogFormModal({ isOpen: false, dog: null })}
+                    onSave={(dogData) => handleSaveDog(dogData, view.customerId || loggedInUser.id)}
+                />
             )}
 
             {deletingDog && (
@@ -897,7 +974,7 @@ const App: FC = () => {
             {isServerLoading.active && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>
                     <div style={{ backgroundColor: 'var(--card-background)', padding: '2rem', borderRadius: '1rem', textAlign: 'center' }}>
-                        <LoadingSpinner />
+                        <LoadingSpinner message={isServerLoading.message} />
                         <p style={{ marginTop: '1rem', color: 'var(--text-primary)' }}>{isServerLoading.message}</p>
                     </div>
                 </div>

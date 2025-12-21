@@ -36,6 +36,12 @@ const Icon = ({ name, ...props }: { name: string } & React.SVGProps<SVGSVGElemen
         menu: { path: <><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></> },
         eye: { path: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></> },
         'eye-off': { path: <><path d="m9.9 9.9 4.2 4.2" /><path d="M10.7 15.3a7 7 0 0 1-8.1-8.1l9.8 9.8" /><path d="M7.5 4.2C9.2 3.3 11.2 3 13 3s3.8.3 5.5 1.2l-2.2 2.2" /><path d="M19.8 17.8a14 14 0 0 1-11.2-4.3l1.5-1.5" /><path d="m2.2 2.2 20 20" /></> },
+        plus: { path: <><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></> },
+        clock: { path: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></> },
+        mapPin: { path: <><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></> },
+        alertCircle: { path: <><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></> },
+        checkCircle: { path: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></> },
+        xCircle: { path: <><circle cx="12" cy="12" r="10" /><line x1="15" x2="9" y1="9" y2="15" /><line x1="9" x2="15" y1="9" y2="15" /></> },
     };
 
     const selectedIcon = icons[name];

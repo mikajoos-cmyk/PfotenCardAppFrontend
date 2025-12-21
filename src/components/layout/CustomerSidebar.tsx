@@ -8,23 +8,24 @@ interface CustomerSidebarProps {
     user: User;
     onLogout: () => void;
     setSidebarOpen: (isOpen: boolean) => void;
-    activePage: 'overview' | 'transactions';
-    setPage: (page: 'overview' | 'transactions') => void;
+    activePage: 'overview' | 'transactions' | 'appointments';
+    setPage: (page: 'overview' | 'transactions' | 'appointments') => void;
     schoolName?: string;
     logoUrl?: string;
     // NEUE PROPS
     isPreviewMode?: boolean;
     onToggleRole?: () => void;
+    activeModules?: string[];
 }
 
-const CustomerSidebar: FC<CustomerSidebarProps> = ({ 
+const CustomerSidebar: FC<CustomerSidebarProps> = ({
     user, onLogout, setSidebarOpen, activePage, setPage, schoolName = 'PfotenCard', logoUrl,
-    isPreviewMode, onToggleRole 
+    isPreviewMode, onToggleRole,
+    activeModules = ['news', 'documents', 'calendar']
 }) => {
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-               {/* ... bestehender Header Code ... */}
                 <img src={logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" width="40" height="40" />
                 <h2>{schoolName}</h2>
                 <button className="sidebar-close-button" onClick={() => setSidebarOpen(false)} aria-label="Menü schließen">
@@ -33,7 +34,6 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
             </div>
             <OnlineStatus />
             <nav className="sidebar-nav">
-               {/* ... bestehende Navigation ... */}
                 <a href="#" className={`nav-link ${activePage === 'overview' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setPage('overview'); }}>
                     <Icon name="user" />
                     <span>Meine Karte</span>
@@ -42,6 +42,12 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
                     <Icon name="creditCard" />
                     <span>Meine Transaktionen</span>
                 </a>
+                {activeModules.includes('calendar') && (
+                    <a href="#" className={`nav-link ${activePage === 'appointments' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setPage('appointments'); }}>
+                        <Icon name="calendar" />
+                        <span>Termine</span>
+                    </a>
+                )}
             </nav>
 
             {/* --- HIER IST DER NEUE SCHIEBEREGLER --- */}
@@ -51,10 +57,10 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
                     <div className="role-toggle-row">
                         <span className="role-toggle-text">Kunden-Ansicht</span>
                         <label className="switch">
-                            <input 
-                                type="checkbox" 
-                                checked={false} 
-                                onChange={onToggleRole} 
+                            <input
+                                type="checkbox"
+                                checked={false}
+                                onChange={onToggleRole}
                             />
                             <span className="slider"></span>
                         </label>
