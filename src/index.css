@@ -3076,87 +3076,45 @@ input:checked+.slider:before {
     border-bottom-right-radius: 0.75rem;
 }
 
-/* --- Appointments Table Styles (Mobile Optimized) --- */
-/* --- Appointments Table Styles (Modern & Clean) --- */
-.appointments-table {
-    width: 100%;
-    border-collapse: collapse;
+
+/* --- Global Scrollbar Styling --- */
+
+/* Für Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) transparent;
 }
 
-.appointments-table th {
-    background-color: var(--card-background-hover);
-    /* Wenn im Darkmode card-background-hover zu hell ist, nutze eine leichte Transparenz: */
-    /* background-color: rgba(255, 255, 255, 0.03); */
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.05em;
-    color: var(--text-secondary);
-    font-weight: 600;
-    padding: 1rem 1.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
+/* Für Chrome, Edge, Safari */
+::-webkit-scrollbar {
+    width: 6px;
+    /* Macht den Scrollbalken vertikal schmal */
+    height: 6px;
+    /* Macht den Scrollbalken horizontal schmal */
 }
 
-.appointments-table td {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
-    vertical-align: middle;
-    transition: background-color 0.2s;
-}
-
-.appointments-table tr:last-child td {
-    border-bottom: none;
-}
-
-.appointments-table tr:hover td {
-    background-color: var(--card-background-hover);
-}
-
-/* Action Buttons in Table */
-.table-action-btn {
+::-webkit-scrollbar-track {
     background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    padding: 0.5rem;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    /* Hintergrund ist unsichtbar */
 }
 
-.table-action-btn:hover {
-    background-color: var(--background-color);
-    color: var(--primary-color);
-    transform: scale(1.1);
+::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    /* "Der Strich" in Primärfarbe */
+    border-radius: 99px;
+    /* Rundet die Ecken vollständig ab */
+    border: 2px solid transparent;
+    /* Optional: Macht den Strich optisch etwas "leichter" */
+    background-clip: content-box;
+    /* Sorgt dafür, dass der Border-Trick funktioniert */
 }
 
-.table-action-btn.arrow {
-    color: var(--primary-color);
+::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary-color);
+    /* Bleibt beim Hover gleich oder kann angepasst werden */
+    opacity: 0.8;
 }
 
-.table-action-btn.arrow:hover {
-    transform: translateX(3px);
-    /* Kleiner Pfeil-Effekt */
+::-webkit-scrollbar-corner {
     background: transparent;
-}
-
-/* Mobile Optimierung */
-@media (max-width: 600px) {
-
-    .appointments-table th,
-    .appointments-table td {
-        padding: 1rem 0.75rem;
-    }
-
-    .appointments-table .time-cell {
-        font-size: 0.9rem;
-    }
-
-    .appointments-table .spots-cell {
-        padding-left: 0.25rem;
-        padding-right: 0.25rem;
-    }
 }
