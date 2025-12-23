@@ -28,14 +28,14 @@ interface CustomerDetailPageProps {
     setDeletingDog: (dog: any | null) => void;
     levels?: any[];
     wording?: { level: string; vip: string };
-    isDarkMode?: boolean; // <--- HIER HINZUGEFÜGT
+    isDarkMode?: boolean;
 }
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
-    wording, isDarkMode // <--- HIER HINZUGEFÜGT
+    wording, isDarkMode
 }) => {
 
     const levelTerm = wording?.level || 'Level';
@@ -446,12 +446,13 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <img
                             src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.id}`}
                             alt="QR Code"
-                        // QR Code invertieren wenn Dark Mode aktiv ist (wird über CSS Variablen gesteuert oder hier vereinfacht)
-                        // Da wir isDarkMode prop nicht haben, nutzen wir einen CSS-Filter basierend auf der Klasse, 
-                        // oder lassen es weiß, da wir im letzten Schritt den Hintergrund angepasst haben.
-                        // Hier lassen wir es Standard, da die CSS-Anpassung (mix-blend-mode) besser im CSS aufgehoben wäre, 
-                        // aber wir können den Style hier inline lassen wenn isDarkMode prop da wäre.
-                        // Da ich isDarkMode prop hier nicht sehe, lasse ich es wie es war.
+                            style={{
+                                width: '100%',
+                                maxWidth: '120px',
+                                margin: '0.5rem auto',
+                                borderRadius: '0.5rem',
+                                filter: isDarkMode ? 'invert(1)' : 'none'
+                            }}
                         />
                         <p>Scannen, um diese Kundenkarte schnell aufzurufen.</p>
                     </div>
