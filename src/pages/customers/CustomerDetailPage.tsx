@@ -28,13 +28,14 @@ interface CustomerDetailPageProps {
     setDeletingDog: (dog: any | null) => void;
     levels?: any[];
     wording?: { level: string; vip: string };
+    isDarkMode?: boolean; // <--- HIER HINZUGEFÜGT
 }
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
-    wording
+    wording, isDarkMode // <--- HIER HINZUGEFÜGT
 }) => {
 
     const levelTerm = wording?.level || 'Level';
