@@ -1,8 +1,8 @@
-
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import KpiCard from '../../components/ui/KpiCard';
 import Icon from '../../components/ui/Icon';
 import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import InfoModal from '../../components/modals/InfoModal'; // Modal importieren
 
 interface ReportsPageProps {
     transactions: any[];
@@ -17,6 +17,11 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
         currentUser.role === 'admin' ? 'all' : String(currentUser.id)
     );
     const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+
+    // State für das Modal
+    const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
+        isOpen: false, title: '', content: null, color: 'blue'
+    });
 
     const getRealAmount = (tx: any) => {
         if (tx.amount <= 0) return tx.amount;
@@ -94,6 +99,71 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
         if (type === 'yearly') return period;
         const [year, month] = period.split('-');
         return new Date(parseInt(year), parseInt(month) - 1).toLocaleString('de-DE', { month: 'long', year: 'numeric' });
+    };
+
+    // --- NEU: Handler für KPI Klicks ---
+    const handleKpiClick = (type: 'revenue' | 'debits' | 'transactions' | 'active_customers', color: string) => {
+        let title = '';
+        let content: React.ReactNode = null;
+        const periodText = formatPeriodForDisplay(selectedPeriod, reportType);
+
+        // Hilfsfunktion für Transaktionslisten
+        const renderTxList = (txList: any[]) => (
+            <ul className="info-modal-list">
+                {txList.length > 0 ? txList.map(tx => {
+                    const customer = customers.find(c => c.id === tx.user_id);
+                    const realAmount = getRealAmount(tx);
+                    return (
+                        <li key={tx.id}>
+                            <span>
+                                {new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description}
+                                <span className="text-gray-500 text-sm"> ({customer?.name || 'Unbekannt'})</span>
+                            </span>
+                            <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
+                                € {Math.abs(realAmount).toLocaleString('de-DE')}
+                            </span>
+                        </li>
+                    );
+                }) : <p className="text-gray-500 italic py-2">Keine Einträge vorhanden.</p>}
+            </ul>
+        );
+
+        // Hilfsfunktion für Kundenliste
+        const renderCustomerList = (txList: any[]) => {
+            const activeCustomerIds = new Set(txList.map(tx => tx.user_id));
+            const activeCustomers = customers.filter(c => activeCustomerIds.has(c.id));
+            return (
+                <ul className="info-modal-list">
+                    {activeCustomers.length > 0 ? activeCustomers.map(c => (
+                        <li key={c.id}>
+                            <span>{c.name}</span>
+                            <span>{c.dogs?.[0]?.name || '-'}</span>
+                        </li>
+                    )) : <p className="text-gray-500 italic py-2">Keine aktiven Kunden.</p>}
+                </ul>
+            );
+        };
+
+        switch (type) {
+            case 'revenue':
+                title = `Einnahmen in ${periodText}`;
+                content = renderTxList(filteredTransactions.filter(t => t.amount > 0));
+                break;
+            case 'debits':
+                title = `Abbuchungen in ${periodText}`;
+                content = renderTxList(filteredTransactions.filter(t => t.amount < 0));
+                break;
+            case 'transactions':
+                title = `Transaktionen in ${periodText}`;
+                content = renderTxList(filteredTransactions);
+                break;
+            case 'active_customers':
+                title = `Aktive Kunden in ${periodText}`;
+                content = renderCustomerList(filteredTransactions);
+                break;
+        }
+
+        setModal({ isOpen: true, title, content, color });
     };
 
     const handleExportCSV = () => {
@@ -256,10 +326,30 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
             </div>
 
             <div className="kpi-grid">
-                <KpiCard title={`Echte Einnahmen (${reportType === 'monthly' ? 'Monat' : 'Jahr'})`} value={`€ ${Math.floor(revenue).toLocaleString('de-DE')}`} icon="creditCard" bgIcon="creditCard" color="green" />
-                <KpiCard title={`Abbuchungen (${reportType === 'monthly' ? 'Monat' : 'Jahr'})`} value={`€ ${Math.floor(debits).toLocaleString('de-DE')}`} icon="creditCard" bgIcon="creditCard" color="orange" />
-                <KpiCard title="Transaktionen" value={filteredTransactions.length.toString()} icon="trendingUp" bgIcon="trendingUp" color="blue" />
-                <KpiCard title="Aktive Kunden" value={new Set(filteredTransactions.map(tx => tx.user_id)).size.toString()} icon="customers" bgIcon="customers" color="purple" />
+                <KpiCard
+                    title={`Echte Einnahmen (${reportType === 'monthly' ? 'Monat' : 'Jahr'})`}
+                    value={`€ ${Math.floor(revenue).toLocaleString('de-DE')}`}
+                    icon="creditCard" bgIcon="creditCard" color="green"
+                    onClick={() => handleKpiClick('revenue', 'green')}
+                />
+                <KpiCard
+                    title={`Abbuchungen (${reportType === 'monthly' ? 'Monat' : 'Jahr'})`}
+                    value={`€ ${Math.floor(debits).toLocaleString('de-DE')}`}
+                    icon="creditCard" bgIcon="creditCard" color="orange"
+                    onClick={() => handleKpiClick('debits', 'orange')}
+                />
+                <KpiCard
+                    title="Transaktionen"
+                    value={filteredTransactions.length.toString()}
+                    icon="trendingUp" bgIcon="trendingUp" color="blue"
+                    onClick={() => handleKpiClick('transactions', 'blue')}
+                />
+                <KpiCard
+                    title="Aktive Kunden"
+                    value={new Set(filteredTransactions.map(tx => tx.user_id)).size.toString()}
+                    icon="customers" bgIcon="customers" color="purple"
+                    onClick={() => handleKpiClick('active_customers', 'purple')}
+                />
             </div>
             <div className="dashboard-bottom-grid">
                 <div className="content-box">
@@ -317,6 +407,13 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                     </ul>
                 </div>
             </div>
+
+            {/* Modal Rendern */}
+            {modal.isOpen && (
+                <InfoModal title={modal.title} color={modal.color} onClose={() => setModal({ ...modal, isOpen: false })}>
+                    {modal.content}
+                </InfoModal>
+            )}
         </>
     );
 };

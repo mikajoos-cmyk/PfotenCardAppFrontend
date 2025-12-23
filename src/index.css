@@ -1292,7 +1292,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: white;
+    background-color: var(--card-background);
     border-width: 1.5px;
     border-style: solid;
 }
@@ -1496,11 +1496,27 @@ body {
     margin-top: 2rem;
 }
 
+/* src/index.css */
+
+/* ... vorheriger Code für .tx-button ... */
+
 .tx-button:disabled {
-    opacity: 0.6;
+    opacity: 0.4;
+    /* Macht den Button blasser, aber lässt den Hintergrund durchscheinen */
     cursor: not-allowed;
-    background-color: #f8fafc;
+
+    /* WICHTIG: Keine feste Farbe wie #f8fafc nutzen! */
+    background-color: var(--card-background);
     border-color: var(--border-color);
+
+    /* Textfarbe explizit setzen, damit sie lesbar bleibt */
+    color: var(--text-secondary);
+}
+
+/* Damit auch der Betrag und Titel im Button die richtige Farbe bekommen */
+.tx-button:disabled .amount,
+.tx-button:disabled .info .title {
+    color: var(--text-secondary);
 }
 
 .tx-button:disabled:hover {
@@ -2060,9 +2076,11 @@ body {
 }
 
 .employee-box {
-    background-color: #EFF6FF;
-    border: 1px solid #DBEAFE;
-    color: #374151;
+    /* ÄNDERUNG: Variablen statt fester Farben */
+    background-color: var(--bg-accent-blue);
+    border: 1px solid var(--border-color);
+    /* oder var(--text-accent-blue) für farbigen Rand */
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -2070,12 +2088,12 @@ body {
 }
 
 .employee-box svg {
-    color: #3B82F6;
+    color: var(--brand-blue);
 }
 
 .debit-box {
-    background-color: #FFF1F2;
-    border: 1px solid #FECDD3;
+    background-color: var(--bg-accent-orange);
+    border: 1px solid var(--text-accent-orange);
 }
 
 .debit-header {
@@ -2104,8 +2122,8 @@ body {
 }
 
 .topup-box {
-    background-color: #F0FDF4;
-    border: 1px solid #D1FAE5;
+    background-color: var(--bg-accent-green);
+    border: 1px solid var(--text-accent-green);
 }
 
 .topup-line {
@@ -2124,7 +2142,7 @@ body {
 
 .topup-box hr {
     border: none;
-    border-top: 1px dashed #A7F3D0;
+    border-top: 1px dashed var(--brand-green);
     margin: 0.75rem 0;
 }
 
@@ -2134,7 +2152,7 @@ body {
 }
 
 .topup-line .amount.bonus {
-    color: #15803D;
+    color: var(--brand-green);
 }
 
 .topup-box .description {
@@ -2142,8 +2160,8 @@ body {
 }
 
 .balance-box {
-    background-color: #F8FAFC;
-    border: 1px solid #F1F5F9;
+    background-color: var(--bg-accent-gray);
+    border: 1px solid var(--text-accent-gray);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3031,4 +3049,114 @@ input:checked+.slider:before {
 .modal-header.orange .close-button:hover,
 .modal-header.red .close-button:hover {
     background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Styling für das Level-Listen-Design */
+
+/* Basis-Item: Eckig, keine doppelten Rahmen */
+.levels-accordion .level-item {
+    border: 1px solid var(--border-color);
+    border-radius: 0;
+    overflow: hidden;
+    margin-bottom: 0;
+    margin-top: -1px;
+    /* Verhindert doppelte Rahmenlinien */
+}
+
+/* Erstes Element: Nur oben abgerundet */
+.levels-accordion .level-item.is-first {
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+    margin-top: 0;
+}
+
+/* Letztes Element: Nur unten abgerundet */
+.levels-accordion .level-item.is-last {
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+}
+
+/* --- Appointments Table Styles (Mobile Optimized) --- */
+/* --- Appointments Table Styles (Modern & Clean) --- */
+.appointments-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.appointments-table th {
+    background-color: var(--card-background-hover);
+    /* Wenn im Darkmode card-background-hover zu hell ist, nutze eine leichte Transparenz: */
+    /* background-color: rgba(255, 255, 255, 0.03); */
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.appointments-table td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    vertical-align: middle;
+    transition: background-color 0.2s;
+}
+
+.appointments-table tr:last-child td {
+    border-bottom: none;
+}
+
+.appointments-table tr:hover td {
+    background-color: var(--card-background-hover);
+}
+
+/* Action Buttons in Table */
+.table-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.table-action-btn:hover {
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+.table-action-btn.arrow {
+    color: var(--primary-color);
+}
+
+.table-action-btn.arrow:hover {
+    transform: translateX(3px);
+    /* Kleiner Pfeil-Effekt */
+    background: transparent;
+}
+
+/* Mobile Optimierung */
+@media (max-width: 600px) {
+
+    .appointments-table th,
+    .appointments-table td {
+        padding: 1rem 0.75rem;
+    }
+
+    .appointments-table .time-cell {
+        font-size: 0.9rem;
+    }
+
+    .appointments-table .spots-cell {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
 }

@@ -77,6 +77,8 @@ const App: FC = () => {
         services?: any[];
         balance?: { allow_custom_top_up: boolean; top_up_options: { amount: number; bonus: number }[]; };
         activeModules?: string[];
+        levelTerm?: string;
+        vipTerm?: string;
     }>({ viewMode: 'app' });
 
     const [appConfigData, setAppConfigData] = useState<any>(null);
@@ -95,6 +97,8 @@ const App: FC = () => {
         setView({ page: 'dashboard' });
         setCustomerPage('overview');
     };
+
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     // --- ZENTRALE THEME ENGINE ---
     const applyTheme = (config: any) => {
@@ -144,6 +148,7 @@ const App: FC = () => {
         // 3. App Hintergrund & UI-Elemente
         if (bg) {
             const isBgDark = isDarkColor(bg);
+            setIsDarkMode(isBgDark);
             root.style.setProperty('--background-color', bg);
 
             if (isBgDark) {
@@ -232,7 +237,7 @@ const App: FC = () => {
 
             if (isBgDark) {
                 root.style.setProperty('--level-locked-bg', 'rgba(254, 242, 242, 0.1)');
-                root.style.setProperty('--level-locked-text', '#FCA5A5');
+                root.style.setProperty('--level-locked-text', '#991B1B');
             } else {
                 root.style.setProperty('--level-locked-bg', '#FEF2F2');
                 root.style.setProperty('--level-locked-text', '#991B1B');
@@ -262,7 +267,9 @@ const App: FC = () => {
                             services: decoded.services,
                             viewMode: decoded.view_mode || 'app',
                             balance: decoded.balance,
-                            activeModules: decoded.active_modules
+                            activeModules: decoded.active_modules,
+                            levelTerm: decoded.level_term,
+                            vipTerm: decoded.vip_term
                         }));
                     } catch (e) {
                         console.error("Failed to parse config from hash", e);
@@ -289,6 +296,7 @@ const App: FC = () => {
                 const payload = event.data.payload;
                 applyTheme(payload);
                 setSchoolName(payload.school_name || 'PfotenCard');
+
                 setPreviewConfig(prev => ({
                     ...prev,
                     logoUrl: payload.logo,
@@ -296,8 +304,12 @@ const App: FC = () => {
                     services: payload.services,
                     viewMode: payload.view_mode,
                     balance: payload.balance,
-                    activeModules: payload.active_modules
+                    activeModules: payload.active_modules,
+                    // NEU: Diese beiden Zeilen hinzufügen, damit das Wording übernommen wird
+                    levelTerm: payload.level_term,
+                    vipTerm: payload.vip_term
                 }));
+
                 if (payload.role && loggedInUser) {
                     setLoggedInUser((prev: any) => prev ? { ...prev, role: payload.role } : null);
                 }
@@ -823,6 +835,8 @@ const App: FC = () => {
                     setDogFormModal={setDogFormModal}
                     setDeletingDog={setDeletingDog}
                     levels={appConfigData?.levels || previewConfig.levels}
+                    wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
+                    isDarkMode={isDarkMode}
                 />
             );
         }
@@ -865,6 +879,8 @@ const App: FC = () => {
                         setDogFormModal={setDogFormModal}
                         setDeletingDog={setDeletingDog}
                         levels={appConfigData?.levels || previewConfig.levels}
+                        wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
+                        isDarkMode={isDarkMode}
                     />
                 );
             }

@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useRef, ChangeEvent } from 'react';
 import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
@@ -28,13 +27,19 @@ interface CustomerDetailPageProps {
     setDogFormModal: (modalState: { isOpen: boolean; dog: any | null }) => void;
     setDeletingDog: (dog: any | null) => void;
     levels?: any[];
+    wording?: { level: string; vip: string };
+    isDarkMode?: boolean;
 }
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, onDeleteUserClick,
-    onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels
+    onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
+    wording, isDarkMode
 }) => {
+
+    const levelTerm = wording?.level || 'Level';
+    const vipTerm = wording?.vip || 'VIP';
 
     const nameParts = customer.name ? customer.name.split(' ') : [''];
     const firstName = nameParts[0];
@@ -125,7 +130,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const showLevelUpButton = canLevelUp && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && currentLevelId < 5;
 
     let displayLevel = levelsToUse.find((l: any) => l.id === currentLevelId) || levelsToUse[0];
-    if (customer.is_vip) { displayLevel = VIP_LEVEL; }
+    if (customer.is_vip) { displayLevel = { ...VIP_LEVEL, name: `${vipTerm}-Kunde` }; }
     if (customer.is_expert) { displayLevel = EXPERT_LEVEL; }
 
     const renderRequirement = (req: { id: string; name: string; required: number }, progressProvider: () => { [key: string]: number }) => {
@@ -143,7 +148,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     const LevelUpButtonComponent = ({ customerId, nextLevelId }: { customerId: string, nextLevelId: number }) => (
         <div className="level-up-button-container">
-            <button className="button button-secondary" onClick={() => handleLevelUp(customerId, nextLevelId)}><Icon name="trendingUp" /> Ins nächste Level freischalten</button>
+            <button className="button button-secondary" onClick={() => handleLevelUp(customerId, nextLevelId)}>
+                <Icon name="trendingUp" /> In {levelTerm} {nextLevelId} freischalten
+            </button>
         </div>
     );
     const customerDocuments = customer.documents || [];
@@ -171,9 +178,13 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <button className="button button-outline" onClick={handleStartEditing}>Stammdaten bearbeiten</button>
                                     {currentUser.role === 'admin' && (
                                         customer.is_vip ? (
-                                            <button className="button button-outline" onClick={() => onToggleVipStatus(customer)}>VIP-Status aberkennen</button>
+                                            <button className="button button-outline" onClick={() => onToggleVipStatus(customer)}>
+                                                {vipTerm}-Status aberkennen
+                                            </button>
                                         ) : (
-                                            <button className="button button-secondary" onClick={() => onToggleVipStatus(customer)}>Zum VIP ernennen</button>
+                                            <button className="button button-secondary" onClick={() => onToggleVipStatus(customer)}>
+                                                Zum {vipTerm} ernennen
+                                            </button>
                                         )
                                     )}
                                     {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
@@ -268,13 +279,18 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <div className="overview-tile-grid">
                             <div className="overview-tile balance"><div className="tile-content"><span className="label">Aktuelles Guthaben</span><span className="value">{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div></div>
                             <button className="overview-tile clickable transactions" onClick={() => setIsTxModalOpen(true)}><div className="tile-content"><span className="label">Transaktionen gesamt</span><span className="value">{customerTransactions.length}</span></div></button>
-                            <div className="overview-tile level"><div className="tile-content"><span className="label">{displayLevel?.name}</span><span className="value">{`Level ${customer.level_id || 1}`}</span></div></div>
+                            <div className="overview-tile level">
+                                <div className="tile-content">
+                                    <span className="label">{displayLevel?.name}</span>
+                                    <span className="value">{`${levelTerm} ${customer.level_id || 1}`}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div className="level-progress-container">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2>Level-Fortschritt</h2>
+                            <h2>{levelTerm}-Fortschritt</h2>
                             {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
                                 <div className="preview-selector" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Vorschau:</span>
@@ -302,10 +318,6 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
                                     const requirements = level.requirements || LEVEL_REQUIREMENTS[level.id] || [];
 
-                                    // Prüfen ob Aufstieg möglich ist (nur für das aktuelle Level relevant)
-                                    // Wir filtern hier die "is_additional" raus, 
-                                    // außer wir wollen dass sie auch für areLevelRequirementsMet zählen.
-                                    // areLevelRequirementsMet nutzt alle requirements, also sollten wir das hier auch tun.
                                     const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
                                         const progress = getProgressForLevel(customer, level.id, levelsToUse);
                                         const reqKey = r.id ? String(r.id) : String(r.training_type_id);
@@ -316,11 +328,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     const canLevelUp = isActive && requirementsMet;
                                     const canBecomeExpert = isActive && level.id === 5 && requirementsMet;
 
+                                    // NEU: Klassen für Styling hinzufügen
+                                    const isFirst = index === 0;
+                                    const isLast = index === levelsToUse.length - 1;
 
                                     return (
                                         <React.Fragment key={level.id}>
-                                            <div className={`level-item state-${state}`}>
-                                                {/* Hier nutzen wir den colorIndex für die CSS Klassen */}
+                                            {/* ANPASSUNG: is-first und is-last Klassen hinzugefügt */}
+                                            <div className={`level-item state-${state} ${isFirst ? 'is-first' : ''} ${isLast ? 'is-last' : ''}`}>
                                                 <div className={`level-header header-level-${colorIndex}`}>
                                                     <div className={`level-number level-${colorIndex}`}>{index + 1}</div>
                                                     <div className="level-title">{level.name}</div>
@@ -332,32 +347,26 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                         {requirements.length > 0 ? (
                                                             <ul>
                                                                 {requirements.map((r: any) => {
-                                                                    // Mapping für Backend-Daten auf Frontend-Struktur
-                                                                    const reqId = r.id ? String(r.id) : String(r.training_type_id); // Fallback für ID
-                                                                    // Name kann direkt im Objekt sein oder über training_type relation (vom Backend Config)
+                                                                    const reqId = r.id ? String(r.id) : String(r.training_type_id);
                                                                     const reqName = r.name || (r.training_type ? r.training_type.name : 'Anforderung');
                                                                     const requiredCount = r.required || r.required_count;
-
-                                                                    // Hilfsobjekt für renderRequirement
                                                                     const renderObj = { id: reqId, name: reqName, required: requiredCount };
 
                                                                     return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
                                                                 })}
                                                             </ul>
                                                         ) : (
-                                                            <p className="no-requirements">Keine besonderen Anforderungen in diesem Level.</p>
+                                                            <p className="no-requirements">Keine besonderen Anforderungen in diesem {levelTerm}.</p>
                                                         )}
 
-                                                        {/* Generic Level Up Button */}
                                                         {canLevelUp && level.id < 5 && (
                                                             <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
                                                                 <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), level.id + 1)}>
-                                                                    Level Aufsteigen!
+                                                                    {levelTerm} Aufsteigen!
                                                                 </button>
                                                             </div>
                                                         )}
 
-                                                        {/* Level 5 Expert Button */}
                                                         {level.id === 5 && (canBecomeExpert || customer.is_expert) && (
                                                             <div className="level-up-button-container">
                                                                 {customer.is_expert ? (
@@ -431,7 +440,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     </div>
                     <div className="side-card qr-code-container">
                         <h2>QR-Code</h2>
-                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.id}`} alt="QR Code" />
+                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.id}`} alt="QR Code" style={isDarkMode ? {
+                            filter: 'invert(1)',       // Macht Schwarz zu Weiß und Weiß zu Schwarz
+                            mixBlendMode: 'screen'     // Macht das (neue) Schwarz transparent
+                        } : {}} />
+
                         <p>Scannen, um diese Kundenkarte schnell aufzurufen.</p>
                     </div>
                     <div className="side-card">
