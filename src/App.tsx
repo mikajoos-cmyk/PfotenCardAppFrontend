@@ -109,6 +109,13 @@ const App: FC = () => {
             root.style.setProperty('--primary-color', primary);
             root.style.setProperty('--button-primary-hover', getAdjustedColor(primary, -20));
             root.style.setProperty('--sidebar-active-bg', primary);
+
+            // Derive secondary/blue and danger/red hover colors as well
+            const secondary = '#3B82F6'; // Default brand-blue
+            root.style.setProperty('--button-secondary-hover', getAdjustedColor(secondary, -20));
+
+            const danger = '#ef4444'; // Default brand-red
+            root.style.setProperty('--button-danger-hover', getAdjustedColor(danger, -20));
         }
 
         // 2. Seitenleiste (Separat vom Main Background)
@@ -184,25 +191,26 @@ const App: FC = () => {
             }
 
             // 4. Level Colors Mapping (to adapt to Dark Mode)
+            // We use saturated colors for the solid circles (with white text) to ensure contrast
             // Level 1: Purple
             root.style.setProperty('--level-1-color-bg', 'var(--bg-accent-purple)');
-            root.style.setProperty('--level-1-color', 'var(--text-accent-purple)');
+            root.style.setProperty('--level-1-color', isBgDark ? '#A855F7' : '#9333EA');
 
             // Level 2: Green
             root.style.setProperty('--level-2-color-bg', 'var(--bg-accent-green)');
-            root.style.setProperty('--level-2-color', 'var(--text-accent-green)');
+            root.style.setProperty('--level-2-color', isBgDark ? '#22C55E' : '#16A34A');
 
             // Level 3: Blue
             root.style.setProperty('--level-3-color-bg', 'var(--bg-accent-blue)');
-            root.style.setProperty('--level-3-color', 'var(--text-accent-blue)');
+            root.style.setProperty('--level-3-color', isBgDark ? '#3B82F6' : '#0284C7');
 
             // Level 4: Orange
             root.style.setProperty('--level-4-color-bg', 'var(--bg-accent-orange)');
-            root.style.setProperty('--level-4-color', 'var(--text-accent-orange)');
+            root.style.setProperty('--level-4-color', isBgDark ? '#F97316' : '#D97706');
 
             // Level 5: Yellow
             root.style.setProperty('--level-5-color-bg', 'var(--bg-accent-yellow)');
-            root.style.setProperty('--level-5-color', 'var(--text-accent-yellow)');
+            root.style.setProperty('--level-5-color', isBgDark ? '#D97706' : '#A16207');
 
             // Generic Level States - DECOUPLED from Accent Colors for Badge Readability
             // Badges need Light BG + Dark Text even in Dark Mode (or Dark BG + Light Text, but user wanted "rückgängig")

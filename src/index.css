@@ -49,16 +49,16 @@
     /* rose-50 */
     --level-locked-text: #991B1B;
     /* rose-900 */
-    --level-1-color: #DA70D6;
-    --level-1-color-bg: #F3E6F9;
-    --level-2-color: #32CD32;
-    --level-2-color-bg: #E6F9E6;
-    --level-3-color: #87CEEB;
-    --level-3-color-bg: #E6F7FB;
-    --level-4-color: #CD853F;
-    --level-4-color-bg: #FAF0E6;
-    --level-5-color: var(--text-accent-yellow);
-    --level-5-color-bg: var(--bg-accent-yellow);
+    --level-1-color: #9333EA;
+    --level-1-color-bg: #F5F3FF;
+    --level-2-color: #16A34A;
+    --level-2-color-bg: #F0FDF4;
+    --level-3-color: #0284C7;
+    --level-3-color-bg: #F0F9FF;
+    --level-4-color: #D97706;
+    --level-4-color-bg: #FFFBEB;
+    --level-5-color: #A16207;
+    --level-5-color-bg: #FEFCE8;
 }
 
 * {
@@ -150,8 +150,8 @@ body {
 .form-group input:focus,
 .form-input:focus {
     outline: none;
-    border-color: var(--brand-blue);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--bg-accent-green);
 }
 
 /* --- Main App Layout --- */
@@ -434,7 +434,7 @@ body {
 }
 
 .preview-action-button:hover {
-    background-color: #2563eb;
+    background-color: var(--button-secondary-hover, #2563eb);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
@@ -522,7 +522,7 @@ body {
 }
 
 .button-danger:hover {
-    background-color: #dc2626;
+    background-color: var(--button-danger-hover, #dc2626);
 }
 
 .button-as-link {
@@ -639,9 +639,7 @@ body {
 }
 
 /* Hover effect on the card itself when inside button */
-.kpi-card-button:hover .kpi-card {
-    /* Optional: Add hover effect to inner card if needed */
-}
+
 
 .kpi-card .icon-bg {
     display: none;
@@ -868,7 +866,7 @@ body {
 }
 
 .customer-list tr:hover {
-    background-color: #f9fafb;
+    background-color: var(--card-background-hover);
 }
 
 .customer-list .customer-info {
@@ -919,8 +917,8 @@ body {
 }
 
 .back-button:hover {
-    background-color: #f3f4f6;
-    border-color: #d1d5db;
+    background-color: var(--card-background-hover);
+    border-color: var(--border-color);
 }
 
 .detail-header-info {
@@ -1029,8 +1027,9 @@ body {
 }
 
 .overview-tile.transactions:hover {
-    background-color: #DBEAFE;
-    border-color: #93C5FD;
+    background-color: var(--bg-accent-blue);
+    border-color: var(--text-accent-blue);
+    opacity: 0.8;
 }
 
 .overview-tile.level {
@@ -1447,8 +1446,8 @@ body {
 }
 
 .tx-button:hover:not(:disabled) {
-    border-color: var(--brand-green);
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--bg-accent-green);
     transform: translateY(-2px);
 }
 
@@ -1468,21 +1467,29 @@ body {
 }
 
 .tx-button.topup {
-    background-color: var(--primary-bg-light, #f0fdf4);
-    border-color: var(--primary-bg-light, #bbf7d0);
+    background-color: var(--brand-green);
+    border-color: var(--brand-green);
+    color: white;
 }
 
 .tx-button.topup .amount {
-    color: var(--brand-green);
+    color: white;
+    font-weight: 700;
+}
+
+.tx-button.topup .info .bonus {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .tx-button.debit {
-    background-color: var(--brand-red-light, #fff1f2);
-    border-color: var(--brand-red-light, #fecdd3);
+    background-color: var(--brand-red);
+    border-color: var(--brand-red);
+    color: white;
 }
 
 .tx-button.debit .amount {
-    color: var(--brand-red);
+    color: white;
+    font-weight: 700;
 }
 
 .tx-section.debits {
@@ -1750,7 +1757,7 @@ body {
 }
 
 .action-icon-btn:hover {
-    background-color: #f1f5f9;
+    background-color: var(--card-background-hover);
     color: var(--text-primary);
 }
 
@@ -1785,7 +1792,7 @@ body {
 }
 
 .document-list li:hover {
-    background-color: #f9fafb;
+    background-color: var(--card-background-hover);
 }
 
 .document-list .doc-icon {
@@ -1888,7 +1895,7 @@ body {
 }
 
 .modal-header.blue {
-    background-color: var(--brand-blue);
+    background-color: var(--primary-color);
     color: #fff;
 }
 
@@ -1902,12 +1909,21 @@ body {
     color: #fff;
 }
 
-.modal-close-button {
+.close-button {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
     color: rgba(255, 255, 255, 0.9);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-button:hover {
+    color: #fff;
+    transform: scale(1.1);
 }
 
 /* === MODAL BODY (JETZT SCROLLBAR) === */
@@ -1936,7 +1952,7 @@ body {
     justify-content: flex-end;
     flex-wrap: wrap;
     padding: 1rem 1.75rem;
-    background-color: #f9fafb;
+    background-color: var(--card-background);
     border-top: 1px solid var(--border-color);
 }
 
@@ -2952,4 +2968,67 @@ input:checked+.slider:before {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--text-light);
+}
+
+/* --- Global Modal Styling Updates --- */
+
+/* 1. Rounded Corners */
+.modal-content,
+.appointment-modal-card {
+    border-radius: 1.5rem !important;
+    overflow: hidden;
+}
+
+/* 2. Close Button Styles (Cross) */
+.modal-header .close-button,
+.close-button {
+    /* Reset button styles */
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.modal-header .close-button:hover,
+.close-button:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Target the icon to ensure it looks like a simple cross (2 lines) */
+.modal-header .close-button svg,
+.close-button svg {
+    stroke-width: 2.5px;
+    fill: none;
+    width: 24px;
+    height: 24px;
+}
+
+/* 3. Branding/Color Adaptation */
+
+/* Default (Light Header) -> Dark Cross */
+.modal-header .close-button,
+.close-button {
+    color: var(--text-primary) !important;
+}
+
+/* Colored Headers -> Light Cross */
+.modal-header.green .close-button,
+.modal-header.blue .close-button,
+.modal-header.purple .close-button,
+.modal-header.orange .close-button,
+.modal-header.red .close-button {
+    color: white !important;
+}
+
+.modal-header.green .close-button:hover,
+.modal-header.blue .close-button:hover,
+.modal-header.purple .close-button:hover,
+.modal-header.orange .close-button:hover,
+.modal-header.red .close-button:hover {
+    background-color: rgba(255, 255, 255, 0.2) !important;
 }
