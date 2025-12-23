@@ -1,4 +1,3 @@
-
 import React, { FC, useState, useEffect, useMemo } from 'react';
 import { supabase } from './lib/supabase';
 import { apiClient } from './lib/api';
@@ -84,6 +83,7 @@ const App: FC = () => {
     const [appConfigData, setAppConfigData] = useState<any>(null);
 
     const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
     const togglePreviewRole = () => {
         if (!loggedInUser) return;
@@ -98,15 +98,13 @@ const App: FC = () => {
         setCustomerPage('overview');
     };
 
-    const [isDarkMode, setIsDarkMode] = useState(false);
-
     // --- ZENTRALE THEME ENGINE ---
     const applyTheme = (config: any) => {
         const root = document.documentElement;
-        const branding = config.branding || {};
-        const primary = branding.primary_color || config.primary_color || '#22C55E';
-        const bg = branding.background_color || config.background_color || '#F8FAFC';
-        const sidebar = branding.sidebar_color || config.sidebar_color || '#1E293B';
+        // Fallback-Logik: Nutze 'branding' aus dem Config-Objekt ODER direkte Properties (für Preview)
+        const primary = config.branding?.primary_color || config.primary_color || '#22C55E';
+        const bg = config.branding?.background_color || config.background_color || '#F8FAFC';
+        const sidebar = config.branding?.sidebar_color || config.sidebar_color || '#1E293B';
 
         // 1. Primärfarbe (Buttons & Akzente)
         if (primary) {
@@ -114,41 +112,36 @@ const App: FC = () => {
             root.style.setProperty('--button-primary-hover', getAdjustedColor(primary, -20));
             root.style.setProperty('--sidebar-active-bg', primary);
 
-            // Derive secondary/blue and danger/red hover colors as well
-            const secondary = '#3B82F6'; // Default brand-blue
+            const secondary = '#3B82F6';
             root.style.setProperty('--button-secondary-hover', getAdjustedColor(secondary, -20));
 
-            const danger = '#ef4444'; // Default brand-red
+            const danger = '#ef4444';
             root.style.setProperty('--button-danger-hover', getAdjustedColor(danger, -20));
         }
 
-        // 2. Seitenleiste (Separat vom Main Background)
+        // 2. Seitenleiste
         if (sidebar) {
             root.style.setProperty('--sidebar-bg', sidebar);
-
-            // Berechne optimale Kontrastfarbe (Weiß oder Dunkel)
             const contrastColor = getContrastColor(sidebar);
-            const isDark = contrastColor === '#FFFFFF';
+            const isDarkSidebar = contrastColor === '#FFFFFF';
 
-            if (isDark) {
-                // Hintergrund ist Dunkel -> Helle Schrift
+            if (isDarkSidebar) {
                 root.style.setProperty('--sidebar-text', 'rgba(255, 255, 255, 0.7)');
                 root.style.setProperty('--sidebar-text-hover', '#FFFFFF');
                 root.style.setProperty('--sidebar-hover-bg', 'rgba(255,255,255,0.1)');
-                root.style.setProperty('--sidebar-border', 'rgba(255,255,255,0.1)');
             } else {
-                // Hintergrund ist Hell -> Dunkle Schrift
-                root.style.setProperty('--sidebar-text', 'rgba(15, 23, 42, 0.7)'); // slate-950 mit Opacity
-                root.style.setProperty('--sidebar-text-hover', '#0F172A'); // slate-950 volldeckend
+                root.style.setProperty('--sidebar-text', 'rgba(15, 23, 42, 0.7)');
+                root.style.setProperty('--sidebar-text-hover', '#0F172A');
                 root.style.setProperty('--sidebar-hover-bg', 'rgba(0,0,0,0.05)');
-                root.style.setProperty('--sidebar-border', 'rgba(0,0,0,0.1)');
             }
         }
 
         // 3. App Hintergrund & UI-Elemente
         if (bg) {
+            // HIER IST DER FIX: State setzen!
             const isBgDark = isDarkColor(bg);
             setIsDarkMode(isBgDark);
+
             root.style.setProperty('--background-color', bg);
 
             if (isBgDark) {
@@ -166,12 +159,11 @@ const App: FC = () => {
                 root.style.setProperty('--bg-accent-purple', 'rgba(168, 85, 247, 0.15)');
                 root.style.setProperty('--bg-accent-yellow', 'rgba(234, 179, 8, 0.15)');
 
-                // Textfarben auf Akzenten (Hell für Kontrast auf dunklem Grund)
-                root.style.setProperty('--text-accent-green', '#DCFCE7'); // Light Green
-                root.style.setProperty('--text-accent-orange', '#FFEDD5'); // Light Orange
-                root.style.setProperty('--text-accent-blue', '#DBEAFE'); // Light Blue
-                root.style.setProperty('--text-accent-purple', '#F3E8FF'); // Light Purple
-                root.style.setProperty('--text-accent-yellow', '#FEF9C3'); // Light Yellow
+                root.style.setProperty('--text-accent-green', '#DCFCE7');
+                root.style.setProperty('--text-accent-orange', '#FFEDD5');
+                root.style.setProperty('--text-accent-blue', '#DBEAFE');
+                root.style.setProperty('--text-accent-purple', '#F3E8FF');
+                root.style.setProperty('--text-accent-yellow', '#FEF9C3');
             } else {
                 // Light Mode Logik
                 root.style.setProperty('--text-primary', '#0F172A');
@@ -180,14 +172,12 @@ const App: FC = () => {
                 root.style.setProperty('--card-background-hover', '#F1F5F9');
                 root.style.setProperty('--border-color', '#E2E8F0');
 
-                // Farbige Akzente (Pastell für Lightmode)
                 root.style.setProperty('--bg-accent-green', '#F0FDF4');
                 root.style.setProperty('--bg-accent-orange', '#FFF7ED');
                 root.style.setProperty('--bg-accent-blue', '#EFF6FF');
                 root.style.setProperty('--bg-accent-purple', '#FAF5FF');
                 root.style.setProperty('--bg-accent-yellow', '#FEFCE8');
 
-                // Textfarben auf Akzenten (Dunkel für Kontrast)
                 root.style.setProperty('--text-accent-green', '#166534');
                 root.style.setProperty('--text-accent-orange', '#9A3412');
                 root.style.setProperty('--text-accent-blue', '#1E40AF');
@@ -195,50 +185,35 @@ const App: FC = () => {
                 root.style.setProperty('--text-accent-yellow', '#854D0E');
             }
 
-            // 4. Level Colors Mapping (to adapt to Dark Mode)
-            // We use saturated colors for the solid circles (with white text) to ensure contrast
-            // Level 1: Purple
+            // 4. Level Colors
             root.style.setProperty('--level-1-color-bg', 'var(--bg-accent-purple)');
             root.style.setProperty('--level-1-color', isBgDark ? '#A855F7' : '#9333EA');
 
-            // Level 2: Green
             root.style.setProperty('--level-2-color-bg', 'var(--bg-accent-green)');
             root.style.setProperty('--level-2-color', isBgDark ? '#22C55E' : '#16A34A');
 
-            // Level 3: Blue
             root.style.setProperty('--level-3-color-bg', 'var(--bg-accent-blue)');
             root.style.setProperty('--level-3-color', isBgDark ? '#3B82F6' : '#0284C7');
 
-            // Level 4: Orange
             root.style.setProperty('--level-4-color-bg', 'var(--bg-accent-orange)');
             root.style.setProperty('--level-4-color', isBgDark ? '#F97316' : '#D97706');
 
-            // Level 5: Yellow
             root.style.setProperty('--level-5-color-bg', 'var(--bg-accent-yellow)');
             root.style.setProperty('--level-5-color', isBgDark ? '#D97706' : '#A16207');
 
-            // Generic Level States - DECOUPLED from Accent Colors for Badge Readability
-            // Badges need Light BG + Dark Text even in Dark Mode (or Dark BG + Light Text, but user wanted "rückgängig")
-            // Assuming user wants legibility:
+            // Generic Level States
             if (isBgDark) {
-                // Explicitly set readable colors for badges in Dark Mode
-                root.style.setProperty('--level-completed-bg', '#DCFCE7'); // Light Green
-                root.style.setProperty('--level-completed-text', '#166534'); // Dark Green
-
-                root.style.setProperty('--level-active-bg', '#DCFCE7'); // Light Green
-                root.style.setProperty('--level-active-text', '#166534'); // Dark Green
-            } else {
-                root.style.setProperty('--level-completed-bg', 'var(--bg-accent-green)');
-                root.style.setProperty('--level-completed-text', 'var(--text-accent-green)');
-
-                root.style.setProperty('--level-active-bg', 'var(--bg-accent-green)');
-                root.style.setProperty('--level-active-text', 'var(--text-accent-green)');
-            }
-
-            if (isBgDark) {
+                root.style.setProperty('--level-completed-bg', '#DCFCE7');
+                root.style.setProperty('--level-completed-text', '#166534');
+                root.style.setProperty('--level-active-bg', '#DCFCE7');
+                root.style.setProperty('--level-active-text', '#166534');
                 root.style.setProperty('--level-locked-bg', 'rgba(254, 242, 242, 0.1)');
                 root.style.setProperty('--level-locked-text', '#991B1B');
             } else {
+                root.style.setProperty('--level-completed-bg', 'var(--bg-accent-green)');
+                root.style.setProperty('--level-completed-text', 'var(--text-accent-green)');
+                root.style.setProperty('--level-active-bg', 'var(--bg-accent-green)');
+                root.style.setProperty('--level-active-text', 'var(--text-accent-green)');
                 root.style.setProperty('--level-locked-bg', '#FEF2F2');
                 root.style.setProperty('--level-locked-text', '#991B1B');
             }
@@ -251,14 +226,13 @@ const App: FC = () => {
             const isPreview = new URLSearchParams(window.location.search).get('mode') === 'preview';
 
             if (isPreview) {
-                // Check if config is passed via hash (e.g. when opening in new tab)
                 const hash = window.location.hash;
                 if (hash.startsWith('#config=')) {
                     try {
                         const encoded = hash.substring(8);
                         const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
 
-                        applyTheme(decoded);
+                        applyTheme(decoded); // Hier werden auch die Farben gesetzt
                         setSchoolName(decoded.school_name || 'PfotenCard');
                         setPreviewConfig(prev => ({
                             ...prev,
@@ -290,11 +264,11 @@ const App: FC = () => {
 
         loadConfig();
 
-        // Preview Listener
+        // Preview Listener (Echtzeit-Updates)
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'UPDATE_CONFIG') {
                 const payload = event.data.payload;
-                applyTheme(payload);
+                applyTheme(payload); // WICHTIG: Dies setzt setIsDarkMode basierend auf der Payload
                 setSchoolName(payload.school_name || 'PfotenCard');
 
                 setPreviewConfig(prev => ({
@@ -305,7 +279,6 @@ const App: FC = () => {
                     viewMode: payload.view_mode,
                     balance: payload.balance,
                     activeModules: payload.active_modules,
-                    // NEU: Diese beiden Zeilen hinzufügen, damit das Wording übernommen wird
                     levelTerm: payload.level_term,
                     vipTerm: payload.vip_term
                 }));
@@ -805,7 +778,6 @@ const App: FC = () => {
     const renderContent = () => {
         if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
             const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
-            // In Preview/Demo mode, loggedInUser might be the mock customer itself, so we use it if search fails.
             if (!customer) return <div>Lade Daten...</div>;
 
             if (customerPage === 'transactions') {

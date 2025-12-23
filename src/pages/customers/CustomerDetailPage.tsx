@@ -451,7 +451,10 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 maxWidth: '120px',
                                 margin: '0.5rem auto',
                                 borderRadius: '0.5rem',
-                                filter: isDarkMode ? 'invert(1)' : 'none'
+                                // Invertiert die Farben (Schwarz->Weiß, Weiß->Schwarz)
+                                filter: isDarkMode ? 'invert(1)' : 'none',
+                                // "Screen" macht Schwarz transparent und lässt Weiß sichtbar -> Perfekt für Dark Mode
+                                mixBlendMode: isDarkMode ? 'screen' : 'normal'
                             }}
                         />
                         <p>Scannen, um diese Kundenkarte schnell aufzurufen.</p>
