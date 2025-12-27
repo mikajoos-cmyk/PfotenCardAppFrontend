@@ -221,11 +221,19 @@ export default function AppointmentsPage({ user, token }: { user: User | any, to
         }
 
         try {
-            const appts = await apiClient.getAppointments(token);
+            const [appts, bookings] = await Promise.all([
+                apiClient.getAppointments(token),
+                apiClient.getMyBookings(token).catch(e => {
+                    console.warn("Could not fetch user bookings:", e);
+                    return [];
+                })
+            ]);
             setAppointments(appts);
+            if (Array.isArray(bookings)) {
+                setMyBookings(new Set(bookings.map((b: any) => b.appointment_id)));
+            }
         } catch (e: any) {
             console.error("API Error:", e);
-            // Fallback falls API scheitert (optional, hier laden wir einfach leer oder Fehler)
         } finally {
             setLoading(false);
         }

@@ -265,7 +265,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     </div>
                                 </div>
                                 <div className="data-field">
-                                    <img src="/paw.png" alt="Paw" style={{ width: '24px', height: '24px' }} />
+                                    <Icon name="paw" />
                                     <div className="field-content">
                                         <label>Rasse</label>
                                         {isEditing ? <input type="text" name="breed" value={editedData.breed} onChange={handleInputChange} /> : <p>{dog?.breed || '-'}</p>}

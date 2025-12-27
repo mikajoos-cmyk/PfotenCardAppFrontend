@@ -48,7 +48,13 @@ const Sidebar: FC<SidebarProps> = ({
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <img src={logoUrl || "/paw.png"} alt="PfotenCard Logo" className="logo" width="40" height="40" />
+                {logoUrl && !logoUrl.includes('paw.png') ? (
+                    <img src={logoUrl} alt="PfotenCard Logo" className="logo" width="40" height="40" />
+                ) : (
+                    <div className="logo-icon-container">
+                        <Icon name="paw" width={32} height={32} />
+                    </div>
+                )}
                 <h2>{schoolName || 'PfotenCard'}</h2>
                 <button className="sidebar-close-button" onClick={() => setSidebarOpen(false)} aria-label="Menü schließen">
                     <Icon name="x" />

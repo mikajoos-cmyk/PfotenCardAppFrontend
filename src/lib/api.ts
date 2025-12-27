@@ -192,6 +192,10 @@ export const apiClient = {
         return apiClient.get('/api/appointments', token);
     },
 
+    getMyBookings: async (token: string | null) => {
+        return apiClient.get('/api/users/me/bookings', token);
+    },
+
     createAppointment: async (data: any, token: string | null) => {
         return apiClient.post('/api/appointments', data, token);
     },

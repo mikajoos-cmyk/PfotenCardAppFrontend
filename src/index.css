@@ -109,6 +109,19 @@ body {
     max-width: 450px;
 }
 
+.auth-logo-icon {
+    width: 80px;
+    height: 80px;
+    background: white;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .auth-card h1 {
     text-align: center;
     font-size: 1.8rem;
@@ -213,10 +226,22 @@ body {
     position: relative;
 }
 
-.sidebar-header .logo {
-    width: 40px !important;
-    height: 40px !important;
+.sidebar-header .logo,
+.logo-icon-container {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--primary-color);
+    background: white;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.logo-icon-container svg {
+    width: 28px;
+    height: 28px;
 }
 
 .sidebar-nav {

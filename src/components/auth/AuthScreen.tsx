@@ -3,6 +3,7 @@ import React, { FC, FormEvent, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/api';
 import PasswordInput from '../ui/PasswordInput';
+import Icon from '../ui/Icon';
 
 interface AuthScreenProps {
     onLoginStart: () => void;
@@ -138,7 +139,13 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
     return (
         <div className="auth-container">
             <div className="auth-card">
-                <img src={logoUrl || "/paw.png"} alt="PfotenCard Logo" style={{ width: '100px', height: '100px', margin: '0 auto 1rem', display: 'block' }} />
+                {logoUrl && !logoUrl.includes('paw.png') ? (
+                    <img src={logoUrl} alt="PfotenCard Logo" style={{ width: '100px', height: '100px', margin: '0 auto 1rem', display: 'block', objectFit: 'contain' }} />
+                ) : (
+                    <div className="auth-logo-icon">
+                        <Icon name="paw" width={80} height={80} />
+                    </div>
+                )}
                 <h1>{schoolName || "PfotenCard"}</h1>
                 <p className="subtitle">
                     {view === 'login' && 'Anmelden'}

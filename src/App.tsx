@@ -32,7 +32,7 @@ import UsersPage from './pages/admin/UsersPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 
 const getFullImageUrl = (url?: string) => {
-    if (!url) return "/paw.png";
+    if (!url) return null;
     if (url.startsWith("http")) return url;
     return `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}${url}`;
 };
@@ -40,7 +40,20 @@ const getFullImageUrl = (url?: string) => {
 const App: FC = () => {
     const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
-    const [view, setView] = useState<View>({ page: 'dashboard' });
+
+    // Initial View basierend auf URL bestimmen
+    const [view, setView] = useState<View>(() => {
+        const path = window.location.pathname;
+        const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
+        if (match && match[1]) {
+            const identifier = match[1];
+            // Wenn es eine Zahl ist, können wir die Seite schon mal setzen
+            // Wenn es eine UUID ist, laden wir die Daten im useEffect nach
+            return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
+        }
+        return { page: 'dashboard' };
+    });
+
     const [customers, setCustomers] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -349,12 +362,16 @@ const App: FC = () => {
     useEffect(() => {
         if (loggedInUser && loggedInUser.role !== 'customer' && loggedInUser.role !== 'kunde') {
             const path = window.location.pathname;
-            // Match both integer IDs and UUIDs
             const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
 
             if (match && match[1]) {
                 const identifier = match[1];
                 const isUuid = identifier.includes('-');
+
+                // Falls wir schon auf der richtigen Seite sind und kein UUID-Lookup brauchen, überspringen
+                if (view.page === 'customers' && view.subPage === 'detail' && view.customerId === identifier && !isUuid) {
+                    return;
+                }
 
                 setServerLoading({ active: true, message: 'Lade Kundendaten...' });
 
@@ -364,13 +381,19 @@ const App: FC = () => {
                     .then(customerData => {
                         setDirectAccessedCustomer(customerData);
                         setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
-                        // Clean up URL to standard integer ID format for the rest of the app logic
-                        window.history.replaceState({}, '', `/customer/${customerData.id}`);
+                        // URL auf sauberes Format (ID) bringen
+                        if (isUuid) {
+                            window.history.replaceState({}, '', `/customer/${customerData.id}`);
+                        }
                     })
                     .catch(err => {
                         console.error("Fehler beim Laden des Kunden via QR-Code:", err);
-                        alert("Kunde konnte nicht gefunden oder geladen werden.");
-                        window.history.pushState({}, '', '/');
+                        // Nur umleiten wenn wir wirklich eine UUID hatten die nicht gefunden wurde
+                        if (isUuid) {
+                            alert("Kunde konnte nicht gefunden oder geladen werden.");
+                            window.history.pushState({}, '', '/');
+                            setView({ page: 'dashboard' });
+                        }
                     })
                     .finally(() => {
                         setServerLoading({ active: false, message: '' });
@@ -1009,7 +1032,11 @@ const App: FC = () => {
                             <Icon name="menu" />
                         </button>
                         <div className="mobile-header-logo">
-                            <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                            {getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl) ? (
+                                <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl) || ''} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                            ) : (
+                                <Icon name="paw" width={24} height={24} />
+                            )}
                             <h2>{schoolName}</h2>
                         </div>
                     </header>
