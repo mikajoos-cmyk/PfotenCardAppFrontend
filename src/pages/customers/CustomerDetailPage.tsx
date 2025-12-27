@@ -507,7 +507,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             <div className="doc-size">{doc.file_type}</div>
                                         </div>
                                         <div className="doc-actions">
-                                            <button className="action-icon-btn delete" onClick={() => onDeleteDocument(doc)} aria-label="Löschen"><Icon name="trash" /></button>
+                                            <button className="action-icon-btn delete" onClick={() => setDeletingDocument(doc)} aria-label="Löschen"><Icon name="trash" /></button>
                                         </div>
                                     </li>
                                 ))}

@@ -502,6 +502,34 @@ const App: FC = () => {
         fetchAppData();
     }, [authToken]);
 
+    // --- BROWSER TAB BRANDING ---
+    useEffect(() => {
+        // Update Title - Only if schoolName is loaded
+        if (schoolName) {
+            document.title = `${schoolName} - Pfotencard`;
+        }
+
+        // Update Favicon
+        const rawLogoUrl = appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl;
+        const fullLogoUrl = getFullImageUrl(rawLogoUrl);
+
+        if (fullLogoUrl) {
+            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = 'icon';
+                document.head.appendChild(link);
+            }
+            link.href = fullLogoUrl;
+        } else {
+            // Fallback to default paw
+            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+            if (link) {
+                link.href = '/paw.png';
+            }
+        }
+    }, [schoolName, appConfigData, previewConfig.logoUrl]);
+
     const handleLoginSuccess = (token: string, user: any) => {
         localStorage.setItem('authToken', token);
         setAuthToken(token);
@@ -764,7 +792,8 @@ const App: FC = () => {
             console.log('Dokument erfolgreich gelöscht!');
         } catch (error) {
             console.error("Fehler beim Löschen des Dokuments:", error);
-            alert(`Fehler: ${error}`);
+            const msg = error instanceof Error ? error.message : String(error);
+            alert(`Fehler beim Löschen: ${msg}`);
         }
     };
 

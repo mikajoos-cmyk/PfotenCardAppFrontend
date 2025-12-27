@@ -113,7 +113,11 @@ export const apiClient = {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `API request failed`);
+            let errorMsg = errorData.detail || `API request failed`;
+            if (typeof errorMsg === 'object') {
+                errorMsg = JSON.stringify(errorMsg);
+            }
+            throw new Error(errorMsg);
         }
         return response.json();
     },
