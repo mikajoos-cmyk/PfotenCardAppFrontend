@@ -665,20 +665,33 @@ const App: FC = () => {
             alert(`Fehler: ${error}`);
         }
     };
-
     const handleUploadDocuments = async (files: File[], customerId: string) => {
         if (!authToken) return;
 
-        const formData = new FormData();
-        files.forEach(file => formData.append('files', file));
+        // Lade-Spinner anzeigen (optional, falls du einen State dafür hast)
+        // setServerLoading({ active: true, message: 'Lade Dokumente hoch...' });
 
         try {
-            await apiClient.uploadDocuments(customerId, formData, authToken);
+            // WICHTIG: Das Backend erwartet Einzel-Uploads mit dem Feldnamen 'upload_file'
+            for (const file of files) {
+                const formData = new FormData();
+                // Der Key muss exakt 'upload_file' heißen, passend zu main.py: upload_file: UploadFile = File(...)
+                formData.append('upload_file', file);
+
+                // Wir warten auf jeden Upload einzeln
+                await apiClient.uploadDocuments(customerId, formData, authToken);
+            }
+
             await fetchAppData();
             console.log('Dokumente erfolgreich hochgeladen!');
         } catch (error) {
             console.error("Fehler beim Hochladen der Dokumente:", error);
-            alert(`Fehler: ${error}`);
+            // Bei [object Object] Fehlern ist es oft hilfreich, das Objekt in der Konsole zu inspecten oder error.message zu nutzen
+            const errorMsg = error instanceof Error ? error.message : "Unbekannter Fehler";
+            alert(`Fehler beim Upload: ${errorMsg}`);
+        } finally {
+            // Spinner ausblenden
+            setServerLoading({ active: false, message: '' });
         }
     };
 
