@@ -456,10 +456,16 @@ const App: FC = () => {
         }
     }, [view.customerId]);
 
-    const fetchAppData = async () => {
+    const fetchAppData = async (forceLoadingScreen: boolean = false) => {
         if (isPreviewMode) return;
         if (!authToken) { setIsLoading(false); return; }
-        setIsLoading(true);
+
+        // Nur initial laden oder wenn explizit gewünscht
+        const shouldShowFullLoader = forceLoadingScreen || (isLoading && customers.length === 0);
+
+        if (shouldShowFullLoader) {
+            setIsLoading(true);
+        }
 
         try {
             // Parallel Config und User laden
@@ -492,7 +498,7 @@ const App: FC = () => {
             }
         } catch (error) {
             console.error("Fehler beim Laden:", error);
-            handleLogout();
+            if (shouldShowFullLoader) handleLogout();
         } finally {
             setIsLoading(false);
         }
@@ -581,22 +587,55 @@ const App: FC = () => {
 
         if (!view.customerId || !authToken) return;
 
-        // WICHTIG: Das Backend erwartet "training_type_id" für Achievements!
-        const transactionPayload = {
+        // --- OPTIMISTIC UI ---
+        const tempId = `temp-${Date.now()}`;
+        const amount = txData.amount; // HIER FIX: Immer txData.amount nutzen, da Bonus bereits enthalten ist
+        const previousTransactions = [...transactions];
+        const previousCustomers = [...customers];
+        const previousLoggedInUser = loggedInUser ? { ...loggedInUser } : null;
+
+        const optimisticTx = {
+            id: tempId,
             user_id: parseInt(view.customerId.replace('cust-', ''), 10) || 0,
             type: txData.type === 'topup' ? 'Aufladung' : txData.title,
             description: txData.title,
-            amount: txData.baseAmount || txData.amount,
+            amount: amount,
+            date: new Date().toISOString(),
+            booked_by_id: loggedInUser?.id
+        };
+
+        // UI sofort aktualisieren
+        setTransactions(prev => [optimisticTx, ...prev]);
+        setCustomers(prev => prev.map(c => {
+            if (String(c.id) === view.customerId) {
+                return { ...c, balance: (c.balance || 0) + amount };
+            }
+            return c;
+        }));
+        if (loggedInUser && String(loggedInUser.id) === view.customerId) {
+            setLoggedInUser((prev: any) => ({ ...prev, balance: (prev.balance || 0) + amount }));
+        }
+
+        const transactionPayload = {
+            user_id: optimisticTx.user_id,
+            type: optimisticTx.type,
+            description: optimisticTx.description,
+            amount: optimisticTx.amount,
             training_type_id: txData.meta?.requirementId ? parseInt(txData.meta.requirementId) : null
         };
 
         try {
             await apiClient.post('/api/transactions', transactionPayload, authToken);
             console.log('Transaktion erfolgreich gebucht!');
-            await fetchAppData();
+            // Im Hintergrund syncen, um echte IDs zu erhalten
+            fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Buchen der Transaktion:", error);
-            alert(`Fehler: ${error}`);
+            // Rollback
+            setTransactions(previousTransactions);
+            setCustomers(previousCustomers);
+            if (previousLoggedInUser) setLoggedInUser(previousLoggedInUser);
+            alert(`Fehler beim Buchen: ${error}`);
         }
     };
 
@@ -717,6 +756,32 @@ const App: FC = () => {
             console.log('Preview-Daten erfolgreich lokal gespeichert!');
             return;
         }
+
+        // --- OPTIMISTIC UI ---
+        const previousCustomers = [...customers];
+        const previousLoggedInUser = loggedInUser ? { ...loggedInUser } : null;
+
+        setCustomers(prev => prev.map(c => {
+            if (c.id === userToUpdate.id) {
+                const updatedC = { ...c, ...userToUpdate };
+                if (dogToUpdate) {
+                    // Update existing dog or add new one optimistically
+                    const existingDogIndex = updatedC.dogs?.findIndex((d: any) => d.id === dogToUpdate.id);
+                    if (existingDogIndex !== undefined && existingDogIndex > -1) {
+                        updatedC.dogs[existingDogIndex] = { ...updatedC.dogs[existingDogIndex], ...dogToUpdate };
+                    } else {
+                        updatedC.dogs = [dogToUpdate, ...(updatedC.dogs || [])];
+                    }
+                }
+                return updatedC;
+            }
+            return c;
+        }));
+
+        if (loggedInUser && loggedInUser.id === userToUpdate.id) {
+            setLoggedInUser((prev: any) => ({ ...prev, ...userToUpdate }));
+        }
+
         try {
             const userPayload = {
                 name: userToUpdate.name,
@@ -746,40 +811,34 @@ const App: FC = () => {
                 }
             }
 
-            await fetchAppData();
             console.log('Kundendaten erfolgreich gespeichert!');
+            fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Speichern der Kundendaten:", error);
-            alert(`Fehler: ${error}`);
+            // Rollback
+            setCustomers(previousCustomers);
+            if (previousLoggedInUser) setLoggedInUser(previousLoggedInUser);
+            alert(`Fehler beim Speichern: ${error}`);
         }
     };
     const handleUploadDocuments = async (files: File[], customerId: string) => {
         if (!authToken) return;
 
-        // Lade-Spinner anzeigen (optional, falls du einen State dafür hast)
-        // setServerLoading({ active: true, message: 'Lade Dokumente hoch...' });
-
         try {
-            // WICHTIG: Das Backend erwartet Einzel-Uploads mit dem Feldnamen 'upload_file'
             for (const file of files) {
                 const formData = new FormData();
-                // Der Key muss exakt 'upload_file' heißen, passend zu main.py: upload_file: UploadFile = File(...)
                 formData.append('upload_file', file);
-
-                // Wir warten auf jeden Upload einzeln
                 await apiClient.uploadDocuments(customerId, formData, authToken);
             }
 
-            await fetchAppData();
             console.log('Dokumente erfolgreich hochgeladen!');
+            fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Hochladen der Dokumente:", error);
-            // Bei [object Object] Fehlern ist es oft hilfreich, das Objekt in der Konsole zu inspecten oder error.message zu nutzen
             const errorMsg = error instanceof Error ? error.message : "Unbekannter Fehler";
             alert(`Fehler beim Upload: ${errorMsg}`);
         } finally {
-            // Spinner ausblenden
-            setServerLoading({ active: false, message: '' });
+            // Nichts weiter zu tun
         }
     };
 
@@ -1038,6 +1097,7 @@ const App: FC = () => {
                     isPreviewMode={isPreviewMode}
                     onToggleRole={togglePreviewRole}
                     activeModules={activeModules}
+                    isSyncing={isSyncing}
                 />
             ) : (
                 <Sidebar
