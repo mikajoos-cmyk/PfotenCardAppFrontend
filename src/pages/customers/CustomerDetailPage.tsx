@@ -29,13 +29,15 @@ interface CustomerDetailPageProps {
     levels?: any[];
     wording?: { level: string; vip: string };
     isDarkMode?: boolean;
+    // NEU
+    isPreviewMode?: boolean;
 }
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, authToken, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
-    wording, isDarkMode
+    wording, isDarkMode, isPreviewMode
 }) => {
 
     const levelTerm = wording?.level || 'Level';
@@ -47,6 +49,22 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const dog = customer.dogs && customer.dogs.length > 0 ? customer.dogs[0] : null;
     const dogName = dog?.name || '-';
 
+    // Levels laden oder Mock nutzen
+    const levelsToUse = levels || LEVELS;
+
+    // FIX: Initiales Level bestimmen (vermeidet Fehler, wenn ID 1 nicht existiert)
+    const getInitialLevelId = () => {
+        if (customer.level_id) return customer.level_id;
+        if (customer.current_level_id) return customer.current_level_id;
+        // Wenn kein Level gesetzt ist, nimm das mit dem niedrigsten Rang (Standard: Level 1)
+        if (levelsToUse.length > 0) {
+            // Sortiere sicherheitshalber nach Rang
+            const sortedLevels = [...levelsToUse].sort((a: any, b: any) => (a.rank_order || a.id) - (b.rank_order || b.id));
+            return sortedLevels[0].id;
+        }
+        return 1; // Fallback
+    };
+
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState({
         firstName: '', lastName: '', email: '', phone: '', dogName: '', chip: '', breed: '', birth_date: ''
@@ -56,13 +74,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const [deletingDocument, setDeletingDocument] = useState<DocumentFile | null>(null);
     const [isTxModalOpen, setIsTxModalOpen] = useState(false);
     const [canShare, setCanShare] = useState(false);
-    const [previewLevelId, setPreviewLevelId] = useState<number>(customer.level_id || 1);
 
+    // Initialisiere mit korrekter Logik
+    const [previewLevelId, setPreviewLevelId] = useState<number>(getInitialLevelId());
+
+    // Update wenn sich der Kunde ändert (z.B. nach echtem Level-Up)
     useEffect(() => {
-        if (customer.level_id) {
-            setPreviewLevelId(customer.level_id);
-        }
-    }, [customer.level_id]);
+        setPreviewLevelId(getInitialLevelId());
+    }, [customer.level_id, customer.current_level_id, levelsToUse]);
 
     useEffect(() => {
         if (navigator.share) {
@@ -121,13 +140,15 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         }
     };
 
-    const levelsToUse = levels || LEVELS;
+    // Helper Vars
     const canLevelUp = areLevelRequirementsMet(customer, levelsToUse);
     const customerTransactions = transactions.filter(t => t.user_id === customer.id);
     const creator = users.find(u => u.id === customer.createdBy);
-    const firstLevelId = levelsToUse.length > 0 ? levelsToUse[0].id : 1;
-    const currentLevelId = customer.level_id || firstLevelId;
-    const showLevelUpButton = canLevelUp && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && currentLevelId < 5;
+    const currentLevelId = customer.level_id || customer.current_level_id || getInitialLevelId();
+
+    // Button nur anzeigen wenn möglich und nicht das letzte Level
+    const lastLevel = levelsToUse[levelsToUse.length - 1];
+    const showLevelUpButton = canLevelUp && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (currentLevelId !== lastLevel?.id);
 
     let displayLevel = levelsToUse.find((l: any) => l.id === currentLevelId) || levelsToUse[0];
     if (customer.is_vip) { displayLevel = { ...VIP_LEVEL, name: `${vipTerm}-Kunde` }; }
@@ -135,7 +156,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     const renderRequirement = (req: { id: string; name: string; required: number }, progressProvider: () => { [key: string]: number }) => {
         const progress = progressProvider();
-        const currentCount = Math.min(progress[req.id] || 0, req.required);
+        // Hier nutzen wir String-Konvertierung für den Key-Zugriff, da IDs aus der DB ints sind
+        const currentCount = Math.min(progress[String(req.id)] || progress[req.id] || 0, req.required);
         const isCompleted = currentCount >= req.required;
         return (
             <li key={req.id}>
@@ -146,13 +168,6 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         );
     };
 
-    const LevelUpButtonComponent = ({ customerId, nextLevelId }: { customerId: string, nextLevelId: number }) => (
-        <div className="level-up-button-container">
-            <button className="button button-secondary" onClick={() => handleLevelUp(customerId, nextLevelId)}>
-                <Icon name="trendingUp" /> In {levelTerm} {nextLevelId} freischalten
-            </button>
-        </div>
-    );
     const customerDocuments = customer.documents || [];
 
     return (
@@ -282,7 +297,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             <div className="overview-tile level">
                                 <div className="tile-content">
                                     <span className="label">{displayLevel?.name}</span>
-                                    <span className="value">{`${levelTerm} ${customer.level_id || 1}`}</span>
+                                    <span className="value">{`${levelTerm} ${(customer.level_id || customer.current_level_id) ? levelsToUse.findIndex((l: any) => l.id === (customer.level_id || customer.current_level_id)) + 1 : 1}`}</span>
                                 </div>
                             </div>
                         </div>
@@ -291,7 +306,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     <div className="level-progress-container">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h2>{levelTerm}-Fortschritt</h2>
-                            {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                            {/* FIX: Dropdown nur im Preview Mode anzeigen */}
+                            {isPreviewMode && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
                                 <div className="preview-selector" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Vorschau:</span>
                                     <select
@@ -300,7 +316,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                         className="form-input"
                                         style={{ padding: '0.25rem 0.5rem', width: 'auto', fontSize: '0.875rem' }}
                                     >
-                                        {levelsToUse.map(l => (
+                                        {levelsToUse.map((l: any) => (
                                             <option key={l.id} value={l.id}>{l.name}</option>
                                         ))}
                                     </select>
@@ -308,94 +324,80 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             )}
                         </div>
                         <div className="levels-accordion">
-                            {(() => {
-                                return levelsToUse.map((level: any, index: number) => {
-                                    const isActive = previewLevelId === level.id;
-                                    const isCompleted = previewLevelId > level.id;
-                                    const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
-                                    const colorIndex = (index % 5) + 1;
-                                    const isFirst = index === 0;
-                                    const isLast = index === levelsToUse.length - 1;
+                            {levelsToUse.map((level: any, index: number) => {
+                                // Nutze previewLevelId für Anzeige (entspricht customer.level_id im Live-Mode)
+                                const isActive = previewLevelId === level.id;
+                                // Prüfe ob Level erledigt ist, indem wir den Index im Array vergleichen (sicherer als IDs)
+                                const currentLevelIndex = levelsToUse.findIndex((l: any) => l.id === previewLevelId);
+                                const isCompleted = currentLevelIndex > index;
 
-                                    const requirements = level.requirements || LEVEL_REQUIREMENTS[level.id] || [];
+                                const state = isCompleted ? 'completed' : isActive ? 'active' : 'locked';
+                                const colorIndex = (index % 5) + 1;
+                                const isFirst = index === 0;
+                                const isLast = index === levelsToUse.length - 1;
 
-                                    // NEU: Nur "Haupt"-Anforderungen anzeigen (keine Zusatzleistungen)
-                                    const mainRequirements = requirements.filter((r: any) => !r.is_additional);
+                                const requirements = level.requirements || [];
+                                const mainRequirements = requirements.filter((r: any) => !r.is_additional);
 
-                                    const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
-                                        const progress = getProgressForLevel(customer, level.id, levelsToUse);
-                                        const reqKey = r.id ? String(r.id) : String(r.training_type_id);
-                                        const count = progress[reqKey] || 0;
-                                        return count >= (r.required || r.required_count);
-                                    });
-
-                                    const canLevelUp = isActive && requirementsMet;
-                                    const canBecomeExpert = isActive && level.id === 5 && requirementsMet;
-
-                                    return (
-                                        <React.Fragment key={level.id}>
-                                            <div className={`level-item state-${state} ${isFirst ? 'is-first' : ''} ${isLast ? 'is-last' : ''}`}>
-                                                <div className={`level-header header-level-${colorIndex}`}>
-                                                    <div className={`level-number level-${colorIndex}`}>{index + 1}</div>
-                                                    <div className="level-title">{level.name}</div>
-                                                    <span className="level-status-badge">{isCompleted ? 'Abgeschlossen' : isActive ? 'Aktuell' : 'Gesperrt'}</span>
-                                                </div>
-
-                                                {isActive && (
-                                                    <div className="level-content">
-                                                        {mainRequirements.length > 0 ? (
-                                                            <ul>
-                                                                {mainRequirements.map((r: any) => {
-                                                                    const reqId = r.id ? String(r.id) : String(r.training_type_id);
-                                                                    const reqName = r.name || (r.training_type ? r.training_type.name : 'Anforderung');
-                                                                    const requiredCount = r.required || r.required_count;
-                                                                    const renderObj = { id: reqId, name: reqName, required: requiredCount };
-
-                                                                    return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
-                                                                })}
-                                                            </ul>
-                                                        ) : (
-                                                            <p className="no-requirements">Keine besonderen Anforderungen in diesem {levelTerm}.</p>
-                                                        )}
-
-                                                        {canLevelUp && level.id < 5 && (
-                                                            <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
-                                                                <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), level.id + 1)}>
-                                                                    {levelTerm} Aufsteigen!
-                                                                </button>
-                                                            </div>
-                                                        )}
-
-                                                        {level.id === 5 && (canBecomeExpert || customer.is_expert) && (
-                                                            <div className="level-up-button-container">
-                                                                {customer.is_expert ? (
-                                                                    <button className="button button-outline button-small" onClick={() => onToggleExpertStatus(customer)}>
-                                                                        Experten-Status aberkennen
-                                                                    </button>
-                                                                ) : (
-                                                                    <button className="button button-secondary button-small" onClick={() => onToggleExpertStatus(customer)}>
-                                                                        Zum Experten ernennen
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </React.Fragment>
-                                    );
+                                // Prüfen ob Anforderungen erfüllt für Aufstieg
+                                const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
+                                    const progress = getProgressForLevel(customer, level.id, levelsToUse);
+                                    // Wir prüfen sowohl die ID als String als auch als Zahl
+                                    const reqKey = r.training_type_id ? String(r.training_type_id) : String(r.id);
+                                    const count = progress[reqKey] || 0;
+                                    return count >= (r.required || r.required_count);
                                 });
-                            })()}
+
+                                const canDoLevelUp = isActive && requirementsMet;
+
+                                return (
+                                    <React.Fragment key={level.id}>
+                                        <div className={`level-item state-${state} ${isFirst ? 'is-first' : ''} ${isLast ? 'is-last' : ''}`}>
+                                            <div className={`level-header header-level-${colorIndex}`}>
+                                                <div className={`level-number level-${colorIndex}`}>{index + 1}</div>
+                                                <div className="level-title">{level.name}</div>
+                                                <span className="level-status-badge">{isCompleted ? 'Abgeschlossen' : isActive ? 'Aktuell' : 'Gesperrt'}</span>
+                                            </div>
+
+                                            {isActive && (
+                                                <div className="level-content">
+                                                    {mainRequirements.length > 0 ? (
+                                                        <ul>
+                                                            {mainRequirements.map((r: any) => {
+                                                                const reqId = r.training_type_id || r.id;
+                                                                const reqName = r.name || (r.training_type ? r.training_type.name : 'Anforderung');
+                                                                const requiredCount = r.required_count || r.required;
+                                                                const renderObj = { id: reqId, name: reqName, required: requiredCount };
+
+                                                                return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
+                                                            })}
+                                                        </ul>
+                                                    ) : (
+                                                        <p className="no-requirements">Keine besonderen Anforderungen in diesem {levelTerm}.</p>
+                                                    )}
+
+                                                    {canDoLevelUp && !isLast && (
+                                                        <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
+                                                            {/* Nimm die ID des nächsten Levels aus dem Array */}
+                                                            <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), levelsToUse[index + 1].id)}>
+                                                                {levelTerm} Aufsteigen!
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </React.Fragment>
+                                );
+                            })}
                         </div>
                     </div>
 
                     {/* ZUSATZLEISTUNGEN SEKTION MIT HINWEIS */}
-                    {levelsToUse.some(l => l.has_additional_requirements) && (
+                    {levelsToUse.some((l: any) => l.has_additional_requirements) && (
                         <div className="level-progress-container" style={{ marginTop: '1.5rem' }}>
                             <h2 style={{ marginBottom: '0.5rem' }}>Zusatz-Veranstaltungen</h2>
-
-
-                            {levelsToUse.filter(l => l.has_additional_requirements).map(level => (
+                            {levelsToUse.filter((l: any) => l.has_additional_requirements).map((level: any) => (
                                 <div key={`additional-${level.id}`} style={{ marginBottom: '1.5rem' }}>
                                     <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
                                         für "{level.name}"
@@ -405,9 +407,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             {level.requirements
                                                 .filter((r: any) => r.is_additional)
                                                 .map((r: any) => {
-                                                    const reqId = r.id ? String(r.id) : String(r.training_type_id);
+                                                    const reqId = r.training_type_id || r.id;
                                                     const reqName = r.name || (r.training_type ? r.training_type.name : 'Zusatzleistung');
-                                                    const requiredCount = r.required || r.required_count;
+                                                    const requiredCount = r.required_count || r.required;
                                                     const renderObj = { id: reqId, name: reqName, required: requiredCount };
                                                     return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
                                                 })

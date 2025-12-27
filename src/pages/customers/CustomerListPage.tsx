@@ -12,10 +12,13 @@ interface CustomerListPageProps {
     onKpiClick: (type: string, color: string) => void;
     onAddCustomerClick: () => void;
     currentUser: any;
+    levels?: any[];
+    wording?: any;
 }
 
-const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, setView, onKpiClick, onAddCustomerClick, currentUser }) => {
+const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, setView, onKpiClick, onAddCustomerClick, currentUser, levels, wording }) => {
     const [filterLetter, setFilterLetter] = useState('Alle');
+    const levelTerm = wording?.level || 'Level';
 
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
@@ -62,10 +65,10 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
         const renderTxList = (list: any[]) => (
             <ul className="info-modal-list">
                 {list.length > 0 ? list.map(tx => {
-                    const customer = customers.find(c => c.id === tx.user_id);
+                    const customer = customers.find(c => String(c.id) === String(tx.user_id));
                     return (
                         <li key={tx.id}>
-                            <span>{new Date(tx.date as any).toLocaleDateString('de-DE')} - {tx.description} <span className="text-gray-500">({customer?.name})</span></span>
+                            <span>{new Date(tx.date as any).toLocaleDateString('de-DE')} - {tx.description} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
                                 € {Math.abs(tx.amount).toLocaleString('de-DE')}
                             </span>
@@ -145,11 +148,12 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                 <h2>Kundenliste ({filteredCustomers.length})</h2>
                 <table>
                     <thead>
-                        <tr><th>Kunde</th><th>Hund</th><th>Guthaben</th><th>Level</th><th>Erstellt</th><th></th></tr>
+                        <tr><th>Kunde</th><th>Hund</th><th>Guthaben</th><th>{levelTerm}</th><th>Erstellt</th><th></th></tr>
                     </thead>
                     <tbody>
                         {filteredCustomers.map(customer => {
-                            const level = LEVELS.find(l => l.id === customer.level_id);
+                            const levelsToUse = levels || LEVELS;
+                            const level = levelsToUse.find(l => l.id === (customer.level_id || customer.current_level_id));
                             const nameParts = customer.name.split(' ');
                             const firstName = nameParts[0] || '';
                             const lastName = nameParts.slice(1).join(' ');
@@ -169,7 +173,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                                     </td>
                                     <td data-label="Hund">{customer.dogs[0]?.name || '-'}</td>
                                     <td data-label="Guthaben">€ {Math.floor(customer.balance).toLocaleString('de-DE')}</td>
-                                    <td data-label="Level"><span className="level-badge">{level?.name}</span></td>
+                                    <td data-label={levelTerm}><span className="level-badge">{level?.name || '-'}</span></td>
                                     <td data-label="Erstellt">{new Date(customer.customer_since as any).toLocaleDateString('de-DE')}</td>
                                     <td data-label="Aktion">&gt;</td>
                                 </tr>

@@ -45,7 +45,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
         const renderCustomerList = (list: any[]) => (
             <ul className="info-modal-list">
                 {list.map(c => (
-                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.id }); }} style={{ cursor: 'pointer' }}>
+                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: String(c.id) }); }} style={{ cursor: 'pointer' }}>
                         <span>{c.name} ({c.dogs?.[0]?.name || '-'})</span>
                         <span style={{ fontWeight: 600 }}>€ {Math.floor(c.balance).toLocaleString('de-DE')}</span>
                     </li>
@@ -57,10 +57,10 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
         const renderTxList = (list: any[]) => (
             <ul className="info-modal-list">
                 {list.length > 0 ? list.map(tx => {
-                    const customer = customers.find(c => c.id === tx.user_id);
+                    const customer = customers.find(c => String(c.id) === String(tx.user_id));
                     return (
                         <li key={tx.id}>
-                            <span>{new Date(tx.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr - {tx.description} <span className="text-gray-500">({customer?.name})</span></span>
+                            <span>{new Date(tx.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr - {tx.description} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
                                 € {Math.abs(tx.amount).toLocaleString('de-DE')}
                             </span>
@@ -136,7 +136,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                             const firstName = nameParts[0] || '';
                             const lastName = nameParts.slice(1).join(' ');
                             return (
-                                <li key={cust.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: cust.id })} className="clickable">
+                                <li key={cust.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: String(cust.id) })} className="clickable">
                                     <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
                                         {getInitials(firstName, lastName)}
                                     </div>
@@ -154,12 +154,12 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                     <h2>Letzte Transaktionen</h2>
                     <ul className="transaction-list">
                         {recentTransactions.map(tx => {
-                            const customer = customers.find(c => c.id === tx.user_id);
+                            const customer = customers.find(c => String(c.id) === String(tx.user_id));
                             return (
                                 <li key={tx.id}>
                                     <div className={`icon ${tx.amount < 0 ? 'down' : 'up'}`}><Icon name="arrowDown" /></div>
                                     <div className="info">
-                                        <div className="customer">{customer?.name}</div>
+                                        <div className="customer">{customer?.name || 'Unbekannter Kunde'}</div>
                                         <div className="details">{new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description}</div>
                                     </div>
                                     <div className="amount">{Math.floor(tx.amount).toLocaleString('de-DE')} €</div>

@@ -35,6 +35,7 @@ export interface Customer {
     // Level info
     levelId?: number; // Mock
     level_id?: number; // Backend
+    current_level_id?: number; // Backend Alias
     levelUpHistory?: { [key: number]: Date };
 
     // Meta
@@ -73,6 +74,7 @@ export interface Transaction {
     booked_by_id?: string;
     description?: string;
     date?: string | Date;
+    bonus?: number; // NEU
 }
 
 export interface DocumentFile {

@@ -181,6 +181,12 @@ export const apiClient = {
         return response.json();
     },
 
+    // Update: user_id Parameter hinzugefügt
+    getTransactions: async (token: string | null, userId?: string) => {
+        const query = userId ? `?user_id=${userId}` : '';
+        return apiClient.get(`/api/transactions${query}`, token);
+    },
+
     // --- APPOINTMENTS ---
     getAppointments: async (token: string | null) => {
         return apiClient.get('/api/appointments', token);

@@ -9,9 +9,14 @@ interface ReportsPageProps {
     customers: any[];
     users: any[];
     currentUser: any;
+    // NEU: Config für dynamische Bonus-Berechnung
+    balanceConfig?: {
+        allow_custom_top_up: boolean;
+        top_up_options: { amount: number; bonus: number }[];
+    };
 }
 
-const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, currentUser }) => {
+const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, currentUser, balanceConfig }) => {
     const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
     const [selectedMitarbeiter, setSelectedMitarbeiter] = useState<string>(
         currentUser.role === 'admin' ? 'all' : String(currentUser.id)
@@ -23,14 +28,17 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
         isOpen: false, title: '', content: null, color: 'blue'
     });
 
+    // Nutzt ausschließlich den in der Datenbank gespeicherten Bonus-Wert
     const getRealAmount = (tx: any) => {
+        // Abbuchungen sind immer negativ und haben keinen Bonus
         if (tx.amount <= 0) return tx.amount;
-        if (tx.type === 'Aufladung' || tx.type === 'topup') {
-            if (tx.amount >= 450) return tx.amount - 150;
-            if (tx.amount >= 180) return tx.amount - 30;
-            if (tx.amount >= 115) return tx.amount - 15;
-            if (tx.amount >= 55) return tx.amount - 5;
+
+        // Wenn ein Bonus gespeichert ist (auch 0), wird dieser abgezogen.
+        // Falls das Feld fehlt (alte Daten vor der Migration), wird kein Bonus angenommen.
+        if (tx.bonus !== undefined && tx.bonus !== null) {
+            return tx.amount - tx.bonus;
         }
+
         return tx.amount;
     };
 

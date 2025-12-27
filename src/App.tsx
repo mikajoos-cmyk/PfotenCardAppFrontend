@@ -402,37 +402,64 @@ const App: FC = () => {
         setView(newView);
     };
 
-    const fetchAppData = async () => {
-        if (new URLSearchParams(window.location.search).get('mode') === 'preview') {
-            return;
-        }
-
-        if (!authToken) {
-            setIsLoading(false);
-            return;
-        }
-        setIsLoading(true);
+    // NEU: Funktion um Transaktionen eines spezifischen Kunden nachzuladen
+    const loadCustomerTransactions = async (customerId: string) => {
+        if (!authToken || isPreviewMode) return;
         try {
-            const currentUser = await apiClient.get('/api/users/me', authToken);
+            const customerTxs = await apiClient.getTransactions(authToken, customerId);
+            // Wir mergen die neuen Transaktionen in den globalen State, vermeiden Duplikate
+            setTransactions(prev => {
+                const newIds = new Set(customerTxs.map((t: any) => t.id));
+                const oldFiltered = prev.filter(t => !newIds.has(t.id));
+                return [...customerTxs, ...oldFiltered];
+            });
+        } catch (e) {
+            console.error("Konnte Kunden-Transaktionen nicht laden", e);
+        }
+    };
+
+    useEffect(() => {
+        if (view.customerId) {
+            loadCustomerTransactions(view.customerId);
+        }
+    }, [view.customerId]);
+
+    const fetchAppData = async () => {
+        if (isPreviewMode) return;
+        if (!authToken) { setIsLoading(false); return; }
+        setIsLoading(true);
+
+        try {
+            // Parallel Config und User laden
+            const [configRes, currentUser] = await Promise.all([
+                apiClient.getConfig().catch(err => console.warn("Config load failed", err)),
+                apiClient.get('/api/users/me', authToken)
+            ]);
+
+            if (configRes) {
+                setAppConfigData(configRes);
+                if (configRes.tenant?.name) setSchoolName(configRes.tenant.name);
+                applyTheme({ branding: configRes.tenant?.config?.branding || {} });
+            }
+
             setLoggedInUser(currentUser);
 
             if (currentUser.role === 'customer' || currentUser.role === 'kunde') {
-                const transactionsResponse = await apiClient.get('/api/transactions', authToken);
+                const transactionsResponse = await apiClient.getTransactions(authToken);
                 setTransactions(transactionsResponse);
                 setCustomers([currentUser]);
                 setUsers([currentUser]);
             } else {
                 const [usersResponse, transactionsResponse] = await Promise.all([
                     apiClient.get('/api/users', authToken),
-                    apiClient.get('/api/transactions', authToken)
+                    apiClient.getTransactions(authToken) // Global latest
                 ]);
                 setCustomers(usersResponse.filter((user: any) => user.role === 'customer' || user.role === 'kunde'));
                 setUsers(usersResponse);
                 setTransactions(transactionsResponse);
             }
-
         } catch (error) {
-            console.error("Authentifizierung oder Datenabruf fehlgeschlagen, logge aus:", error);
+            console.error("Fehler beim Laden:", error);
             handleLogout();
         } finally {
             setIsLoading(false);
@@ -494,12 +521,13 @@ const App: FC = () => {
 
         if (!view.customerId || !authToken) return;
 
+        // WICHTIG: Das Backend erwartet "training_type_id" für Achievements!
         const transactionPayload = {
             user_id: parseInt(view.customerId.replace('cust-', ''), 10) || 0,
             type: txData.type === 'topup' ? 'Aufladung' : txData.title,
             description: txData.title,
             amount: txData.baseAmount || txData.amount,
-            requirement_id: txData.meta?.requirementId || null
+            training_type_id: txData.meta?.requirementId ? parseInt(txData.meta.requirementId) : null
         };
 
         try {
@@ -822,6 +850,7 @@ const App: FC = () => {
                     levels={appConfigData?.levels || previewConfig.levels}
                     wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                     isDarkMode={isDarkMode}
+                    isPreviewMode={isPreviewMode}
                 />
             );
         }
@@ -842,7 +871,7 @@ const App: FC = () => {
 
         if (view.page === 'customers') {
             if (view.subPage === 'detail' && view.customerId) {
-                const customer = directAccessedCustomer || customers.find(c => String(c.id) === view.customerId);
+                const customer = directAccessedCustomer || customers.find(c => String(c.id) === String(view.customerId));
                 if (!customer) return <div>Kunde nicht gefunden</div>;
 
                 return (
@@ -866,12 +895,13 @@ const App: FC = () => {
                         levels={appConfigData?.levels || previewConfig.levels}
                         wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                         isDarkMode={isDarkMode}
+                        isPreviewMode={isPreviewMode}
                     />
                 );
             }
 
             if (view.subPage === 'transactions' && view.customerId) {
-                const customer = customers.find(c => String(c.id) === view.customerId);
+                const customer = customers.find(c => String(c.id) === String(view.customerId));
                 if (!customer) return <div>Kunde nicht gefunden</div>;
 
                 return (
@@ -894,12 +924,20 @@ const App: FC = () => {
                     onKpiClick={(kpi) => { }}
                     onAddCustomerClick={() => setAddCustomerModalOpen(true)}
                     currentUser={loggedInUser}
+                    levels={appConfigData?.levels || previewConfig.levels}
+                    wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                 />
             );
         }
 
         if (view.page === 'reports') {
-            return <ReportsPage transactions={transactions} customers={customers} users={users} currentUser={loggedInUser} />;
+            return <ReportsPage
+                transactions={transactions}
+                customers={customers}
+                users={users}
+                currentUser={loggedInUser}
+                balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
+            />;
         }
 
         if (view.page === 'appointments') {
