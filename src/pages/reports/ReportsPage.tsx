@@ -215,7 +215,7 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
 
     const handleExportPDF = () => {
         const reportTitle = `Umsatzbericht für ${formatPeriodForDisplay(selectedPeriod, reportType)}`;
-        const mitarbeiter = selectedMitarbeiter === 'all' ? 'Alle Mitarbeiter' : users.find(u => u.id === selectedMitarbeiter)?.name;
+        const mitarbeiter = selectedMitarbeiter === 'all' ? 'Alle Mitarbeiter' : users.find(u => String(u.id) === selectedMitarbeiter)?.name;
 
         let tableRows = filteredTransactions.map(tx => {
             const customer = customers.find(c => c.id === tx.user_id);
