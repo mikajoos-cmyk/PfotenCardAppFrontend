@@ -52,7 +52,8 @@ const DocumentViewerModal: FC<DocumentViewerModalProps> = ({ document, onClose }
                 </div>
 
                 {/* Body: Vorschau */}
-                <div className="modal-body" style={{ minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', padding: '1rem' }}>
+                {/* KORREKTUR: backgroundColor entfernt, damit var(--card-background) greift */}
+                <div className="modal-body" style={{ minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
                     {isImage && (
                         <img
                             src={document.url}
