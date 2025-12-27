@@ -242,8 +242,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                 name="email"
                                                 value={editedData.email}
                                                 onChange={handleInputChange}
-                                                disabled={currentUser.role !== 'admin'}
-                                                style={currentUser.role !== 'admin' ? { color: 'var(--text-secondary)', cursor: 'not-allowed' } : {}}
+                                                disabled
+                                                style={{ color: 'var(--text-secondary)', cursor: 'not-allowed' }}
                                             />
                                         ) : (
                                             <p>{customer.email || '-'}</p>
@@ -446,20 +446,23 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     <div className="side-card qr-code-container">
                         <h2>QR-Code</h2>
                         <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.id}`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.auth_id || customer.id}`}
                             alt="QR Code"
                             style={{
                                 width: '100%',
                                 maxWidth: '120px',
                                 margin: '0.5rem auto',
                                 borderRadius: '0.5rem',
+                                display: 'block',
                                 // Invertiert die Farben (Schwarz->Weiß, Weiß->Schwarz)
                                 filter: isDarkMode ? 'invert(1)' : 'none',
                                 // "Screen" macht Schwarz transparent und lässt Weiß sichtbar -> Perfekt für Dark Mode
                                 mixBlendMode: isDarkMode ? 'screen' : 'normal'
                             }}
                         />
-                        <p>Scannen, um diese Kundenkarte schnell aufzurufen.</p>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '1rem' }}>
+                            Scannen um Kundenprofil direkt aufzurufen.
+                        </p>
                     </div>
                     <div className="side-card">
                         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -528,7 +531,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
             )}
             {isTxModalOpen && (
                 <InfoModal
-                    title={`Transaktionen für ${customer.firstName} ${customer.lastName}`}
+                    title={`Transaktionen für ${firstName} ${lastName}`}
                     color="blue"
                     onClose={() => setIsTxModalOpen(false)}
                 >

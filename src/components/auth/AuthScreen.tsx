@@ -2,6 +2,7 @@
 import React, { FC, FormEvent, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/api';
+import PasswordInput from '../ui/PasswordInput';
 
 interface AuthScreenProps {
     onLoginStart: () => void;
@@ -196,10 +197,12 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
                         </div>
 
                         {view !== 'forgot' && (
-                            <div className="form-group">
-                                <label>Passwort</label>
-                                <input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} required />
-                            </div>
+                            <PasswordInput
+                                label="Passwort"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                required
+                            />
                         )}
 
                         <button type="submit" className="button button-primary" style={{ width: '100%', marginTop: '1rem' }}>

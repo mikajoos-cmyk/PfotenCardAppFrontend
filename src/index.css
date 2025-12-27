@@ -154,6 +154,36 @@ body {
     box-shadow: 0 0 0 3px var(--bg-accent-green);
 }
 
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-with-icon .form-input {
+    padding-right: 3rem;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.password-toggle-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--card-background-hover);
+}
+
 /* --- Main App Layout --- */
 .app-container {
     display: flex;
@@ -1868,20 +1898,22 @@ body {
 .modal-content {
     background: var(--card-background);
     border-radius: 1rem;
-    width: 90%;
+    width: 95%;
     max-width: 550px;
     display: flex;
     flex-direction: column;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    max-height: 90vh;
     max-height: 90dvh;
-    /* Wichtig: Limitiert die Gesamthöhe des Pop-ups */
+    overflow: hidden;
+    /* Ensure contents don't spill out of border radius */
+    position: relative;
+    border: 1px solid var(--border-color);
 }
 
-/* === VARIANTEN (OHNE max-height) === */
 .add-customer-modal,
 .info-modal {
     max-width: 600px;
-    /* Hier wird nur noch die Breite angepasst */
 }
 
 /* === MODAL HEADER === */
@@ -1944,13 +1976,11 @@ body {
 
 /* === MODAL BODY (JETZT SCROLLBAR) === */
 .modal-body {
-    flex-grow: 1;
-    /* Nimmt den verfügbaren Platz ein */
+    flex: 1 1 auto;
     overflow-y: auto;
-    /* Erzeugt die Scrollleiste bei Bedarf */
-    -webkit-overflow-scrolling: touch;
     padding: 1.5rem 2rem;
     background-color: var(--card-background);
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal-body h4 {
@@ -3272,8 +3302,7 @@ input:checked+.slider:before {
 
 /* Modal Styling Helper */
 .participants-list-container {
-    max-height: 60vh;
-    overflow-y: auto;
+    width: 100%;
 }
 
 .event-detail-content {

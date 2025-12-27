@@ -10,6 +10,7 @@ import { isDarkColor, getAdjustedColor, getContrastColor } from './lib/utils';
 import Sidebar from './components/layout/Sidebar';
 import CustomerSidebar from './components/layout/CustomerSidebar';
 import AuthScreen from './components/auth/AuthScreen';
+import PasswordInput from './components/ui/PasswordInput';
 
 // Modals
 import InfoModal from './components/modals/InfoModal';
@@ -348,15 +349,23 @@ const App: FC = () => {
     useEffect(() => {
         if (loggedInUser && loggedInUser.role !== 'customer' && loggedInUser.role !== 'kunde') {
             const path = window.location.pathname;
-            const match = path.match(/customer\/(\d+)/);
+            // Match both integer IDs and UUIDs
+            const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
 
             if (match && match[1]) {
-                const customerId = parseInt(match[1]);
+                const identifier = match[1];
+                const isUuid = identifier.includes('-');
+
                 setServerLoading({ active: true, message: 'Lade Kundendaten...' });
-                apiClient.get(`/api/users/${customerId}`, authToken)
+
+                const endpoint = isUuid ? `/api/users/by-auth/${identifier}` : `/api/users/${identifier}`;
+
+                apiClient.get(endpoint, authToken)
                     .then(customerData => {
                         setDirectAccessedCustomer(customerData);
-                        setView({ page: 'customers', subPage: 'detail', customerId: String(customerId) });
+                        setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
+                        // Clean up URL to standard integer ID format for the rest of the app logic
+                        window.history.replaceState({}, '', `/customer/${customerData.id}`);
                     })
                     .catch(err => {
                         console.error("Fehler beim Laden des Kunden via QR-Code:", err);
@@ -774,10 +783,11 @@ const App: FC = () => {
                 <div className="auth-card">
                     <h1>Passwort zurücksetzen</h1>
                     <p className="subtitle">Geben Sie Ihr neues Passwort ein</p>
-                    <div className="form-group">
-                        <label>Neues Passwort</label>
-                        <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                    </div>
+                    <PasswordInput
+                        label="Neues Passwort"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                    />
                     <button className="button button-primary" onClick={handlePasswordUpdate}>Passwort ändern</button>
                 </div>
             </div>

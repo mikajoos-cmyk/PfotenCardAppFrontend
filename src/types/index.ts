@@ -19,6 +19,7 @@ export interface Level {
 
 export interface Customer {
     id: string;
+    auth_id?: string;
 
     // Name handling
     name: string; // Primary display name

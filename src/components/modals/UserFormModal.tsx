@@ -2,6 +2,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { User, UserRole } from '../../types';
 import Icon from '../ui/Icon';
+import PasswordInput from '../ui/PasswordInput';
 
 interface UserFormModalProps {
     user: User | null;
@@ -65,10 +66,12 @@ const UserFormModal: FC<UserFormModalProps> = ({ user, onClose, onSave }) => {
                             {/* Kunden werden hier nicht manuell angelegt, sondern in der Kundenverwaltung */}
                         </select>
                     </div>
-                    <div className="form-group">
-                        <label>Passwort {user && '(leer lassen zum Beibehalten)'}</label>
-                        <input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} placeholder={user ? '********' : ''} />
-                    </div>
+                    <PasswordInput
+                        label={`Passwort ${user ? '(leer lassen zum Beibehalten)' : ''}`}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder={user ? '********' : ''}
+                    />
                 </div>
                 <div className="modal-footer">
                     <button className="button button-outline" onClick={onClose}>Abbrechen</button>
