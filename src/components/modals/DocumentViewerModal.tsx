@@ -1,7 +1,6 @@
 import React, { FC } from 'react';
 import { DocumentFile } from '../../types';
-import InfoModal from './InfoModal';
-import Icon from '../ui/Icon'; // Icon importieren
+import Icon from '../ui/Icon';
 
 interface DocumentViewerModalProps {
     document: DocumentFile;
@@ -9,38 +8,86 @@ interface DocumentViewerModalProps {
 }
 
 const DocumentViewerModal: FC<DocumentViewerModalProps> = ({ document, onClose }) => {
-    // Determine content based on file type
     const isImage = document.type.startsWith('image/');
     const isPDF = document.type === 'application/pdf';
 
+    // Diese Funktion erzwingt den Download
+    const handleDownload = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        try {
+            // 1. Datei als "Blob" (Binärdaten) laden
+            const response = await fetch(document.url);
+            const blob = await response.blob();
+
+            // 2. Temporäre URL für diesen Blob erstellen
+            const url = window.URL.createObjectURL(blob);
+
+            // 3. Unsichtbaren Link erstellen und klicken
+            const link = window.document.createElement('a');
+            link.href = url;
+            link.download = document.name; // Erzwingt den Dateinamen
+            window.document.body.appendChild(link);
+            link.click();
+
+            // 4. Aufräumen
+            window.document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Download fehlgeschlagen, öffne Fallback...", error);
+            // Fallback: Falls Fetch fehlschlägt, im neuen Tab öffnen
+            window.open(document.url, '_blank');
+        }
+    };
+
     return (
-        <InfoModal title={document.name} onClose={onClose} color="blue">
-            {/* flexDirection: 'column' hinzugefügt, damit Button unter dem Bild ist */}
-            <div style={{ minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '90%' }}>
 
-                {isImage && <img src={document.url} alt={document.name} style={{ maxWidth: '100%', maxHeight: '600px' }} />}
+                {/* Header */}
+                <div className="modal-header blue">
+                    <h2>{document.name}</h2>
+                    <button className="close-button" onClick={onClose}>
+                        <Icon name="x" />
+                    </button>
+                </div>
 
-                {isPDF && <embed src={document.url} type="application/pdf" width="100%" height="600px" />}
+                {/* Body: Vorschau */}
+                <div className="modal-body" style={{ minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc', padding: '1rem' }}>
+                    {isImage && (
+                        <img
+                            src={document.url}
+                            alt={document.name}
+                            style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain', borderRadius: '4px' }}
+                        />
+                    )}
+                    {isPDF && (
+                        <embed
+                            src={document.url}
+                            type="application/pdf"
+                            width="100%"
+                            height="500px"
+                            style={{ borderRadius: '4px' }}
+                        />
+                    )}
+                    {!isImage && !isPDF && (
+                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <Icon name="file" style={{ width: '64px', height: '64px', margin: '0 auto 1rem', opacity: 0.5 }} />
+                            <p>Keine Vorschau verfügbar</p>
+                        </div>
+                    )}
+                </div>
 
-                {!isImage && !isPDF && (
-                    <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                        <p>Vorschau nicht verfügbar.</p>
-                    </div>
-                )}
-
-                {/* Download Button - Jetzt immer sichtbar */}
-                <a
-                    href={document.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="button button-primary"
-                    style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                    download={document.name} // Wichtig für den Download-Trigger
-                >
-                    <Icon name="download" /> Herunterladen
-                </a>
+                {/* Footer: Buttons nebeneinander */}
+                <div className="modal-footer">
+                    <button className="button button-outline" onClick={onClose}>
+                        Schließen
+                    </button>
+                    <button className="button button-primary" onClick={handleDownload}>
+                        <Icon name="download" /> Herunterladen
+                    </button>
+                </div>
             </div>
-        </InfoModal>
+        </div>
     );
 };
 
