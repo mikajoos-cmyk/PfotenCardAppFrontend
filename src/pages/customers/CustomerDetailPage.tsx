@@ -2,7 +2,7 @@ import React, { FC, useState, useEffect, useRef, ChangeEvent } from 'react';
 import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
 import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet } from '../../lib/utils';
-import { API_BASE_URL } from '../../lib/api';
+import { API_BASE_URL, apiClient } from '../../lib/api';
 import Icon from '../../components/ui/Icon';
 import InfoModal from '../../components/modals/InfoModal';
 import DocumentViewerModal from '../../components/modals/DocumentViewerModal';
@@ -33,7 +33,7 @@ interface CustomerDetailPageProps {
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
-    onUploadDocuments, onDeleteDocument, fetchAppData, onDeleteUserClick,
+    onUploadDocuments, onDeleteDocument, fetchAppData, authToken, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
     wording, isDarkMode
 }) => {
@@ -479,9 +479,24 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 {customerDocuments.map((doc: any) => (
                                     <li key={doc.id}>
                                         <Icon name="file" className="doc-icon" />
-                                        <div className="doc-info" onClick={() => {
-                                            const docUrl = `${API_BASE_URL}/api/documents/${doc.id}`;
-                                            setViewingDocument({ name: doc.file_name, type: doc.file_type, url: docUrl, id: doc.id, customerId: String(customer.id), size: 0 });
+                                        <div className="doc-info" onClick={async () => {
+                                            try {
+                                                // 1. Hole die signierte URL vom Backend (mit Auth-Token!)
+                                                const response: any = await apiClient.get(`/api/documents/${doc.id}`, authToken);
+
+                                                // 2. Setze die echte Supabase-URL in den Viewer
+                                                setViewingDocument({
+                                                    name: doc.file_name,
+                                                    type: doc.file_type,
+                                                    url: response.url, // Hier nutzen wir die URL aus der JSON-Antwort
+                                                    id: doc.id,
+                                                    customerId: String(customer.id),
+                                                    size: 0
+                                                });
+                                            } catch (e) {
+                                                console.error("Fehler beim Laden des Dokuments", e);
+                                                alert("Dokument konnte nicht geladen werden.");
+                                            }
                                         }} role="button" tabIndex={0}>
                                             <div className="doc-name">{doc.file_name}</div>
                                             <div className="doc-size">{doc.file_type}</div>
