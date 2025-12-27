@@ -1097,7 +1097,6 @@ const App: FC = () => {
                     isPreviewMode={isPreviewMode}
                     onToggleRole={togglePreviewRole}
                     activeModules={activeModules}
-                    isSyncing={isSyncing}
                 />
             ) : (
                 <Sidebar
