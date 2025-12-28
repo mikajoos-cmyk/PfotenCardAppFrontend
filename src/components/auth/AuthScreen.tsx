@@ -64,12 +64,23 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
         onLoginStart();
 
         try {
-            // 1. Supabase Auth Registrierung (Löst E-Mail-Versand aus!)
+            // 1. Branding-Metadaten für E-Mail-Templates vorbereiten
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+            const redirectUrl = window.location.origin;
+            console.log("DEBUG: Redirect URL für E-Mail:", redirectUrl);
+
+            // 2. Supabase Auth Registrierung (Löst E-Mail-Versand aus!)
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
-                    emailRedirectTo: window.location.origin
+                    emailRedirectTo: redirectUrl,
+                    data: {
+                        branding_name: schoolName,
+                        branding_logo: logoUrl || "https://pfotencard.de/logo.png",
+                        branding_color: primaryColor || "#22C55E",
+                        school_name: schoolName
+                    }
                 }
             });
 
