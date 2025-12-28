@@ -379,6 +379,14 @@ const App: FC = () => {
             const identifier = match[1];
             const isUuid = identifier.includes('-');
 
+            // SECURITY: Only allow UUID access, reject numeric IDs
+            if (!isUuid) {
+                alert("Zugriff nur über QR-Code möglich. Bitte scannen Sie den QR-Code auf der Kundenkarte.");
+                window.history.pushState({}, '', '/');
+                setView({ page: 'dashboard' });
+                return;
+            }
+
             // Check if authentication is required
             const isAuthRequired = REQUIRE_AUTH_FOR_CUSTOMER_VIEW;
             const isUserLoggedIn = !!loggedInUser;
@@ -395,8 +403,8 @@ const App: FC = () => {
                 return;
             }
 
-            // Falls wir schon auf der richtigen Seite sind und kein UUID-Lookup brauchen, überspringen
-            if (view.page === 'customers' && view.subPage === 'detail' && view.customerId === identifier && !isUuid) {
+            // Falls wir schon auf der richtigen Seite sind, überspringen
+            if (view.page === 'customers' && view.subPage === 'detail' && view.customerId === identifier) {
                 return;
             }
 
@@ -405,10 +413,10 @@ const App: FC = () => {
             // Determine which endpoint to use based on authentication status
             let endpoint: string;
             if (authToken) {
-                // If logged in, use authenticated endpoints
-                endpoint = isUuid ? `/api/users/by-auth/${identifier}` : `/api/users/${identifier}`;
+                // If logged in, use authenticated endpoint with UUID
+                endpoint = `/api/users/by-auth/${identifier}`;
             } else {
-                // If not logged in, use public endpoint (supports UUID)
+                // If not logged in, use public endpoint (supports UUID only)
                 endpoint = `/api/public/users/${identifier}`;
             }
 
