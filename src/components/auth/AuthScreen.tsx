@@ -159,7 +159,7 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
     return (
         <div className="auth-container">
             <div className="auth-card">
-                {logoUrl && !logoUrl.includes('paw.png') ? (
+                {logoUrl ? (
                     <img src={logoUrl} alt="PfotenCard Logo" style={{ width: '100px', height: '100px', margin: '0 auto 1rem', display: 'block', objectFit: 'contain' }} />
                 ) : (
                     <div className="auth-logo-icon">

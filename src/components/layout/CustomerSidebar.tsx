@@ -26,7 +26,7 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                {logoUrl && !logoUrl.includes('paw.png') ? (
+                {logoUrl ? (
                     <img src={logoUrl} alt="PfotenCard Logo" className="logo" width="40" height="40" />
                 ) : (
                     <div className="logo-icon-container">

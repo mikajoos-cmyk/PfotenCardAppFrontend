@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect, useMemo } from 'react';
+import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { apiClient } from './lib/api';
 import { User, View } from './types';
@@ -95,12 +95,18 @@ const App: FC = () => {
         activeModules?: string[];
         levelTerm?: string;
         vipTerm?: string;
-    }>({ viewMode: 'app' });
+    }>({
+        viewMode: 'app',
+        logoUrl: 'https://ctsoisfxbhaynonnudua.supabase.co/storage/v1/object/public/public_uploads/paw.png'
+    });
 
     const [appConfigData, setAppConfigData] = useState<any>(null);
 
     const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
     const [isDarkMode, setIsDarkMode] = useState(false);
+
+    // Ref to prevent infinite logout loop
+    const isLoggingOut = useRef(false);
 
     const togglePreviewRole = () => {
         if (!loggedInUser) return;
@@ -253,7 +259,7 @@ const App: FC = () => {
                         setSchoolName(decoded.school_name || 'PfotenCard');
                         setPreviewConfig(prev => ({
                             ...prev,
-                            logoUrl: decoded.logo,
+                            logoUrl: decoded.logo || 'https://ctsoisfxbhaynonnudua.supabase.co/storage/v1/object/public/public_uploads/paw.png',
                             levels: decoded.levels,
                             services: decoded.services,
                             viewMode: decoded.view_mode || 'app',
@@ -290,7 +296,7 @@ const App: FC = () => {
 
                 setPreviewConfig(prev => ({
                     ...prev,
-                    logoUrl: payload.logo,
+                    logoUrl: payload.logo || 'https://ctsoisfxbhaynonnudua.supabase.co/storage/v1/object/public/public_uploads/paw.png',
                     levels: payload.levels,
                     services: payload.services,
                     viewMode: payload.view_mode,
@@ -558,12 +564,28 @@ const App: FC = () => {
         setServerLoading({ active: false, message: '' });
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // Prevent infinite loop if already logging out
+        if (isLoggingOut.current) return;
+
+        isLoggingOut.current = true;
+
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.error("Error signing out from Supabase:", error);
+        }
+
         localStorage.removeItem('authToken');
         setAuthToken(null);
         setLoggedInUser(null);
         setDirectAccessedCustomer(null);
         window.history.pushState({}, '', '/');
+
+        // Reset the flag after a short delay
+        setTimeout(() => {
+            isLoggingOut.current = false;
+        }, 1000);
     };
 
     const handleConfirmTransaction = async (txData: {
@@ -1136,7 +1158,7 @@ const App: FC = () => {
                         </button>
                         <div className="mobile-header-logo">
                             {getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl) ? (
-                                <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl) || ''} alt="Logo" className="logo" style={{ width: '32px', height: '32px' }} />
+                                <img src={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl) || ''} alt="Logo" className="logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
                             ) : (
                                 <Icon name="paw" width={24} height={24} />
                             )}

@@ -45,28 +45,40 @@ const getHeaders = (token: string | null = null, hasBody: boolean = false) => {
     return headers;
 };
 
+// Zentrale Response-Behandlung für 401/Fehler-Routing
+async function handleResponse(response: Response) {
+    if (response.status === 401) {
+        // Falls wir nicht im Fehler-Handling-Loop landen wollen, prüfen wir kurz
+        // Aber generell: 401 heißt RAUS.
+        window.dispatchEvent(new Event('auth-unauthorized'));
+        const errorText = await response.text().catch(() => "Unauthorized");
+        throw new Error(`Session expired: ${errorText}`);
+    }
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            console.warn("API 404: Ressource oder Tenant nicht gefunden.");
+        }
+        const errorText = await response.text().catch(() => response.statusText);
+        throw new Error(`API Fehler (${response.status}): ${errorText || response.statusText}`);
+    }
+
+    // 204 No Content handling
+    if (response.status === 204) return null;
+
+    return response.json();
+}
+
 export const apiClient = {
     get: async (path: string, token: string | null) => {
         console.log(`API GET: ${API_BASE_URL}${path} (Subdomain: ${getSubdomain()})`);
 
-        try {
-            const response = await fetch(`${API_BASE_URL}${path}`, {
-                method: 'GET',
-                headers: getHeaders(token),
-            });
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+            method: 'GET',
+            headers: getHeaders(token),
+        });
 
-            if (!response.ok) {
-                if (response.status === 404) {
-                    console.warn("API 404: Ressource oder Tenant nicht gefunden.");
-                }
-                const errorText = await response.text();
-                throw new Error(`API Fehler (${response.status}): ${errorText || response.statusText}`);
-            }
-            return response.json();
-        } catch (err) {
-            console.error("Netzwerkfehler oder falsche API URL:", err);
-            throw err;
-        }
+        return handleResponse(response);
     },
 
     post: async (path: string, data: any, token: string | null) => {
@@ -76,11 +88,7 @@ export const apiClient = {
             body: JSON.stringify(data),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `API request failed: ${response.statusText}`);
-        }
-        return response.json();
+        return handleResponse(response);
     },
 
     put: async (path: string, data: any, token: string | null) => {
@@ -90,11 +98,7 @@ export const apiClient = {
             body: JSON.stringify(data),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `API request failed: ${response.statusText}`);
-        }
-        return response.json();
+        return handleResponse(response);
     },
 
     setVipStatus: async (userId: string, isVip: boolean, token: string | null) => {
@@ -111,15 +115,7 @@ export const apiClient = {
             headers: getHeaders(token),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            let errorMsg = errorData.detail || `API request failed`;
-            if (typeof errorMsg === 'object') {
-                errorMsg = JSON.stringify(errorMsg);
-            }
-            throw new Error(errorMsg);
-        }
-        return response.json();
+        return handleResponse(response);
     },
 
     upload: async (path: string, file: File, token: string | null) => {
@@ -137,11 +133,7 @@ export const apiClient = {
             body: formData,
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `File upload failed`);
-        }
-        return response.json();
+        return handleResponse(response);
     },
 
     uploadDocuments: async (userId: string, formData: FormData, token: string | null) => {
@@ -156,18 +148,11 @@ export const apiClient = {
             body: formData,
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `File upload failed`);
-        }
-        return response.json();
+        return handleResponse(response);
     },
 
     // NEU: Konfiguration laden (öffentlich, ohne Token)
     getConfig: async () => {
-        // Hier kein Token nötig, Header für Subdomain wird durch getHeaders automatisch gesetzt (sofern getHeaders angepasst ist oder wir es hier manuell machen)
-        // Da getHeaders oft einen Token erwartet, bauen wir hier eine einfache Variante:
-
         const subdomain = getSubdomain();
         const headers: any = { 'Content-Type': 'application/json' };
         if (subdomain) {
@@ -179,10 +164,7 @@ export const apiClient = {
             headers: headers,
         });
 
-        if (!response.ok) {
-            throw new Error(`Config fetch failed: ${response.statusText}`);
-        }
-        return response.json();
+        return handleResponse(response);
     },
 
     // Update: user_id Parameter hinzugefügt
