@@ -37,6 +37,9 @@ const getFullImageUrl = (url?: string) => {
     return `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}${url}`;
 };
 
+// Configuration: Set to true to require login for viewing customer cards via QR code
+const REQUIRE_AUTH_FOR_CUSTOMER_VIEW = false;
+
 const App: FC = () => {
     const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
@@ -369,45 +372,75 @@ const App: FC = () => {
     }, []);
 
     useEffect(() => {
-        if (loggedInUser && loggedInUser.role !== 'customer' && loggedInUser.role !== 'kunde') {
-            const path = window.location.pathname;
-            const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
+        const path = window.location.pathname;
+        const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
 
-            if (match && match[1]) {
-                const identifier = match[1];
-                const isUuid = identifier.includes('-');
+        if (match && match[1]) {
+            const identifier = match[1];
+            const isUuid = identifier.includes('-');
 
-                // Falls wir schon auf der richtigen Seite sind und kein UUID-Lookup brauchen, überspringen
-                if (view.page === 'customers' && view.subPage === 'detail' && view.customerId === identifier && !isUuid) {
-                    return;
-                }
+            // Check if authentication is required
+            const isAuthRequired = REQUIRE_AUTH_FOR_CUSTOMER_VIEW;
+            const isUserLoggedIn = !!loggedInUser;
+            const isStaffOrAdmin = loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === 'mitarbeiter');
 
-                setServerLoading({ active: true, message: 'Lade Kundendaten...' });
-
-                const endpoint = isUuid ? `/api/users/by-auth/${identifier}` : `/api/users/${identifier}`;
-
-                apiClient.get(endpoint, authToken)
-                    .then(customerData => {
-                        setDirectAccessedCustomer(customerData);
-                        setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
-                        // URL auf sauberes Format (ID) bringen
-                        if (isUuid) {
-                            window.history.replaceState({}, '', `/customer/${customerData.id}`);
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Fehler beim Laden des Kunden via QR-Code:", err);
-                        // Nur umleiten wenn wir wirklich eine UUID hatten die nicht gefunden wurde
-                        if (isUuid) {
-                            alert("Kunde konnte nicht gefunden oder geladen werden.");
-                            window.history.pushState({}, '', '/');
-                            setView({ page: 'dashboard' });
-                        }
-                    })
-                    .finally(() => {
-                        setServerLoading({ active: false, message: '' });
-                    });
+            // If auth is required and user is not logged in, redirect to login
+            if (isAuthRequired && !isUserLoggedIn) {
+                // Don't do anything - AuthScreen will be shown
+                return;
             }
+
+            // If user is a customer (not staff), skip this logic
+            if (isUserLoggedIn && (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde')) {
+                return;
+            }
+
+            // Falls wir schon auf der richtigen Seite sind und kein UUID-Lookup brauchen, überspringen
+            if (view.page === 'customers' && view.subPage === 'detail' && view.customerId === identifier && !isUuid) {
+                return;
+            }
+
+            setServerLoading({ active: true, message: 'Lade Kundendaten...' });
+
+            // Determine which endpoint to use based on authentication status
+            let endpoint: string;
+            if (authToken) {
+                // If logged in, use authenticated endpoints
+                endpoint = isUuid ? `/api/users/by-auth/${identifier}` : `/api/users/${identifier}`;
+            } else {
+                // If not logged in, use public endpoint (only supports numeric ID)
+                if (isUuid) {
+                    // We need to convert UUID to ID first, but we can't without auth
+                    // So we'll try the auth endpoint and handle the error
+                    endpoint = `/api/users/by-auth/${identifier}`;
+                } else {
+                    endpoint = `/api/public/users/${identifier}`;
+                }
+            }
+
+            apiClient.get(endpoint, authToken)
+                .then(customerData => {
+                    setDirectAccessedCustomer(customerData);
+                    setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
+                    // URL auf sauberes Format (ID) bringen
+                    if (isUuid) {
+                        window.history.replaceState({}, '', `/customer/${customerData.id}`);
+                    }
+                })
+                .catch(err => {
+                    console.error("Fehler beim Laden des Kunden via QR-Code:", err);
+                    // If auth is not required and we got an error, it might be a 401
+                    if (!isAuthRequired && err.toString().includes('401')) {
+                        alert("Dieser Kunde konnte nicht gefunden werden oder Sie haben keine Berechtigung.");
+                    } else if (isUuid) {
+                        alert("Kunde konnte nicht gefunden oder geladen werden.");
+                    }
+                    window.history.pushState({}, '', '/');
+                    setView({ page: 'dashboard' });
+                })
+                .finally(() => {
+                    setServerLoading({ active: false, message: '' });
+                });
         }
     }, [loggedInUser, authToken]);
 

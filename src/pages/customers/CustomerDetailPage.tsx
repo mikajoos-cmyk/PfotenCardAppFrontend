@@ -440,13 +440,13 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             <li><span className="label">Guthaben</span><span className="value">€ {Math.floor(customer.balance).toLocaleString('de-DE')}</span></li>
                             <li><span className="label">Transaktionen</span><span className="value">{customerTransactions.length}</span></li>
                             <li><span className="label">Kunde seit</span><span className="value">{new Date(customer.customer_since as any).toLocaleDateString('de-DE')}</span></li>
-                            <li><span className="label">Erstellt von</span><span className="value">{creator?.name || '-'}</span></li>
+                            <li><span className="label">Kundennummer</span><span className="value">{customer.id || '-'}</span></li>
                         </ul>
                     </div>
                     <div className="side-card qr-code-container">
                         <h2>QR-Code</h2>
                         <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.auth_id || customer.id}`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.id}`}
                             alt="QR Code"
                             style={{
                                 width: '100%',
