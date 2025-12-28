@@ -43,7 +43,15 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
 
         } catch (err: any) {
             console.error(err);
-            setMessage({ type: 'error', text: 'Login fehlgeschlagen: ' + err.message });
+            if (err.message === 'Email not confirmed') {
+                setMessage({
+                    type: 'error',
+                    text: 'E-Mail noch nicht bestätigt. Bitte prüfen Sie Ihren Posteingang oder klicken Sie unten auf "E-Mail erneut senden".'
+                });
+                setView('verify');
+            } else {
+                setMessage({ type: 'error', text: 'Login fehlgeschlagen: ' + err.message });
+            }
         } finally {
             onLoginEnd();
         }
@@ -107,7 +115,7 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
 
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: window.location.origin,
+                redirectTo: `${window.location.origin}/update-password`,
             });
             if (error) throw error;
             setMessage({ type: 'success', text: 'Link zum Zurücksetzen wurde gesendet!' });

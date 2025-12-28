@@ -44,11 +44,14 @@ const App: FC = () => {
     // Initial View basierend auf URL bestimmen
     const [view, setView] = useState<View>(() => {
         const path = window.location.pathname;
+
+        if (path === '/update-password') {
+            setShowPasswordReset(true);
+        }
+
         const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
         if (match && match[1]) {
             const identifier = match[1];
-            // Wenn es eine Zahl ist, können wir die Seite schon mal setzen
-            // Wenn es eine UUID ist, laden wir die Daten im useEffect nach
             return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
         }
         return { page: 'dashboard' };
@@ -409,10 +412,22 @@ const App: FC = () => {
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'PASSWORD_RECOVERY') {
                 setShowPasswordReset(true);
+            } else if (event === 'SIGNED_IN' && session) {
+                // Wenn wir via Magic Link / Confirmation kommen, haben wir ein Session aber evtl. noch kein loggedInUser
+                if (!loggedInUser || loggedInUser.auth_id !== session.user.id) {
+                    try {
+                        const userResponse = await apiClient.get('/api/users/me', session.access_token);
+                        handleLoginSuccess(session.access_token, userResponse);
+                    } catch (err) {
+                        console.error("Auth Change Error:", err);
+                    }
+                }
+            } else if (event === 'SIGNED_OUT') {
+                handleLogout();
             }
         });
         return () => { authListener.subscription.unsubscribe(); };
-    }, []);
+    }, [loggedInUser]);
 
     const handlePasswordUpdate = async () => {
         if (!newPassword) return alert("Bitte Passwort eingeben");
