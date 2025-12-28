@@ -408,31 +408,23 @@ const App: FC = () => {
                 // If logged in, use authenticated endpoints
                 endpoint = isUuid ? `/api/users/by-auth/${identifier}` : `/api/users/${identifier}`;
             } else {
-                // If not logged in, use public endpoint (only supports numeric ID)
-                if (isUuid) {
-                    // We need to convert UUID to ID first, but we can't without auth
-                    // So we'll try the auth endpoint and handle the error
-                    endpoint = `/api/users/by-auth/${identifier}`;
-                } else {
-                    endpoint = `/api/public/users/${identifier}`;
-                }
+                // If not logged in, use public endpoint (supports UUID)
+                endpoint = `/api/public/users/${identifier}`;
             }
 
             apiClient.get(endpoint, authToken)
                 .then(customerData => {
                     setDirectAccessedCustomer(customerData);
                     setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
-                    // URL auf sauberes Format (ID) bringen
-                    if (isUuid) {
-                        window.history.replaceState({}, '', `/customer/${customerData.id}`);
-                    }
+                    // Keep UUID in URL for privacy (don't convert to numeric ID)
+                    // No URL replacement needed
                 })
                 .catch(err => {
                     console.error("Fehler beim Laden des Kunden via QR-Code:", err);
                     // If auth is not required and we got an error, it might be a 401
                     if (!isAuthRequired && err.toString().includes('401')) {
                         alert("Dieser Kunde konnte nicht gefunden werden oder Sie haben keine Berechtigung.");
-                    } else if (isUuid) {
+                    } else {
                         alert("Kunde konnte nicht gefunden oder geladen werden.");
                     }
                     window.history.pushState({}, '', '/');

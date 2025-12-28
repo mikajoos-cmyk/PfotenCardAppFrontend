@@ -446,7 +446,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     <div className="side-card qr-code-container">
                         <h2>QR-Code</h2>
                         <img
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.id}`}
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${window.location.origin}/customer/${customer.auth_id}`}
                             alt="QR Code"
                             style={{
                                 width: '100%',
