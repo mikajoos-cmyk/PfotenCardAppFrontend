@@ -983,7 +983,45 @@ const App: FC = () => {
         );
     }
 
+    // Check if we're trying to access a customer page via QR code without login
+    const isAccessingCustomerPage = view.page === 'customers' && view.subPage === 'detail' && view.customerId;
+    const allowUnauthenticatedAccess = !REQUIRE_AUTH_FOR_CUSTOMER_VIEW && isAccessingCustomerPage;
+
     if (!authToken || !loggedInUser) {
+        // If we're accessing a customer page and auth is not required, allow it
+        if (allowUnauthenticatedAccess && directAccessedCustomer) {
+            // Render customer detail page without authentication
+            return (
+                <div className="app-container">
+                    <div className="main-content" style={{ marginLeft: 0, width: '100%' }}>
+                        <CustomerDetailPage
+                            customer={directAccessedCustomer}
+                            transactions={transactions}
+                            setView={handleSetView}
+                            handleLevelUp={handleLevelUp}
+                            onSave={handleSaveCustomerDetails}
+                            currentUser={directAccessedCustomer} // Use customer as current user for read-only view
+                            users={[]}
+                            onUploadDocuments={handleUploadDocuments}
+                            onDeleteDocument={handleDeleteDocument}
+                            fetchAppData={fetchAppData}
+                            authToken={null}
+                            onDeleteUserClick={() => { }}
+                            onToggleVipStatus={onToggleVipStatus}
+                            onToggleExpertStatus={onToggleExpertStatus}
+                            setDogFormModal={setDogFormModal}
+                            setDeletingDog={setDeletingDog}
+                            levels={appConfigData?.levels || previewConfig.levels}
+                            wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
+                            isDarkMode={isDarkMode}
+                            isPreviewMode={isPreviewMode}
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        // Otherwise show login screen
         return (
             <AuthScreen
                 onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
