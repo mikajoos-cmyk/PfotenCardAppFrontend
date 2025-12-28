@@ -85,6 +85,7 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
                 name: name,
                 email: email,
                 password: password, // Wird für die DB als Hash gespeichert
+                auth_id: authData.user.id,
                 role: "kunde",
                 dogs: [{ name: dogName }]
             }, null);
