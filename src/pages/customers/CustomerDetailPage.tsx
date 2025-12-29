@@ -376,7 +376,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                         <p className="no-requirements">Keine besonderen Anforderungen in diesem {levelTerm}.</p>
                                                     )}
 
-                                                    {canDoLevelUp && !isLast && (
+                                                    {canDoLevelUp && !isLast && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
                                                         <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
                                                             {/* Nimm die ID des nächsten Levels aus dem Array */}
                                                             <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), levelsToUse[index + 1].id)}>
