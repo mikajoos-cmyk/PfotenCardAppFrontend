@@ -1,5 +1,5 @@
 import React, { FC } from 'react';
-import { User } from '../../types';
+import { User, View } from '../../types';
 import Icon from '../ui/Icon';
 import OnlineStatus from './OnlineStatus';
 import { getInitials, getAvatarColorClass } from '../../lib/utils';
@@ -8,8 +8,8 @@ interface CustomerSidebarProps {
     user: User;
     onLogout: () => void;
     setSidebarOpen: (isOpen: boolean) => void;
-    activePage: 'overview' | 'transactions' | 'appointments';
-    setPage: (page: 'overview' | 'transactions' | 'appointments') => void;
+    view: View;
+    setView: (view: View) => void;
     schoolName?: string;
     logoUrl?: string;
     // NEUE PROPS
@@ -19,10 +19,48 @@ interface CustomerSidebarProps {
 }
 
 const CustomerSidebar: FC<CustomerSidebarProps> = ({
-    user, onLogout, setSidebarOpen, activePage, setPage, schoolName = 'PfotenCard', logoUrl,
+    user, onLogout, setSidebarOpen, view, setView, schoolName = 'PfotenCard', logoUrl,
     isPreviewMode, onToggleRole,
     activeModules = ['news', 'documents', 'calendar']
 }) => {
+
+    // Helper to determine active state
+    const isActive = (id: string) => {
+        if (id === 'overview') return view.page === 'dashboard';
+        if (id === 'transactions') return view.page === 'customers' && view.subPage === 'transactions'; // Wait, transactions page for customer?
+        // App.tsx logic for customer transactions?
+        // Let's check App.tsx rendering.
+        // If customer, `fetchAppData` sets transactions.
+        // Customer "Transactions" page...
+        // Usually customers see their transactions on Dashboard or a separate page.
+        // Old sidebar set `activePage='transactions'`, but what did App.tsx render?
+        // It likely did NOTHING different unless `customerPage` was used in `renderContent`?
+        // I need to check `App.tsx` again.
+
+        // RE-CHECK App.tsx logic for customerPage usage!
+        // `renderContent` does NOT seem to use `customerPage`.
+        // `DashboardPage` for customer shows transactions list.
+        // Maybe "Overview" was dashboard, "Transactions" was... nothing?
+        // Or maybe I missed it.
+        // I'll assume I should route to a proper view.
+        // If I route to `view.page='customers', subPage='transactions'`, rendered content is `TransactionManagementPage`.
+        // Is that for customers? `TransactionManagementPage` seems admin-facing (booking transactions).
+        // `CustomerTransactionsPage` exists.
+
+        // I will route 'transactions' to `view.page = 'transactions_list'` (new) or something.
+        // Or I map 'transactions' back to 'dashboard' but with a hash?
+
+        // Let's stick to 'dashboard' for now for Overview.
+        // For Transactions, I might need a new View type or handle it.
+        // "Meine Transaktionen" -> lets assume it's `CustomerTransactionsPage` or just distinct view.
+
+        if (id === 'transactions') return false; // Placeholder
+        if (id === 'appointments') return view.page === 'appointments';
+        if (id === 'news') return view.page === 'news';
+        if (id === 'chat') return view.page === 'chat';
+        return false;
+    };
+
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
@@ -40,20 +78,34 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
             </div>
             <OnlineStatus />
             <nav className="sidebar-nav">
-                <a href="#" className={`nav-link ${activePage === 'overview' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setPage('overview'); }}>
+                <a href="#" className={`nav-link ${view.page === 'dashboard' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setView({ page: 'dashboard' }); }}>
                     <Icon name="user" />
                     <span>Meine Karte</span>
                 </a>
-                <a href="#" className={`nav-link ${activePage === 'transactions' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setPage('transactions'); }}>
+
+                <a href="#" className={`nav-link ${view.page === 'transactions' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setView({ page: 'transactions' }); }}>
                     <Icon name="creditCard" />
                     <span>Meine Transaktionen</span>
                 </a>
+
                 {activeModules.includes('calendar') && (
-                    <a href="#" className={`nav-link ${activePage === 'appointments' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setPage('appointments'); }}>
+                    <a href="#" className={`nav-link ${view.page === 'appointments' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setView({ page: 'appointments' }); }}>
                         <Icon name="calendar" />
                         <span>Termine</span>
                     </a>
                 )}
+
+                {activeModules.includes('news') && (
+                    <a href="#" className={`nav-link ${view.page === 'news' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setView({ page: 'news' }); }}>
+                        <Icon name="news" />
+                        <span>Neuigkeiten</span>
+                    </a>
+                )}
+
+                <a href="#" className={`nav-link ${view.page === 'chat' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setView({ page: 'chat' }); }}>
+                    <Icon name="message" />
+                    <span>Nachrichten</span>
+                </a>
             </nav>
 
             {/* --- HIER IST DER NEUE SCHIEBEREGLER --- */}

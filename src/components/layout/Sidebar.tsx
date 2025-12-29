@@ -36,6 +36,8 @@ const Sidebar: FC<SidebarProps> = ({
         { id: 'appointments', label: 'Termine', icon: 'calendar', roles: ['admin', 'mitarbeiter'], moduleId: 'calendar' },
         { id: 'reports', label: 'Berichte', icon: 'reports', roles: ['admin', 'mitarbeiter'] },
         { id: 'users', label: 'Benutzer', icon: 'users', roles: ['admin'] },
+        { id: 'news', label: 'Neuigkeiten', icon: 'news', roles: ['admin', 'mitarbeiter'] },
+        { id: 'chat', label: 'Nachrichten', icon: 'message', roles: ['admin', 'mitarbeiter'] },
     ];
 
     const handleNavClick = (view: View) => {

@@ -200,6 +200,32 @@ export const apiClient = {
 
     toggleAttendance: async (bookingId: number, token: string | null) => {
         return apiClient.put(`/api/bookings/${bookingId}/attendance`, {}, token);
+    },
+
+    // --- NEWS ---
+    getNews: async (token: string | null) => {
+        return apiClient.get('/api/news', token);
+    },
+
+    createNews: async (data: { title: string; content: string; image_url?: string }, token: string | null) => {
+        return apiClient.post('/api/news', data, token);
+    },
+
+    // --- CHAT ---
+    sendChatMessage: async (data: { content: string; receiver_id: number }, token: string | null) => {
+        return apiClient.post('/api/chat', data, token);
+    },
+
+    getConversations: async (token: string | null) => {
+        return apiClient.get('/api/chat/conversations', token);
+    },
+
+    getChatMessages: async (otherUserId: number, token: string | null) => {
+        return apiClient.get(`/api/chat/${otherUserId}`, token);
+    },
+
+    markChatRead: async (otherUserId: number, token: string | null) => {
+        return apiClient.post(`/api/chat/${otherUserId}/read`, {}, token);
     }
 };
 

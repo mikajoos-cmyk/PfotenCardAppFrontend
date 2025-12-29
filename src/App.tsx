@@ -30,6 +30,8 @@ import CustomerTransactionsPage from './pages/customers/CustomerTransactionsPage
 import ReportsPage from './pages/reports/ReportsPage';
 import UsersPage from './pages/admin/UsersPage';
 import AppointmentsPage from './pages/AppointmentsPage';
+import { NewsPage } from './pages/NewsPage';
+import { ChatPage } from './pages/ChatPage';
 
 const getFullImageUrl = (url?: string) => {
     if (!url) return null;
@@ -57,6 +59,14 @@ const App: FC = () => {
             const identifier = match[1];
             return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
         }
+        if (match && match[1]) {
+            const identifier = match[1];
+            return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
+        }
+
+        if (path === '/news') return { page: 'news' };
+        if (path === '/chat') return { page: 'chat' };
+
         return { page: 'dashboard' };
     });
 
@@ -80,8 +90,8 @@ const App: FC = () => {
     const [deletingDog, setDeletingDog] = useState<any | null>(null);
 
     const [isServerLoading, setServerLoading] = useState<{ active: boolean; message: string }>({ active: false, message: '' });
-    // State for customer view sub-navigation
-    const [customerPage, setCustomerPage] = useState<'overview' | 'transactions' | 'appointments'>('overview');
+
+    // Removed customerPage state in favor of global View
     const [directAccessedCustomer, setDirectAccessedCustomer] = useState<any | null>(null);
 
     const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -121,7 +131,6 @@ const App: FC = () => {
         };
         setLoggedInUser(updatedUser);
         setView({ page: 'dashboard' });
-        setCustomerPage('overview');
     };
 
     // --- ZENTRALE THEME ENGINE ---
@@ -1064,46 +1073,48 @@ const App: FC = () => {
         );
     }
 
+
+
+    // --- RENDER CONTENT ---
     const renderContent = () => {
-        if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
-            const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
-            if (!customer) return <div>Lade Daten...</div>;
-
-            if (customerPage === 'transactions') {
-                return <CustomerTransactionsPage transactions={transactions.filter(t => t.user_id === loggedInUser.id)} />;
-            }
-
-            if (customerPage === 'appointments') {
-                return <AppointmentsPage user={loggedInUser} token={authToken} />;
-            }
-
-            return (
-                <CustomerDetailPage
-                    customer={customer}
-                    transactions={transactions}
-                    setView={handleSetView}
-                    handleLevelUp={handleLevelUp}
-                    onSave={handleSaveCustomerDetails}
-                    currentUser={loggedInUser}
-                    users={users}
-                    onUploadDocuments={handleUploadDocuments}
-                    onDeleteDocument={handleDeleteDocument}
-                    fetchAppData={fetchAppData}
-                    authToken={authToken}
-                    onDeleteUserClick={() => { }}
-                    onToggleVipStatus={onToggleVipStatus}
-                    onToggleExpertStatus={onToggleExpertStatus}
-                    setDogFormModal={setDogFormModal}
-                    setDeletingDog={setDeletingDog}
-                    levels={appConfigData?.levels || previewConfig.levels}
-                    wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
-                    isDarkMode={isDarkMode}
-                    isPreviewMode={isPreviewMode}
-                />
-            );
+        if (view.page === 'news') {
+            return <NewsPage user={loggedInUser} token={authToken} />;
+        }
+        if (view.page === 'chat') {
+            return <ChatPage user={loggedInUser} token={authToken} />;
         }
 
         if (view.page === 'dashboard') {
+            if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
+                const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
+                if (!customer) return <div>Lade Daten...</div>;
+
+                return (
+                    <CustomerDetailPage
+                        customer={customer}
+                        transactions={transactions}
+                        setView={handleSetView}
+                        handleLevelUp={handleLevelUp}
+                        onSave={handleSaveCustomerDetails}
+                        currentUser={loggedInUser}
+                        users={users}
+                        onUploadDocuments={handleUploadDocuments}
+                        onDeleteDocument={handleDeleteDocument}
+                        fetchAppData={fetchAppData}
+                        authToken={authToken}
+                        onDeleteUserClick={() => { }}
+                        onToggleVipStatus={onToggleVipStatus}
+                        onToggleExpertStatus={onToggleExpertStatus}
+                        setDogFormModal={setDogFormModal}
+                        setDeletingDog={setDeletingDog}
+                        levels={appConfigData?.levels || previewConfig.levels}
+                        wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
+                        isDarkMode={isDarkMode}
+                        isPreviewMode={isPreviewMode}
+                    />
+                );
+            }
+
             return (
                 <DashboardPage
                     customers={customers}
@@ -1115,6 +1126,13 @@ const App: FC = () => {
                     setView={handleSetView}
                 />
             );
+        }
+
+        // NEW: Customer Transactions Route
+        if (view.page === 'transactions') {
+            return <CustomerTransactionsPage
+                transactions={transactions}
+            />;
         }
 
         if (view.page === 'customers') {
@@ -1217,8 +1235,8 @@ const App: FC = () => {
                     user={loggedInUser}
                     onLogout={handleLogout}
                     setSidebarOpen={setIsSidebarOpen}
-                    activePage={customerPage}
-                    setPage={setCustomerPage}
+                    view={view}
+                    setView={setView}
                     schoolName={schoolName}
                     logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
                     isPreviewMode={isPreviewMode}

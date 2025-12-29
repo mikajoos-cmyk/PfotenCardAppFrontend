@@ -1,5 +1,5 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
-export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments';
+export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions';
 export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions' };
 
 export interface User {
@@ -90,4 +90,34 @@ export interface DocumentFile {
     // Backend fields
     file_name?: string;
     file_type?: string;
+}
+
+export interface NewsPost {
+    id: number;
+    tenant_id: number;
+    created_by_id: number;
+    title: string;
+    content: string;
+    image_url?: string;
+    created_at: string; // ISO date string
+    author_name?: string;
+
+    // Optional expanded author
+    author?: User;
+}
+
+export interface ChatMessage {
+    id: number;
+    tenant_id: number;
+    sender_id: number;
+    receiver_id: number;
+    content: string;
+    is_read: boolean;
+    created_at: string;
+}
+
+export interface ChatConversation {
+    user: User;
+    last_message?: ChatMessage;
+    unread_count: number;
 }
