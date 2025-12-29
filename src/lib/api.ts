@@ -167,6 +167,15 @@ export const apiClient = {
         return handleResponse(response);
     },
 
+    // --- USERS ---
+    getUsers: async (token: string | null) => {
+        return apiClient.get('/api/users', token);
+    },
+
+    getStaff: async (token: string | null) => {
+        return apiClient.get('/api/users/staff', token);
+    },
+
     // Update: user_id Parameter hinzugefügt
     getTransactions: async (token: string | null, userId?: string) => {
         const query = userId ? `?user_id=${userId}` : '';
@@ -212,7 +221,13 @@ export const apiClient = {
     },
 
     // --- CHAT ---
-    sendChatMessage: async (data: { content: string; receiver_id: number }, token: string | null) => {
+    sendChatMessage: async (data: {
+        content: string;
+        receiver_id: number;
+        file_url?: string;
+        file_type?: string;
+        file_name?: string;
+    }, token: string | null) => {
         return apiClient.post('/api/chat', data, token);
     },
 

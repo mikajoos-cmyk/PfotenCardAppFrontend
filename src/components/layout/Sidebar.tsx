@@ -1,4 +1,3 @@
-
 import React, { FC } from 'react';
 import { User, Page, View } from '../../types';
 import Icon from '../ui/Icon';
@@ -28,7 +27,7 @@ const Sidebar: FC<SidebarProps> = ({
     schoolName,
     isPreviewMode,
     onToggleRole,
-    activeModules = ['news', 'documents', 'calendar']
+    activeModules = ['news', 'documents', 'calendar', 'chat']
 }) => {
     const navItems = [
         { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', roles: ['admin', 'mitarbeiter'] },
@@ -36,8 +35,9 @@ const Sidebar: FC<SidebarProps> = ({
         { id: 'appointments', label: 'Termine', icon: 'calendar', roles: ['admin', 'mitarbeiter'], moduleId: 'calendar' },
         { id: 'reports', label: 'Berichte', icon: 'reports', roles: ['admin', 'mitarbeiter'] },
         { id: 'users', label: 'Benutzer', icon: 'users', roles: ['admin'] },
-        { id: 'news', label: 'Neuigkeiten', icon: 'news', roles: ['admin', 'mitarbeiter'] },
-        { id: 'chat', label: 'Nachrichten', icon: 'message', roles: ['admin', 'mitarbeiter'] },
+        // HIER: moduleId hinzugefügt
+        { id: 'news', label: 'Neuigkeiten', icon: 'file', roles: ['admin', 'mitarbeiter'], moduleId: 'news' },
+        { id: 'chat', label: 'Nachrichten', icon: 'mail', roles: ['admin', 'mitarbeiter'], moduleId: 'chat' },
     ];
 
     const handleNavClick = (view: View) => {
@@ -66,6 +66,7 @@ const Sidebar: FC<SidebarProps> = ({
             <nav className="sidebar-nav">
                 {navItems
                     .filter(item => item.roles.includes(user.role))
+                    // Filtert Module heraus, die nicht in den Einstellungen aktiv sind
                     .filter(item => !item.moduleId || activeModules.includes(item.moduleId))
                     .map(item => (
                         <a key={item.id} href="#" className={`nav-link ${activePage === item.id ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNavClick({ page: item.id as Page }); }}>

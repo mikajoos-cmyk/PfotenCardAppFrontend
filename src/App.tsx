@@ -1081,7 +1081,8 @@ const App: FC = () => {
             return <NewsPage user={loggedInUser} token={authToken} />;
         }
         if (view.page === 'chat') {
-            return <ChatPage user={loggedInUser} token={authToken} />;
+            // HIER DIE ÄNDERUNG: setView übergeben
+            return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} />;
         }
 
         if (view.page === 'dashboard') {

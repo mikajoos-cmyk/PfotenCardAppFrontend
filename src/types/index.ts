@@ -114,6 +114,9 @@ export interface ChatMessage {
     content: string;
     is_read: boolean;
     created_at: string;
+    file_url?: string;
+    file_type?: string;
+    file_name?: string;
 }
 
 export interface ChatConversation {

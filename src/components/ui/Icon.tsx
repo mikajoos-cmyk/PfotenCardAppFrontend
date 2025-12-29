@@ -47,6 +47,7 @@ const Icon = ({ name, ...props }: { name: string } & React.SVGProps<SVGSVGElemen
         printer: { path: <><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></> },
         wifi: { path: <><path d="M5 12.55a11 11 0 0 1 14.08 0" /><path d="M1.42 9a16 16 0 0 1 21.16 0" /><path d="M8.53 16.11a6 6 0 0 1 6.95 0" /><line x1="12" x2="12.01" y1="20" y2="20" /></> },
         refresh: { path: <><path d="M21.5 2v6h-6" /><path d="M2.5 22v-6h6" /><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2" /></> },
+        paperclip: { path: <><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></> },
         menu: { path: <><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></> },
         eye: { path: <><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></> },
         'eye-off': { path: <><path d="m9.9 9.9 4.2 4.2" /><path d="M10.7 15.3a7 7 0 0 1-8.1-8.1l9.8 9.8" /><path d="M7.5 4.2C9.2 3.3 11.2 3 13 3s3.8.3 5.5 1.2l-2.2 2.2" /><path d="M19.8 17.8a14 14 0 0 1-11.2-4.3l1.5-1.5" /><path d="m2.2 2.2 20 20" /></> },

@@ -797,7 +797,23 @@ body {
     gap: 1.5rem;
 }
 
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
 .content-box h2 {
+
     font-size: 1.2rem;
     margin-bottom: 1rem;
 }
