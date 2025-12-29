@@ -682,6 +682,15 @@ const App: FC = () => {
             }
             return c;
         }));
+
+        // WICHTIG: Auch direkt aufgerufenen Kunden (QR-Code) aktualisieren!
+        if (directAccessedCustomer && String(directAccessedCustomer.id) === view.customerId) {
+            setDirectAccessedCustomer((prev: any) => ({
+                ...prev,
+                balance: (prev.balance || 0) + amount
+            }));
+        }
+
         if (loggedInUser && String(loggedInUser.id) === view.customerId) {
             setLoggedInUser((prev: any) => ({ ...prev, balance: (prev.balance || 0) + amount }));
         }
@@ -690,7 +699,7 @@ const App: FC = () => {
             user_id: optimisticTx.user_id,
             type: optimisticTx.type,
             description: optimisticTx.description,
-            amount: optimisticTx.amount,
+            amount: (txData.type === 'topup' && txData.baseAmount !== undefined) ? txData.baseAmount : optimisticTx.amount,
             training_type_id: txData.meta?.requirementId ? parseInt(txData.meta.requirementId) : null
         };
 
@@ -741,12 +750,18 @@ const App: FC = () => {
 
     const handleLevelUp = async (customerId: string, newLevelId: number) => {
         try {
-            await apiClient.put(`/api/users/${customerId}/level`, { level_id: newLevelId }, authToken);
-            console.log(`Kunde erfolgreich auf Level ${newLevelId} hochgestuft!`);
+            // Use the logic-driven endpoint instead of manual override
+            await apiClient.post(`/api/users/${customerId}/level-up`, {}, authToken);
+            console.log(`Kunde erfolgreich hochgestuft!`);
             await fetchAppData();
         } catch (error) {
             console.error("Fehler beim Level-Up:", error);
-            alert(`Fehler: ${error}`);
+            // Fallback? Or Alert specific error.
+            if (error.toString().includes("Requirements not met")) {
+                alert("Fehler: Voraussetzungen für den Aufstieg sind noch nicht erfüllt.");
+            } else {
+                alert(`Fehler: ${error}`);
+            }
         }
     };
 
@@ -847,6 +862,10 @@ const App: FC = () => {
             }
             return c;
         }));
+
+        if (directAccessedCustomer && directAccessedCustomer.id === userToUpdate.id) {
+            setDirectAccessedCustomer((prev: any) => ({ ...prev, ...userToUpdate }));
+        }
 
         if (loggedInUser && loggedInUser.id === userToUpdate.id) {
             setLoggedInUser((prev: any) => ({ ...prev, ...userToUpdate }));

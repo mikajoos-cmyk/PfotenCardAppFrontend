@@ -40,15 +40,38 @@ export const getProgressForLevel = (customer: any, levelId: number, dynamicLevel
     // Nur ungenutzte Achievements zählen für den Fortschritt
     const unconsumedAchievements = (customer.achievements || []).filter((ach: any) => !ach.is_consumed);
 
+    const fullAchievementCounts: { [key: string]: number } = {};
     unconsumedAchievements.forEach((ach: any) => {
-        // Fall A: Dynamisch (Backend nutzt training_type_id)
         if (ach.training_type_id) {
             const key = String(ach.training_type_id);
-            progress[key] = (progress[key] || 0) + 1;
+            fullAchievementCounts[key] = (fullAchievementCounts[key] || 0) + 1;
         }
-        // Fall B: Legacy (String IDs)
         if (ach.requirement_id) {
-            progress[ach.requirement_id] = (progress[ach.requirement_id] || 0) + 1;
+            fullAchievementCounts[ach.requirement_id] = (fullAchievementCounts[ach.requirement_id] || 0) + 1;
+        }
+    });
+
+    // Split requirements into exam and non-exam
+    const examReqs = requirements.filter((r: any) => (r.training_type?.category || r.category) === 'exam');
+    const nonExamReqs = requirements.filter((r: any) => (r.training_type?.category || r.category) !== 'exam');
+
+    // 1. Count non-exam requirements first
+    let allNonExamMet = true;
+    nonExamReqs.forEach((req: any) => {
+        const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
+        const count = fullAchievementCounts[reqKey] || 0;
+        const target = req.required_count || req.required || 1;
+        progress[reqKey] = count;
+        if (count < target) allNonExamMet = false;
+    });
+
+    // 2. Only count exams if all non-exam requirements are met
+    examReqs.forEach((req: any) => {
+        const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
+        if (allNonExamMet) {
+            progress[reqKey] = fullAchievementCounts[reqKey] || 0;
+        } else {
+            progress[reqKey] = 0; // Show 0 if not eligible to count exams yet
         }
     });
 
@@ -71,9 +94,9 @@ export const areLevelRequirementsMet = (customer: any, dynamicLevels?: any[]): b
         const progress = getProgressForLevel(customer, currentLevelId, dynamicLevels);
 
         return requirements.every((req: any) => {
-            const reqKey = req.training_type_id ? String(req.training_type_id) : req.id;
+            const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
             const currentCount = progress[reqKey] || 0;
-            const targetCount = req.required_count || req.required;
+            const targetCount = req.required_count || req.required || 1;
             return currentCount >= targetCount;
         });
     }

@@ -33,7 +33,7 @@ const TransactionConfirmationModal: FC<TransactionConfirmationModalProps> = ({ c
                             <p>Bitte bestätigen Sie die Transaktion für <strong>{customer.name}</strong>.</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="modal-close-button">&times;</button>
+                    <button className="close-button" onClick={onClose}><Icon name="x" /></button>
                 </div>
 
                 <div className="modal-body">
