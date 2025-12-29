@@ -239,6 +239,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
         // Optimistic Update
         const tempMsg: ChatMessage = {
             id: Date.now(),
+            tenant_id: user.tenant_id ? Number(user.tenant_id) : 0,
             sender_id: Number(user.id),
             receiver_id: Number(selectedUser.id),
             content: msgContent,
