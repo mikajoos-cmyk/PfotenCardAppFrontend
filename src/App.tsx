@@ -42,7 +42,7 @@ const getFullImageUrl = (url?: string) => {
 // Configuration: Set to true to require login for viewing customer cards via QR code
 const REQUIRE_AUTH_FOR_CUSTOMER_VIEW = false;
 
-const App: FC = () => {
+export default function App() {
     const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
 
@@ -1281,7 +1281,10 @@ const App: FC = () => {
         return <div>Seite nicht gefunden</div>;
     };
 
-    const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
+    let activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
+    if (isPreviewMode && !activeModules.includes('chat')) {
+        activeModules = [...activeModules, 'chat'];
+    }
 
     return (
         <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
@@ -1383,6 +1386,5 @@ const App: FC = () => {
             )}
         </div >
     );
-};
+}
 
-export default App;
