@@ -15,6 +15,8 @@ interface SidebarProps {
     isPreviewMode?: boolean;
     onToggleRole?: () => void;
     activeModules?: string[];
+    unreadChatCount?: number;
+    hasNewNews?: boolean;
 }
 
 const Sidebar: FC<SidebarProps> = ({
@@ -27,7 +29,9 @@ const Sidebar: FC<SidebarProps> = ({
     schoolName,
     isPreviewMode,
     onToggleRole,
-    activeModules = ['news', 'documents', 'calendar', 'chat']
+    activeModules = ['news', 'documents', 'calendar', 'chat'],
+    unreadChatCount = 0,
+    hasNewNews = false
 }) => {
     const navItems = [
         { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', roles: ['admin', 'mitarbeiter'] },
@@ -68,12 +72,27 @@ const Sidebar: FC<SidebarProps> = ({
                     .filter(item => item.roles.includes(user.role))
                     // Filtert Module heraus, die nicht in den Einstellungen aktiv sind
                     .filter(item => !item.moduleId || activeModules.includes(item.moduleId))
-                    .map(item => (
-                        <a key={item.id} href="#" className={`nav-link ${activePage === item.id ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNavClick({ page: item.id as Page }); }}>
-                            <Icon name={item.icon} />
-                            <span>{item.label}</span>
-                        </a>
-                    ))}
+                    .map(item => {
+                        const hasNotification = (item.id === 'chat' && unreadChatCount > 0) || (item.id === 'news' && hasNewNews);
+
+                        return (
+                            <a key={item.id} href="#" className={`nav-link ${activePage === item.id ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNavClick({ page: item.id as Page }); }}>
+                                <Icon name={item.icon} />
+                                <span>{item.label}</span>
+                                {hasNotification && (
+                                    <span style={{
+                                        position: 'absolute',
+                                        right: '1rem',
+                                        width: '8px',
+                                        height: '8px',
+                                        backgroundColor: 'var(--primary-color)',
+                                        borderRadius: '50%',
+                                        boxShadow: '0 0 0 2px var(--sidebar-bg)'
+                                    }} />
+                                )}
+                            </a>
+                        );
+                    })}
             </nav>
 
             {isPreviewMode && onToggleRole && (

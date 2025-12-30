@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
 export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions';
-export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions' };
+export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions', targetAppointmentId?: number };
 
 export interface User {
     id: string;
@@ -9,6 +9,16 @@ export interface User {
     role: UserRole;
     customerId?: string;
     createdAt: Date;
+}
+
+export interface Appointment {
+    id: number;
+    title: string;
+    description?: string;
+    start_time: string;
+    end_time: string;
+    location?: string;
+    max_participants: number;
 }
 
 export interface Level {
@@ -101,6 +111,8 @@ export interface NewsPost {
     image_url?: string;
     created_at: string; // ISO date string
     author_name?: string;
+    target_level_ids?: number[];
+    target_appointment_ids?: number[];
 
     // Optional expanded author
     author?: User;

@@ -18,12 +18,16 @@ interface CustomerSidebarProps {
     isPreviewMode?: boolean;
     onToggleRole?: () => void;
     activeModules?: string[];
+    unreadChatCount?: number;
+    hasNewNews?: boolean;
 }
 
 const CustomerSidebar: FC<CustomerSidebarProps> = ({
     user, onLogout, setSidebarOpen, view, setView, activePage, setPage, schoolName = 'PfotenCard', logoUrl,
     isPreviewMode, onToggleRole,
-    activeModules = ['news', 'documents', 'calendar', 'chat']
+    activeModules = ['news', 'documents', 'calendar', 'chat'],
+    unreadChatCount = 0,
+    hasNewNews = false
 }) => {
 
     // Navigation Logik vereinheitlichen (Legacy Support für activePage prop)
@@ -71,12 +75,34 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
                     <a href="#" className={`nav-link ${currentId === 'news' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNav('news'); }}>
                         <Icon name="file" />
                         <span>Neuigkeiten</span>
+                        {hasNewNews && (
+                            <span style={{
+                                position: 'absolute',
+                                right: '1rem',
+                                width: '8px',
+                                height: '8px',
+                                backgroundColor: 'var(--primary-color)',
+                                borderRadius: '50%',
+                                boxShadow: '0 0 0 2px var(--sidebar-bg)'
+                            }} />
+                        )}
                     </a>
                 )}
                 {activeModules.includes('chat') && (
                     <a href="#" className={`nav-link ${currentId === 'chat' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNav('chat'); }}>
                         <Icon name="mail" />
                         <span>Nachrichten</span>
+                        {unreadChatCount > 0 && (
+                            <span style={{
+                                position: 'absolute',
+                                right: '1rem',
+                                width: '8px',
+                                height: '8px',
+                                backgroundColor: 'var(--primary-color)',
+                                borderRadius: '50%',
+                                boxShadow: '0 0 0 2px var(--sidebar-bg)'
+                            }} />
+                        )}
                     </a>
                 )}
             </nav>

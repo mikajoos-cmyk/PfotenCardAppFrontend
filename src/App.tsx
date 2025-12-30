@@ -114,6 +114,8 @@ const App: FC = () => {
     });
 
     const [appConfigData, setAppConfigData] = useState<any>(null);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+    const [hasNewNews, setHasNewNews] = useState(false);
 
     const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
     const [isDarkMode, setIsDarkMode] = useState(false);
@@ -332,14 +334,14 @@ const App: FC = () => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('mode') === 'preview') {
             const mockUserCustomer: User = {
-                id: 'preview-user',
+                id: '999',
                 name: 'Max Mustermann',
                 email: 'max@beispiel.de',
                 role: 'customer',
                 createdAt: new Date()
             };
             const mockUserAdmin: User = {
-                id: 'preview-admin',
+                id: '888',
                 name: 'Anna Admin',
                 email: 'admin@hundeschule.de',
                 role: 'admin',
@@ -358,7 +360,7 @@ const App: FC = () => {
             };
 
             const mockTransactions = [
-                { id: 'tx-1', user_id: 'preview-user', amount: 150, title: 'Aufladung', date: new Date().toISOString(), type: 'topup', booked_by_id: 'preview-admin' }
+                { id: 'tx-1', user_id: '999', amount: 150, title: 'Aufladung', date: new Date().toISOString(), type: 'topup', booked_by_id: '888' }
             ];
 
             setLoggedInUser(mockUserCustomer);
@@ -494,8 +496,60 @@ const App: FC = () => {
             setDirectAccessedCustomer(null);
             window.history.pushState({}, '', '/');
         }
+
+        // Reset news notification when visiting news page
+        if (newView.page === 'news') {
+            setHasNewNews(false);
+            const lastSeenId = localStorage.getItem('last_seen_news_id');
+            const latestId = appDataRef.current?.newsId;
+            if (latestId && (!lastSeenId || parseInt(lastSeenId) < latestId)) {
+                localStorage.setItem('last_seen_news_id', String(latestId));
+            }
+        }
+
         setView(newView);
     };
+
+    // Ref to hold latest news ID for localStorage sync
+    const appDataRef = useRef<{ newsId?: number }>({});
+
+    // --- POLLING FOR NOTIFICATIONS ---
+    useEffect(() => {
+        if (!authToken || isPreviewMode) return;
+
+        const checkNotifications = async () => {
+            try {
+                // Check Chats
+                const conversations = await apiClient.getConversations(authToken);
+                const unread = conversations.reduce((acc: number, conv: any) => acc + (conv.unread_count || 0), 0);
+                setUnreadChatCount(unread);
+
+                // Check News
+                const news = await apiClient.getNews(authToken);
+                if (news && news.length > 0) {
+                    const latestId = news[0].id;
+                    appDataRef.current.newsId = latestId;
+                    const lastSeenId = localStorage.getItem('last_seen_news_id');
+
+                    if (!lastSeenId || parseInt(lastSeenId) < latestId) {
+                        // If currently on news page, mark as seen immediately
+                        if (view.page === 'news') {
+                            localStorage.setItem('last_seen_news_id', String(latestId));
+                            setHasNewNews(false);
+                        } else {
+                            setHasNewNews(true);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Notification polling error:", error);
+            }
+        };
+
+        checkNotifications();
+        const interval = setInterval(checkNotifications, 10000); // Poll every 10s
+        return () => clearInterval(interval);
+    }, [authToken, view.page]);
 
     // NEU: Funktion um Transaktionen eines spezifischen Kunden nachzuladen
     const loadCustomerTransactions = async (customerId: string) => {
@@ -1078,11 +1132,11 @@ const App: FC = () => {
     // --- RENDER CONTENT ---
     const renderContent = () => {
         if (view.page === 'news') {
-            return <NewsPage user={loggedInUser} token={authToken} />;
+            return <NewsPage user={loggedInUser} token={authToken} targetAppointmentId={view.targetAppointmentId} isPreviewMode={isPreviewMode} />;
         }
         if (view.page === 'chat') {
             // HIER DIE ÄNDERUNG: setView übergeben
-            return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} />;
+            return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} isPreviewMode={isPreviewMode} />;
         }
 
         if (view.page === 'dashboard') {
@@ -1209,7 +1263,7 @@ const App: FC = () => {
 
         if (view.page === 'appointments') {
             return (
-                <AppointmentsPage user={loggedInUser} token={authToken} />
+                <AppointmentsPage user={loggedInUser} token={authToken} setView={handleSetView} />
             );
         }
 
@@ -1243,6 +1297,8 @@ const App: FC = () => {
                     isPreviewMode={isPreviewMode}
                     onToggleRole={togglePreviewRole}
                     activeModules={activeModules}
+                    unreadChatCount={unreadChatCount}
+                    hasNewNews={hasNewNews}
                 />
             ) : (
                 <Sidebar
@@ -1256,8 +1312,11 @@ const App: FC = () => {
                     isPreviewMode={isPreviewMode}
                     onToggleRole={togglePreviewRole}
                     activeModules={activeModules}
+                    unreadChatCount={unreadChatCount}
+                    hasNewNews={hasNewNews}
                 />
-            )}
+            )
+            }
 
             <main className="main-content">
                 {isMobileView && (

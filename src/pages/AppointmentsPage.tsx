@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiClient, Appointment, Booking } from '../lib/api';
-import { User } from '../types';
+import { User, View } from '../types';
 import Icon from '../components/ui/Icon';
 import InfoModal from '../components/modals/InfoModal';
 
@@ -82,7 +82,7 @@ const CreateAppointmentModal = ({ isOpen, onClose, onCreate }: { isOpen: boolean
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked }: { event: Appointment, onClose: () => void, onAction: (type: 'book' | 'cancel' | 'participants') => void, userRole: string, isBooked: boolean }) => {
+const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, onNotify }: { event: Appointment, onClose: () => void, onAction: (type: 'book' | 'cancel' | 'participants') => void, userRole: string, isBooked: boolean, onNotify: () => void }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
     const isPast = new Date(event.start_time) < new Date();
@@ -132,9 +132,14 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked }: { e
                     <button className="button button-outline" onClick={onClose}>Schließen</button>
 
                     {userRole === 'admin' || userRole === 'mitarbeiter' ? (
-                        <button className="button button-primary" onClick={() => onAction('participants')}>
-                            <Icon name="users" /> Teilnehmerliste
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="button button-outline" onClick={onNotify} title="Teilnehmer benachrichtigen">
+                                <Icon name="bell" />
+                            </button>
+                            <button className="button button-primary" onClick={() => onAction('participants')}>
+                                <Icon name="users" /> Teilnehmerliste
+                            </button>
+                        </div>
                     ) : (
                         isBooked ? (
                             <button className="button button-danger" onClick={() => onAction('cancel')} disabled={isPast}>
@@ -190,7 +195,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
 // --- MAIN PAGE ---
 
-export default function AppointmentsPage({ user, token }: { user: User | any, token: string | null }) {
+export default function AppointmentsPage({ user, token, setView }: { user: User | any, token: string | null, setView?: (view: View) => void }) {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     const [myBookings, setMyBookings] = useState<Set<number>>(new Set());
@@ -290,6 +295,12 @@ export default function AppointmentsPage({ user, token }: { user: User | any, to
             loadData();
         } catch (e: any) {
             alert(e.message || "Aktion fehlgeschlagen");
+        }
+    };
+
+    const handleNotifyParticipants = (event: Appointment) => {
+        if (setView) {
+            setView({ page: 'news', targetAppointmentId: event.id });
         }
     };
 
@@ -425,6 +436,16 @@ export default function AppointmentsPage({ user, token }: { user: User | any, to
                                                 </div>
 
                                                 {/* Aktions-Bereich rechts */}
+                                                {(user.role === 'admin' || user.role === 'mitarbeiter') && (
+                                                    <button
+                                                        className="button button-outline button-small notify-bell-btn"
+                                                        onClick={(e) => { e.stopPropagation(); handleNotifyParticipants(event); }}
+                                                        title="Teilnehmer benachrichtigen"
+                                                    >
+                                                        <Icon name="bell" />
+                                                    </button>
+                                                )}
+
                                                 <div className="event-actions">
                                                     <div className={`event-capacity ${isFull ? 'full' : ''}`}>
                                                         {isFull ? 'Ausgebucht' : `${free} Plätze frei`}
@@ -480,6 +501,7 @@ export default function AppointmentsPage({ user, token }: { user: User | any, to
                     onAction={(type) => handleAction(type, selectedEvent)}
                     userRole={user?.role}
                     isBooked={myBookings.has(selectedEvent.id)}
+                    onNotify={() => handleNotifyParticipants(selectedEvent)}
                 />
             )}
         </div>

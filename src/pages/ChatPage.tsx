@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { apiClient } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { ChatMessage, ChatConversation, User, View } from '../types';
+import { MOCK_CONVERSATIONS_CUSTOMER, MOCK_MESSAGES_CUSTOMER, MOCK_CONVERSATIONS_ADMIN, MOCK_MESSAGES_ADMIN } from '../lib/mockData';
 import Icon from '../components/ui/Icon';
 import { getInitials, getAvatarColorClass } from '../lib/utils';
 import InfoModal from '../components/modals/InfoModal';
@@ -10,9 +11,10 @@ interface ChatPageProps {
     user: User | any;
     token: string | null;
     setView: (view: View) => void;
+    isPreviewMode?: boolean;
 }
 
-export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
+export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode }) => {
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
     // State
@@ -41,6 +43,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
 
     // --- POLLING SETUP ---
     useEffect(() => {
+        if (isPreviewMode) {
+            setConversations(isAdminOrStaff ? MOCK_CONVERSATIONS_ADMIN : MOCK_CONVERSATIONS_CUSTOMER);
+            return;
+        }
+
         loadConversations();
         if (selectedUser) {
             loadMessages(selectedUser.id);
@@ -54,7 +61,16 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
         }, 4000);
 
         return () => clearInterval(intervalId);
-    }, [token, selectedUser]);
+    }, [token, selectedUser, isPreviewMode, isAdminOrStaff]);
+
+    // --- RESET ON ROLE CHANGE (PREVIEW) ---
+    useEffect(() => {
+        if (isPreviewMode) {
+            setSelectedUser(null);
+            setMessages([]);
+            setConversations(isAdminOrStaff ? MOCK_CONVERSATIONS_ADMIN : MOCK_CONVERSATIONS_CUSTOMER);
+        }
+    }, [isAdminOrStaff, isPreviewMode]);
 
     // --- AUTO READ MARKING ---
     useEffect(() => {
@@ -78,8 +94,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
         }
     }, [selectedUser]);
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+        requestAnimationFrame(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior });
+        });
     };
 
     useEffect(() => {
@@ -89,6 +107,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
     // --- DATA LOGIC ---
 
     const loadConversations = async (showLoading = true) => {
+        if (isPreviewMode) return;
         try {
             const data = await apiClient.getConversations(token);
             setConversations(data);
@@ -146,6 +165,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
 
     const loadMessages = async (partnerId: string | number) => {
         if (!partnerId) return;
+        if (isPreviewMode) {
+            const mockSet = isAdminOrStaff ? MOCK_MESSAGES_ADMIN : MOCK_MESSAGES_CUSTOMER;
+            setMessages(mockSet[partnerId] || []);
+            return;
+        }
         try {
             const data = await apiClient.getChatMessages(Number(partnerId), token);
             setMessages(prev => {
@@ -249,12 +273,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
         setMessages(prev => [...prev, tempMsg]);
 
         try {
-            await apiClient.sendChatMessage({
-                content: msgContent,
-                receiver_id: Number(selectedUser.id)
-            }, token);
-            loadMessages(selectedUser.id);
-            loadConversations(false);
+            if (!isPreviewMode) {
+                await apiClient.sendChatMessage({
+                    content: msgContent,
+                    receiver_id: Number(selectedUser.id)
+                }, token);
+                loadMessages(selectedUser.id);
+                loadConversations(false);
+            }
         } catch (e) {
             alert("Senden fehlgeschlagen");
             setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
@@ -297,6 +323,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView }) => {
                             <img
                                 src={msg.file_url}
                                 alt={fileName}
+                                onLoad={() => scrollToBottom('smooth')}
                                 style={{
                                     display: 'block',
                                     maxWidth: '100%',

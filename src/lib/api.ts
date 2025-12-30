@@ -216,7 +216,13 @@ export const apiClient = {
         return apiClient.get('/api/news', token);
     },
 
-    createNews: async (data: { title: string; content: string; image_url?: string }, token: string | null) => {
+    createNews: async (data: {
+        title: string;
+        content: string;
+        image_url?: string;
+        target_level_ids?: number[];
+        target_appointment_ids?: number[];
+    }, token: string | null) => {
         return apiClient.post('/api/news', data, token);
     },
 
