@@ -1282,9 +1282,6 @@ export default function App() {
     };
 
     let activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
-    if (isPreviewMode && !activeModules.includes('chat')) {
-        activeModules = [...activeModules, 'chat'];
-    }
 
     return (
         <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
