@@ -131,8 +131,16 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         };
     }, []);
 
-    // Hilfsvariable für Desktop-Erkennung
-    const isDesktop = window.innerWidth > 768;
+    // Responsive Detection
+    const [isDesktop, setIsDesktop] = useState(window.innerWidth > 992);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsDesktop(window.innerWidth > 992);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // --- DATA LOGIC ---
 
@@ -531,10 +539,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 }}>
                     {selectedUser ? (
                         <>
-                            {/* HEADER: ZURÜCK-BUTTON & PROFIL - Fixiert oben */}
+                            {/* HEADER: ZURÜCK-BUTTON & PROFIL - Angepasst an Design-Mockup */}
                             <div style={{
                                 padding: '0 1rem',
-                                backgroundColor: 'var(--card-background)',
+                                backgroundColor: isDesktop ? 'var(--card-background)' : 'var(--sidebar-bg)',
                                 borderBottom: '1px solid var(--border-color)',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -544,30 +552,42 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 zIndex: 10
                             }}>
                                 {/* Zurück-Pfeil: Nur auf Mobile sichtbar */}
-                                <button
-                                    onClick={handleBackToList}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: '0.5rem',
-                                        cursor: 'pointer',
-                                        color: 'var(--text-primary)',
-                                        marginLeft: '-0.5rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
-                                >
-                                    <Icon name="arrowLeft" style={{ width: '24px', height: '24px' }} />
-                                </button>
+                                {!isDesktop && (
+                                    <button
+                                        onClick={handleBackToList}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: '0.5rem',
+                                            cursor: 'pointer',
+                                            color: 'white',
+                                            marginLeft: '-0.5rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        <Icon name="arrowLeft" style={{ width: '24px', height: '24px' }} />
+                                    </button>
+                                )}
 
-                                <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '36px', height: '36px', fontSize: '0.9rem' }}>
+                                <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '38px', height: '38px', fontSize: '1rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                                     {getInitials(selectedUser.name)}
                                 </div>
                                 <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                    <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {selectedUser.name}
-                                        {isAdminOrStaff && <Icon name="arrowRight" style={{ width: '14px', height: '14px', opacity: 0.4 }} />}
+                                    <span style={{
+                                        fontSize: '1.1rem',
+                                        fontWeight: 700,
+                                        color: isDesktop ? 'var(--text-primary)' : 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                    }}>
+                                        {selectedUser.name.toLowerCase()}
+                                        <Icon name="arrowRight" style={{ width: '16px', height: '16px', opacity: 0.6 }} />
                                     </span>
                                 </div>
                             </div>
