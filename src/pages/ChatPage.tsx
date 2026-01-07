@@ -107,29 +107,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         scrollToBottom();
     }, [messages.length, selectedUser]);
 
-    // ÄNDERUNG: Exakte Höhenberechnung für mobile Browser mit Tastatur
-    const [viewportHeight, setViewportHeight] = useState<string>('100dvh'); // Standard auf Dynamic Viewport Height
-
-    useEffect(() => {
-        // Nur auf Mobilgeräten/Touch-Geräten notwendig
-        if (!window.visualViewport) return;
-
-        const handleResize = () => {
-            // Setzt die Höhe des Chat-Containers exakt auf die sichtbare Höhe
-            // Das verhindert, dass Elemente hinter der Tastatur verschwinden oder der Header rausgeschoben wird
-            setViewportHeight(`${window.visualViewport.height}px`);
-            // Scrollt sicherheitshalber nach unten
-            scrollToBottom('auto');
-        };
-
-        window.visualViewport.addEventListener('resize', handleResize);
-        window.visualViewport.addEventListener('scroll', handleResize);
-
-        return () => {
-            window.visualViewport?.removeEventListener('resize', handleResize);
-            window.visualViewport?.removeEventListener('scroll', handleResize);
-        };
-    }, []);
+    // KORREKTUR: Manuelle Höhenberechnung entfernt.
+    // CSS height: 100% übernimmt die Steuerung basierend auf dem Eltern-Container (100dvh).
 
     // Responsive Detection
     const [isDesktop, setIsDesktop] = useState(window.innerWidth > 992);
@@ -473,7 +452,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            height: viewportHeight, // Dynamische Höhe nutzen
+            height: '100%', // KORREKTUR: Nutze einfach 100% (was durch App.tsx auf 100dvh basiert)
             position: 'relative',
             overflow: 'hidden',
             backgroundColor: 'var(--background-color)'
