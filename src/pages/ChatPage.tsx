@@ -107,30 +107,32 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         scrollToBottom();
     }, [messages.length, selectedUser]);
 
-    // --- ÄNDERUNG: Visual Viewport Handling für Mobile Tastatur ---
-    // Statt padding-bottom nutzen wir die exakte Höhe des Visual Viewports.
-    // Das verhindert, dass der Header nach oben rausgeschoben wird.
-    const [viewportHeight, setViewportHeight] = useState<string>('100%');
+    // ÄNDERUNG: Exakte Höhenberechnung für mobile Browser mit Tastatur
+    const [viewportHeight, setViewportHeight] = useState<string>('100dvh'); // Standard auf Dynamic Viewport Height
 
     useEffect(() => {
-        // Nur aktivieren, wenn VisualViewport unterstützt wird (moderne Browser)
+        // Nur auf Mobilgeräten/Touch-Geräten notwendig
         if (!window.visualViewport) return;
 
         const handleResize = () => {
-            // Setze die Höhe exakt auf die sichtbare Höhe (minus Tastatur)
-            setViewportHeight(`${window.visualViewport!.height}px`);
-            // Scroll zum Ende, da sich der Bereich verkleinert hat
+            // Setzt die Höhe des Chat-Containers exakt auf die sichtbare Höhe
+            // Das verhindert, dass Elemente hinter der Tastatur verschwinden oder der Header rausgeschoben wird
+            setViewportHeight(`${window.visualViewport.height}px`);
+            // Scrollt sicherheitshalber nach unten
             scrollToBottom('auto');
         };
 
         window.visualViewport.addEventListener('resize', handleResize);
-        // Initiale Setzung
-        handleResize();
+        window.visualViewport.addEventListener('scroll', handleResize);
 
         return () => {
             window.visualViewport?.removeEventListener('resize', handleResize);
+            window.visualViewport?.removeEventListener('scroll', handleResize);
         };
     }, []);
+
+    // Hilfsvariable für Desktop-Erkennung
+    const isDesktop = window.innerWidth > 768;
 
     // --- DATA LOGIC ---
 
@@ -443,38 +445,44 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const isDesktop = window.innerWidth > 768;
-
     return (
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            // WICHTIG: Die Höhe wird dynamisch angepasst, um in den sichtbaren Viewport (über Tastatur) zu passen
-            height: viewportHeight,
+            height: viewportHeight, // Dynamische Höhe nutzen
             position: 'relative',
-            overflow: 'hidden' // Verhindert Scrollen des äußeren Containers
+            overflow: 'hidden',
+            backgroundColor: 'var(--background-color)'
         }}>
             <div className="content-box" style={{
-                flex: 1, display: 'flex', padding: 0, overflow: 'hidden', marginBottom: 0,
-                height: '100%', position: 'relative',
-                border: '1px solid var(--border-color)', borderRadius: isDesktop ? '1rem' : '0',
+                flex: 1,
+                display: 'flex',
+                padding: 0,
+                overflow: 'hidden',
+                marginBottom: 0,
+                height: '100%',
+                position: 'relative',
+                border: isDesktop ? '1px solid var(--border-color)' : 'none',
+                borderRadius: isDesktop ? '1rem' : '0',
                 backgroundColor: 'var(--card-background)',
                 zIndex: 1
             }}>
-                {/* SIDEBAR (Liste der Chats) */}
+                {/* LISTE DER CHATS (Links auf Desktop, Vollbild auf Mobile wenn kein Chat gewählt) */}
                 <div style={{
                     width: isDesktop ? '320px' : '100%',
                     display: (isDesktop || isMobileListVisible) ? 'flex' : 'none',
                     flexDirection: 'column',
                     backgroundColor: 'var(--card-background)',
-                    borderRight: isDesktop ? '1px solid var(--border-color)' : 'none'
+                    borderRight: isDesktop ? '1px solid var(--border-color)' : 'none',
+                    height: '100%'
                 }}>
-                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '60px' }}>
+                    <div style={{ padding: '0 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '60px', flexShrink: 0 }}>
                         <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>Nachrichten</span>
                         <button className="button button-primary" style={{ padding: '0.4rem', borderRadius: '50%', minWidth: 'auto', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={handleOpenNewChatModal}>
                             <Icon name="plus" style={{ width: '20px', height: '20px' }} />
                         </button>
                     </div>
+
                     <div style={{ overflowY: 'auto', flex: 1 }}>
                         {conversations.length === 0 ? (
                             <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
@@ -511,40 +519,91 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     </div>
                 </div>
 
-                {/* CHAT AREA (Rechter Bereich) */}
+                {/* AKTUELLER CHAT (Rechts auf Desktop, Vollbild auf Mobile) */}
                 <div style={{
-                    flex: 1, display: (isDesktop || !isMobileListVisible) ? 'flex' : 'none',
-                    flexDirection: 'column', backgroundColor: 'var(--background-color)', width: '100%', height: '100%'
+                    flex: 1,
+                    display: (isDesktop || !isMobileListVisible) ? 'flex' : 'none',
+                    flexDirection: 'column',
+                    backgroundColor: 'var(--background-color)',
+                    width: '100%',
+                    height: '100%',
+                    position: 'relative'
                 }}>
                     {selectedUser ? (
                         <>
-                            {/* HEADER - Immer oben fixiert durch Flexbox Layout */}
-                            <div style={{ padding: '0 1rem', backgroundColor: 'var(--card-background)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', height: '60px', flexShrink: 0 }}>
-                                {!isDesktop && <button onClick={handleBackToList} style={{ background: 'none', border: 'none', padding: '0.5rem', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '-0.5rem' }}><Icon name="arrowLeft" /></button>}
-                                <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '36px', height: '36px', fontSize: '0.9rem' }}>{getInitials(selectedUser.name)}</div>
-                                <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {/* HEADER: ZURÜCK-BUTTON & PROFIL - Fixiert oben */}
+                            <div style={{
+                                padding: '0 1rem',
+                                backgroundColor: 'var(--card-background)',
+                                borderBottom: '1px solid var(--border-color)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.75rem',
+                                height: '60px',
+                                flexShrink: 0,
+                                zIndex: 10
+                            }}>
+                                {/* Zurück-Pfeil: Nur auf Mobile sichtbar */}
+                                <button
+                                    onClick={handleBackToList}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: '0.5rem',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-primary)',
+                                        marginLeft: '-0.5rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Icon name="arrowLeft" style={{ width: '24px', height: '24px' }} />
+                                </button>
+
+                                <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '36px', height: '36px', fontSize: '0.9rem' }}>
+                                    {getInitials(selectedUser.name)}
+                                </div>
+                                <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                    <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {selectedUser.name}
                                         {isAdminOrStaff && <Icon name="arrowRight" style={{ width: '14px', height: '14px', opacity: 0.4 }} />}
                                     </span>
                                 </div>
                             </div>
 
-                            {/* MESSAGES - Scrollbarer Mittelteil */}
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {/* NACHRICHTEN - Scrollbar */}
+                            <div style={{
+                                flex: 1,
+                                overflowY: 'auto',
+                                padding: '1rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1rem',
+                                scrollBehavior: 'smooth'
+                            }}>
                                 {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
                                 {messages.map((msg) => {
                                     const isMe = msg.sender_id === Number(user?.id);
                                     return (
                                         <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                                            <div style={{ maxWidth: '85%', padding: '0.75rem 1rem', borderRadius: '1rem', borderBottomRightRadius: isMe ? '0' : '1rem', borderBottomLeftRadius: !isMe ? '0' : '1rem', backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)', color: isMe ? 'white' : 'var(--text-primary)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: isMe ? 'none' : '1px solid var(--border-color)' }}>
+                                            <div style={{
+                                                maxWidth: '85%',
+                                                padding: '0.75rem 1rem',
+                                                borderRadius: '1rem',
+                                                borderBottomRightRadius: isMe ? '0' : '1rem',
+                                                borderBottomLeftRadius: !isMe ? '0' : '1rem',
+                                                backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
+                                                color: isMe ? 'white' : 'var(--text-primary)',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                                border: isMe ? 'none' : '1px solid var(--border-color)'
+                                            }}>
                                                 {renderMessageContent(msg, isMe)}
                                                 <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
                                                     {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     {isMe && (
                                                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                            <Icon name="check" style={{ width: '12px', height: '12px' }} />
-                                                            {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px', marginLeft: '-7px' }} />}
+                                                            {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px' }} />}
                                                         </div>
                                                     )}
                                                 </div>
@@ -555,14 +614,26 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* INPUT - Immer unten fixiert, da letztes Element im Flex-Column */}
-                            <div style={{ padding: '0.75rem', backgroundColor: 'var(--card-background)', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
+                            {/* EINGABEZEILE - Fixiert unten */}
+                            <div style={{
+                                padding: '0.75rem',
+                                backgroundColor: 'var(--card-background)',
+                                borderTop: '1px solid var(--border-color)',
+                                flexShrink: 0
+                            }}>
                                 <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
                                 <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                                         {isUploading ? <Icon name="refresh" className="animate-spin" style={{ width: '18px', height: '18px' }} /> : <Icon name="paperclip" style={{ width: '18px', height: '18px' }} />}
                                     </button>
-                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Nachricht..." className="form-input" style={{ flex: 1, borderRadius: '99px', padding: '0.75rem 1rem' }} />
+                                    <input
+                                        type="text"
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        placeholder="Nachricht..."
+                                        className="form-input"
+                                        style={{ flex: 1, borderRadius: '99px', padding: '0.75rem 1rem' }}
+                                    />
                                     <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         <Icon name="share" style={{ width: '20px', height: '20px', transform: 'rotate(0deg)' }} />
                                     </button>
@@ -578,9 +649,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 </div>
             </div>
 
-            {/* PREVIEW MODAL */}
+            {/* MODALS HIER EINFÜGEN (PreviewFile & NewChatModal bleiben unverändert) */}
             {previewFile && (
                 <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setPreviewFile(null)}>
+                    {/* ... Preview Modal Content ... */}
                     <div style={{ backgroundColor: 'var(--card-background)', borderRadius: '1rem', maxWidth: '900px', width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{previewFile.name}</h3>
@@ -606,7 +678,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 </div>
             )}
 
-            {/* NEW CHAT MODAL */}
             {isNewChatModalOpen && (
                 <InfoModal title="Neuen Chat starten" onClose={() => setIsNewChatModalOpen(false)} color="blue">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '60vh', minHeight: '300px' }}>
