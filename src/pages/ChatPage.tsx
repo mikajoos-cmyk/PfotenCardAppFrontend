@@ -107,9 +107,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         scrollToBottom();
     }, [messages.length, selectedUser]);
 
-    // KORREKTUR: Manuelle Höhenberechnung entfernt.
-    // CSS height: 100% übernimmt die Steuerung basierend auf dem Eltern-Container (100dvh).
-
     // Responsive Detection
     const [isDesktop, setIsDesktop] = useState(window.innerWidth > 992);
 
@@ -452,7 +449,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            height: '100%', // KORREKTUR: Nutze einfach 100% (was durch App.tsx auf 100dvh basiert)
+            height: '100%', // KORREKTUR: Einfach 100% nutzen, keine manuelle JS-Berechnung
             position: 'relative',
             overflow: 'hidden',
             backgroundColor: 'var(--background-color)'
