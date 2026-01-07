@@ -33,6 +33,9 @@ import AppointmentsPage from './pages/AppointmentsPage';
 import { NewsPage } from './pages/NewsPage';
 import { ChatPage } from './pages/ChatPage';
 
+// NEU: Hook importieren
+import { useVisualViewport } from './hooks/useVisualViewport';
+
 const getFullImageUrl = (url?: string) => {
     if (!url) return null;
     if (url.startsWith("http")) return url;
@@ -43,22 +46,22 @@ const getFullImageUrl = (url?: string) => {
 const REQUIRE_AUTH_FOR_CUSTOMER_VIEW = false;
 
 export default function App() {
+    // NEU: Hook hier aufrufen, damit er global wirkt
+    useVisualViewport();
+
     const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
 
+    // ... (Restlicher Code bleibt unverändert bis zum Return) ...
     // Initial View basierend auf URL bestimmen
     const [view, setView] = useState<View>(() => {
         const path = window.location.pathname;
 
         if (path === '/update-password') {
-            setShowPasswordReset(true);
+            return { page: 'dashboard' }; // showPasswordReset state will handle rendering
         }
 
         const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
-        if (match && match[1]) {
-            const identifier = match[1];
-            return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
-        }
         if (match && match[1]) {
             const identifier = match[1];
             return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
@@ -70,6 +73,7 @@ export default function App() {
         return { page: 'dashboard' };
     });
 
+    // ... (Hier der ganze restliche State & Effects Code - UNVERÄNDERT) ...
     const [customers, setCustomers] = useState<any[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [transactions, setTransactions] = useState<any[]>([]);
@@ -382,6 +386,7 @@ export default function App() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // ... (QR Code und Auth Logic UNVERÄNDERT) ...
     useEffect(() => {
         const path = window.location.pathname;
         const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
@@ -401,7 +406,6 @@ export default function App() {
             // Check if authentication is required
             const isAuthRequired = REQUIRE_AUTH_FOR_CUSTOMER_VIEW;
             const isUserLoggedIn = !!loggedInUser;
-            const isStaffOrAdmin = loggedInUser && (loggedInUser.role === 'admin' || loggedInUser.role === 'mitarbeiter');
 
             // If auth is required and user is not logged in, redirect to login
             if (isAuthRequired && !isUserLoggedIn) {
@@ -435,12 +439,9 @@ export default function App() {
                 .then(customerData => {
                     setDirectAccessedCustomer(customerData);
                     setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
-                    // Keep UUID in URL for privacy (don't convert to numeric ID)
-                    // No URL replacement needed
                 })
                 .catch(err => {
                     console.error("Fehler beim Laden des Kunden via QR-Code:", err);
-                    // If auth is not required and we got an error, it might be a 401
                     if (!isAuthRequired && err.toString().includes('401')) {
                         alert("Dieser Kunde konnte nicht gefunden werden oder Sie haben keine Berechtigung.");
                     } else {
@@ -463,7 +464,6 @@ export default function App() {
             if (event === 'PASSWORD_RECOVERY') {
                 setShowPasswordReset(true);
             } else if (event === 'SIGNED_IN' && session) {
-                // Wenn wir via Magic Link / Confirmation kommen, haben wir ein Session aber evtl. noch kein loggedInUser
                 if (!loggedInUser || loggedInUser.auth_id !== session.user.id) {
                     try {
                         const userResponse = await apiClient.get('/api/users/me', session.access_token);
@@ -497,7 +497,6 @@ export default function App() {
             window.history.pushState({}, '', '/');
         }
 
-        // Reset news notification when visiting news page
         if (newView.page === 'news') {
             setHasNewNews(false);
             const lastSeenId = localStorage.getItem('last_seen_news_id');
@@ -510,21 +509,17 @@ export default function App() {
         setView(newView);
     };
 
-    // Ref to hold latest news ID for localStorage sync
     const appDataRef = useRef<{ newsId?: number }>({});
 
-    // --- POLLING FOR NOTIFICATIONS ---
     useEffect(() => {
         if (!authToken || isPreviewMode) return;
 
         const checkNotifications = async () => {
             try {
-                // Check Chats
                 const conversations = await apiClient.getConversations(authToken);
                 const unread = conversations.reduce((acc: number, conv: any) => acc + (conv.unread_count || 0), 0);
                 setUnreadChatCount(unread);
 
-                // Check News
                 const news = await apiClient.getNews(authToken);
                 if (news && news.length > 0) {
                     const latestId = news[0].id;
@@ -532,7 +527,6 @@ export default function App() {
                     const lastSeenId = localStorage.getItem('last_seen_news_id');
 
                     if (!lastSeenId || parseInt(lastSeenId) < latestId) {
-                        // If currently on news page, mark as seen immediately
                         if (view.page === 'news') {
                             localStorage.setItem('last_seen_news_id', String(latestId));
                             setHasNewNews(false);
@@ -547,16 +541,14 @@ export default function App() {
         };
 
         checkNotifications();
-        const interval = setInterval(checkNotifications, 10000); // Poll every 10s
+        const interval = setInterval(checkNotifications, 10000);
         return () => clearInterval(interval);
     }, [authToken, view.page]);
 
-    // NEU: Funktion um Transaktionen eines spezifischen Kunden nachzuladen
     const loadCustomerTransactions = async (customerId: string) => {
         if (!authToken || isPreviewMode) return;
         try {
             const customerTxs = await apiClient.getTransactions(authToken, customerId);
-            // Wir mergen die neuen Transaktionen in den globalen State, vermeiden Duplikate
             setTransactions(prev => {
                 const newIds = new Set(customerTxs.map((t: any) => t.id));
                 const oldFiltered = prev.filter(t => !newIds.has(t.id));
@@ -577,7 +569,6 @@ export default function App() {
         if (isPreviewMode) return;
         if (!authToken) { setIsLoading(false); return; }
 
-        // Nur initial laden oder wenn explizit gewünscht
         const shouldShowFullLoader = forceLoadingScreen || (isLoading && customers.length === 0);
 
         if (shouldShowFullLoader) {
@@ -585,7 +576,6 @@ export default function App() {
         }
 
         try {
-            // Parallel Config und User laden
             const [configRes, currentUser] = await Promise.all([
                 apiClient.getConfig().catch(err => console.warn("Config load failed", err)),
                 apiClient.get('/api/users/me', authToken)
@@ -607,7 +597,7 @@ export default function App() {
             } else {
                 const [usersResponse, transactionsResponse] = await Promise.all([
                     apiClient.get('/api/users', authToken),
-                    apiClient.getTransactions(authToken) // Global latest
+                    apiClient.getTransactions(authToken)
                 ]);
                 setCustomers(usersResponse.filter((user: any) => user.role === 'customer' || user.role === 'kunde'));
                 setUsers(usersResponse);
@@ -625,14 +615,11 @@ export default function App() {
         fetchAppData();
     }, [authToken]);
 
-    // --- BROWSER TAB BRANDING ---
     useEffect(() => {
-        // Update Title - Only if schoolName is loaded
         if (schoolName) {
             document.title = `${schoolName} - Pfotencard`;
         }
 
-        // Update Favicon
         const rawLogoUrl = appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl;
         const fullLogoUrl = getFullImageUrl(rawLogoUrl);
 
@@ -645,7 +632,6 @@ export default function App() {
             }
             link.href = fullLogoUrl;
         } else {
-            // Fallback to default paw
             let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
             if (link) {
                 link.href = '/paw.png';
@@ -661,7 +647,6 @@ export default function App() {
     };
 
     const handleLogout = async () => {
-        // Prevent infinite loop if already logging out
         if (isLoggingOut.current) return;
 
         isLoggingOut.current = true;
@@ -678,7 +663,6 @@ export default function App() {
         setDirectAccessedCustomer(null);
         window.history.pushState({}, '', '/');
 
-        // Reset the flag after a short delay
         setTimeout(() => {
             isLoggingOut.current = false;
         }, 1000);
@@ -722,7 +706,7 @@ export default function App() {
 
         // --- OPTIMISTIC UI ---
         const tempId = `temp-${Date.now()}`;
-        const amount = txData.amount; // HIER FIX: Immer txData.amount nutzen, da Bonus bereits enthalten ist
+        const amount = txData.amount;
         const previousTransactions = [...transactions];
         const previousCustomers = [...customers];
         const previousLoggedInUser = loggedInUser ? { ...loggedInUser } : null;
@@ -737,7 +721,6 @@ export default function App() {
             booked_by_id: loggedInUser?.id
         };
 
-        // UI sofort aktualisieren
         setTransactions(prev => [optimisticTx, ...prev]);
         setCustomers(prev => prev.map(c => {
             if (String(c.id) === view.customerId) {
@@ -746,7 +729,6 @@ export default function App() {
             return c;
         }));
 
-        // WICHTIG: Auch direkt aufgerufenen Kunden (QR-Code) aktualisieren!
         if (directAccessedCustomer && String(directAccessedCustomer.id) === view.customerId) {
             setDirectAccessedCustomer((prev: any) => ({
                 ...prev,
@@ -769,11 +751,9 @@ export default function App() {
         try {
             await apiClient.post('/api/transactions', transactionPayload, authToken);
             console.log('Transaktion erfolgreich gebucht!');
-            // Im Hintergrund syncen, um echte IDs zu erhalten
             fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Buchen der Transaktion:", error);
-            // Rollback
             setTransactions(previousTransactions);
             setCustomers(previousCustomers);
             if (previousLoggedInUser) setLoggedInUser(previousLoggedInUser);
@@ -813,13 +793,11 @@ export default function App() {
 
     const handleLevelUp = async (customerId: string, newLevelId: number) => {
         try {
-            // Use the logic-driven endpoint instead of manual override
             await apiClient.post(`/api/users/${customerId}/level-up`, {}, authToken);
             console.log(`Kunde erfolgreich hochgestuft!`);
             await fetchAppData();
         } catch (error) {
             console.error("Fehler beim Level-Up:", error);
-            // Fallback? Or Alert specific error.
             if (error.toString().includes("Requirements not met")) {
                 alert("Fehler: Voraussetzungen für den Aufstieg sind noch nicht erfüllt.");
             } else {
@@ -905,7 +883,6 @@ export default function App() {
             return;
         }
 
-        // --- OPTIMISTIC UI ---
         const previousCustomers = [...customers];
         const previousLoggedInUser = loggedInUser ? { ...loggedInUser } : null;
 
@@ -913,7 +890,6 @@ export default function App() {
             if (c.id === userToUpdate.id) {
                 const updatedC = { ...c, ...userToUpdate };
                 if (dogToUpdate) {
-                    // Update existing dog or add new one optimistically
                     const existingDogIndex = updatedC.dogs?.findIndex((d: any) => d.id === dogToUpdate.id);
                     if (existingDogIndex !== undefined && existingDogIndex > -1) {
                         updatedC.dogs[existingDogIndex] = { ...updatedC.dogs[existingDogIndex], ...dogToUpdate };
@@ -967,7 +943,6 @@ export default function App() {
             fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Speichern der Kundendaten:", error);
-            // Rollback
             setCustomers(previousCustomers);
             if (previousLoggedInUser) setLoggedInUser(previousLoggedInUser);
             alert(`Fehler beim Speichern: ${error}`);
@@ -989,8 +964,6 @@ export default function App() {
             console.error("Fehler beim Hochladen der Dokumente:", error);
             const errorMsg = error instanceof Error ? error.message : "Unbekannter Fehler";
             alert(`Fehler beim Upload: ${errorMsg}`);
-        } finally {
-            // Nichts weiter zu tun
         }
     };
 
@@ -1065,14 +1038,11 @@ export default function App() {
         );
     }
 
-    // Check if we're trying to access a customer page via QR code without login
     const isAccessingCustomerPage = view.page === 'customers' && view.subPage === 'detail' && view.customerId;
     const allowUnauthenticatedAccess = !REQUIRE_AUTH_FOR_CUSTOMER_VIEW && isAccessingCustomerPage;
 
     if (!authToken || !loggedInUser) {
-        // If we're accessing a customer page and auth is not required, allow it
         if (allowUnauthenticatedAccess && directAccessedCustomer) {
-            // Render customer detail page without authentication
             return (
                 <div className="app-container">
                     <div className="main-content" style={{ marginLeft: 0, width: '100%' }}>
@@ -1082,7 +1052,7 @@ export default function App() {
                             setView={handleSetView}
                             handleLevelUp={handleLevelUp}
                             onSave={handleSaveCustomerDetails}
-                            currentUser={directAccessedCustomer} // Use customer as current user for read-only view
+                            currentUser={directAccessedCustomer}
                             users={[]}
                             onUploadDocuments={handleUploadDocuments}
                             onDeleteDocument={handleDeleteDocument}
@@ -1103,7 +1073,6 @@ export default function App() {
             );
         }
 
-        // Otherwise show login screen
         return (
             <AuthScreen
                 onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
@@ -1127,15 +1096,12 @@ export default function App() {
         );
     }
 
-
-
     // --- RENDER CONTENT ---
     const renderContent = () => {
         if (view.page === 'news') {
             return <NewsPage user={loggedInUser} token={authToken} targetAppointmentId={view.targetAppointmentId} isPreviewMode={isPreviewMode} />;
         }
         if (view.page === 'chat') {
-            // HIER DIE ÄNDERUNG: setView übergeben
             return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} isPreviewMode={isPreviewMode} />;
         }
 
@@ -1183,7 +1149,6 @@ export default function App() {
             );
         }
 
-        // NEW: Customer Transactions Route
         if (view.page === 'transactions') {
             return <CustomerTransactionsPage
                 transactions={transactions}
@@ -1384,4 +1349,3 @@ export default function App() {
         </div >
     );
 }
-

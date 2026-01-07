@@ -68,12 +68,13 @@ html,
 body,
 #root {
     height: 100%;
-    /* Feste Höhe */
-    overflow: hidden;
-    /* VERHINDERT, dass die ganze Seite scrollt */
     width: 100%;
+    overflow: hidden;
+    /* Scrollen nur in definierten Containern erlauben */
+    margin: 0;
+    padding: 0;
     position: fixed;
-    /* Fixiert den Body auf iOS, verhindert "Bounce"-Effekt */
+    /* Fixiert den Body auf iOS */
     inset: 0;
 }
 
@@ -196,13 +197,14 @@ body {
     background-color: var(--card-background-hover);
 }
 
-/* Der App-Container füllt den verfügbaren Platz (definiert durch --app-height) */
+/* --- HAUPT CONTAINER --- */
 .app-container {
     display: flex;
-    /* Nutzt die Variable vom Hook, Fallback auf 100% */
-    height: var(--app-height, 100%);
+    /* Nutzt die JS-berechnete Höhe (Keyboard aware) oder Fallback */
+    height: var(--app-height, 100dvh);
     width: 100vw;
     overflow: hidden;
+    position: relative;
 }
 
 /* --- Sidebar --- */
@@ -343,16 +345,23 @@ body {
     background-color: var(--sidebar-hover-bg, #334155);
 }
 
+/* Sicherstellen, dass der Main-Content scrollen kann, wenn er muss */
 .main-content {
     flex-grow: 1;
     overflow-y: auto;
+    /* Hier darf gescrollt werden */
     padding: 2rem 2.5rem;
     position: relative;
+    height: 100%;
+    /* Füllt den verfügbaren Platz im Flex-Container */
 }
 
+/* Chat Page Override: Kein Scrollen im Main-Content, da Chat eigene Liste hat */
 .main-content.chat-page-active {
-    overflow: hidden !important;
     padding: 0 !important;
+    overflow: hidden !important;
+    display: flex;
+    flex-direction: column;
 }
 
 /* --- Sidebar --- */

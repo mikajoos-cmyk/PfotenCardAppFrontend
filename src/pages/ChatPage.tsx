@@ -6,8 +6,6 @@ import { MOCK_CONVERSATIONS_CUSTOMER, MOCK_MESSAGES_CUSTOMER, MOCK_CONVERSATIONS
 import Icon from '../components/ui/Icon';
 import { getInitials, getAvatarColorClass } from '../lib/utils';
 import InfoModal from '../components/modals/InfoModal';
-// NEU: Importieren des Hooks
-import { useVisualViewport } from '../hooks/useVisualViewport';
 
 interface ChatPageProps {
     user: User | any;
@@ -17,8 +15,7 @@ interface ChatPageProps {
 }
 
 export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode }) => {
-    // NEU: Hook aufrufen
-    useVisualViewport();
+    // KEIN HOOK HIER: Er wird jetzt global in App.tsx aufgerufen!
 
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
@@ -45,6 +42,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     const [selectableUsers, setSelectableUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loadingUsers, setLoadingUsers] = useState(false);
+
+    // Responsive Detection
+    const [isDesktop, setIsDesktop] = useState(window.innerWidth > 992);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsDesktop(window.innerWidth > 992);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // --- POLLING SETUP ---
     useEffect(() => {
@@ -100,7 +108,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     }, [selectedUser]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-        // Kleine Verzögerung für Mobile Renderings
         setTimeout(() => {
             requestAnimationFrame(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior });
@@ -111,17 +118,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     useEffect(() => {
         scrollToBottom();
     }, [messages.length, selectedUser]);
-
-    // Responsive Detection
-    const [isDesktop, setIsDesktop] = useState(window.innerWidth > 992);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsDesktop(window.innerWidth > 992);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
 
     // --- DATA LOGIC ---
@@ -455,12 +451,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            // WICHTIG: Auf Mobile nutzen wir position fixed, um aus dem App-Layout "auszubrechen"
-            // und die volle Höhe inkl. Keyboard-Berechnung zu nutzen.
-            position: isDesktop ? 'relative' : 'fixed',
-            inset: isDesktop ? 'auto' : 0,
-            zIndex: isDesktop ? 'auto' : 50,
-            height: isDesktop ? '100%' : 'var(--app-height, 100dvh)',
+            // WICHTIG: KORREKTUR: Einfach 100% nutzen, da .app-container die Höhe bereits korrekt über die Variable steuert
+            height: '100%',
+            position: 'relative',
             overflow: 'hidden',
             backgroundColor: 'var(--background-color)'
         }}>
@@ -477,7 +470,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 backgroundColor: 'var(--card-background)',
                 zIndex: 1
             }}>
-                {/* LISTE DER CHATS (Links auf Desktop, Vollbild auf Mobile wenn kein Chat gewählt) */}
+                {/* LISTE DER CHATS */}
                 <div style={{
                     width: isDesktop ? '320px' : '100%',
                     display: (isDesktop || isMobileListVisible) ? 'flex' : 'none',
@@ -529,7 +522,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     </div>
                 </div>
 
-                {/* AKTUELLER CHAT (Rechts auf Desktop, Vollbild auf Mobile) */}
+                {/* AKTUELLER CHAT */}
                 <div style={{
                     flex: 1,
                     display: (isDesktop || !isMobileListVisible) ? 'flex' : 'none',
@@ -541,7 +534,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 }}>
                     {selectedUser ? (
                         <>
-                            {/* HEADER: ZURÜCK-BUTTON & PROFIL - Angepasst an Design-Mockup */}
+                            {/* HEADER */}
                             <div style={{
                                 padding: '0 1rem',
                                 backgroundColor: isDesktop ? 'var(--card-background)' : 'var(--sidebar-bg)',
@@ -553,21 +546,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 flexShrink: 0,
                                 zIndex: 10
                             }}>
-                                {/* Zurück-Pfeil: Nur auf Mobile sichtbar */}
                                 {!isDesktop && (
                                     <button
                                         onClick={handleBackToList}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            padding: '0.5rem',
-                                            cursor: 'pointer',
-                                            color: 'white',
-                                            marginLeft: '-0.5rem',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}
+                                        style={{ background: 'none', border: 'none', padding: '0.5rem', cursor: 'pointer', color: 'white', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                         <Icon name="arrowLeft" style={{ width: '24px', height: '24px' }} />
                                     </button>
@@ -577,24 +559,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                     {getInitials(selectedUser.name)}
                                 </div>
                                 <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                    <span style={{
-                                        fontSize: '1.1rem',
-                                        fontWeight: 700,
-                                        color: isDesktop ? 'var(--text-primary)' : 'white',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                    }}>
+                                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: isDesktop ? 'var(--text-primary)' : 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {selectedUser.name.toLowerCase()}
                                         <Icon name="arrowRight" style={{ width: '16px', height: '16px', opacity: 0.6 }} />
                                     </span>
                                 </div>
                             </div>
 
-                            {/* NACHRICHTEN - Scrollbar */}
+                            {/* NACHRICHTEN */}
                             <div style={{
                                 flex: 1,
                                 overflowY: 'auto',
@@ -604,7 +576,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 gap: '1rem',
                                 scrollBehavior: 'smooth'
                             }}>
-                                {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
                                 {messages.map((msg, index) => {
                                     const isMe = msg.sender_id === Number(user?.id);
                                     const msgDate = new Date(msg.created_at).toDateString();
@@ -636,20 +607,16 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                             )}
                                             <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
                                                 <div style={{
-                                                    maxWidth: '85%',
-                                                    padding: '0.75rem 1rem',
-                                                    borderRadius: '1rem',
+                                                    maxWidth: '85%', padding: '0.75rem 1rem', borderRadius: '1rem',
                                                     borderBottomRightRadius: isMe ? '0' : '1rem',
                                                     borderBottomLeftRadius: !isMe ? '0' : '1rem',
                                                     backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
                                                     color: isMe ? 'white' : 'var(--text-primary)',
-                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                                    border: isMe ? 'none' : '1px solid var(--border-color)'
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: isMe ? 'none' : '1px solid var(--border-color)'
                                                 }}>
                                                     {renderMessageContent(msg, isMe)}
-                                                    <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
+                                                    <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8 }}>
                                                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        {isMe && <Icon name="check" style={{ width: '12px', height: '12px', color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)' }} />}
                                                     </div>
                                                 </div>
                                             </div>
@@ -659,7 +626,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* EINGABEZEILE - Fixiert unten */}
+                            {/* EINGABEZEILE */}
                             <div style={{
                                 padding: '0.75rem',
                                 backgroundColor: 'var(--card-background)',
@@ -668,8 +635,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                             }}>
                                 <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
                                 <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                                        {isUploading ? <Icon name="refresh" className="animate-spin" style={{ width: '18px', height: '18px' }} /> : <Icon name="paperclip" style={{ width: '18px', height: '18px' }} />}
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {isUploading ? <Icon name="refresh" className="animate-spin" /> : <Icon name="paperclip" />}
                                     </button>
                                     <input
                                         type="text"
@@ -679,8 +646,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                         className="form-input"
                                         style={{ flex: 1, borderRadius: '99px', padding: '0.75rem 1rem' }}
                                     />
-                                    <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                        <Icon name="share" style={{ width: '20px', height: '20px', transform: 'rotate(0deg)' }} />
+                                    <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Icon name="share" style={{ width: '20px', height: '20px' }} />
                                     </button>
                                 </form>
                             </div>
