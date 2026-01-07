@@ -576,6 +576,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 gap: '1rem',
                                 scrollBehavior: 'smooth'
                             }}>
+                                {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
                                 {messages.map((msg, index) => {
                                     const isMe = msg.sender_id === Number(user?.id);
                                     const msgDate = new Date(msg.created_at).toDateString();
@@ -615,8 +616,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: isMe ? 'none' : '1px solid var(--border-color)'
                                                 }}>
                                                     {renderMessageContent(msg, isMe)}
-                                                    <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8 }}>
+                                                    <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
                                                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {isMe && (
+                                                            <div style={{ position: 'relative', width: msg.is_read ? '18px' : '12px', height: '12px', display: 'flex', alignItems: 'center' }}>
+                                                                <Icon name="check" style={{ width: '12px', height: '12px', color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)', position: 'absolute', left: 0 }} />
+                                                                {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px', color: '#fff', position: 'absolute', left: '6px' }} />}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
