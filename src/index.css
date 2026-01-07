@@ -3419,4 +3419,25 @@ input:checked+.slider:before {
     .news-item-title {
         font-size: 1.25rem;
     }
+
+}
+
+/* --- CHAT PAGE MOBILE OPTIMIZATIONS --- */
+@media (max-width: 992px) {
+    .main-content.chat-page-active {
+        padding: 0 !important;
+        overflow: hidden !important;
+        height: 100% !important;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .main-content.chat-page-active .mobile-header {
+        flex-shrink: 0;
+    }
+
+    /* Ensure the app-container doesn't have extra padding that pushes content down */
+    .app-container.sidebar-open {
+        overflow: hidden;
+    }
 }

@@ -104,6 +104,33 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         scrollToBottom();
     }, [messages.length, selectedUser]);
 
+    // Keyboard handling for mobile
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    useEffect(() => {
+        if (!window.visualViewport) return;
+
+        const handleResize = () => {
+            if (window.visualViewport) {
+                const viewportHeight = window.visualViewport.height;
+                const windowHeight = window.innerHeight;
+                const diff = windowHeight - viewportHeight;
+                setKeyboardHeight(diff > 50 ? diff : 0);
+
+                if (diff > 50) {
+                    scrollToBottom('auto');
+                }
+            }
+        };
+
+        window.visualViewport.addEventListener('resize', handleResize);
+        window.visualViewport.addEventListener('scroll', handleResize);
+        return () => {
+            window.visualViewport?.removeEventListener('resize', handleResize);
+            window.visualViewport?.removeEventListener('scroll', handleResize);
+        };
+    }, []);
+
     // --- DATA LOGIC ---
 
     const loadConversations = async (showLoading = true) => {
@@ -426,11 +453,18 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     const isDesktop = window.innerWidth > 768;
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+        <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            position: 'relative',
+            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0',
+            transition: 'padding-bottom 0.1s ease-out'
+        }}>
             <div className="content-box" style={{
                 flex: 1, display: 'flex', padding: 0, overflow: 'hidden', marginBottom: 0,
-                height: '100%', minHeight: '500px', position: 'relative',
-                border: '1px solid var(--border-color)', borderRadius: '1rem',
+                height: '100%', position: 'relative',
+                border: '1px solid var(--border-color)', borderRadius: isDesktop ? '1rem' : '0',
                 backgroundColor: 'var(--card-background)',
                 zIndex: 1
             }}>

@@ -1318,7 +1318,7 @@ export default function App() {
             )
             }
 
-            <main className="main-content">
+            <main className={`main-content ${view.page === 'chat' ? 'chat-page-active' : ''}`}>
                 {isMobileView && (
                     <header className="mobile-header">
                         <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">
