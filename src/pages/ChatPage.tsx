@@ -15,8 +15,6 @@ interface ChatPageProps {
 }
 
 export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode }) => {
-    // KEIN HOOK HIER: Er wird jetzt global in App.tsx aufgerufen!
-
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
     // State
@@ -304,6 +302,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         }
     };
 
+    // --- KEYDOWN HANDLER FÜR TEXTAREA ---
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // Auf Desktop: Enter ohne Shift sendet die Nachricht
+        // Auf Mobile (oder wenn Shift gedrückt): Standardverhalten (neue Zeile)
+        if (e.key === 'Enter' && !e.shiftKey && isDesktop) {
+            e.preventDefault();
+            // Casting ist hier sicher, da handleSendMessage ein allgemeines Event oder FormEvent erwartet
+            handleSendMessage(e as unknown as React.FormEvent);
+        }
+    };
+
     const handleBackToList = () => {
         setSelectedUser(null);
         setIsMobileListVisible(true);
@@ -439,7 +448,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
             }
         }
 
-        return <div style={{ lineHeight: '1.5', wordBreak: 'break-word' }}>{msg.content}</div>;
+        return <div style={{ lineHeight: '1.5', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.content}</div>;
     };
 
     const filteredUsers = selectableUsers.filter(u =>
@@ -455,7 +464,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
             position: 'relative',
             overflow: 'hidden',
             backgroundColor: 'var(--background-color)',
-            // FIX: Verhindert, dass der ganze Screen auf iOS "wackelt" (overscroll)
             overscrollBehavior: 'none'
         }}>
             <div className="content-box" style={{
@@ -470,7 +478,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 borderRadius: isDesktop ? '1rem' : '0',
                 backgroundColor: 'var(--card-background)',
                 zIndex: 1,
-                // FIX: Flex-Basis 0 verhindert Overflow
                 minHeight: 0
             }}>
                 {/* LISTE DER CHATS */}
@@ -580,7 +587,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 flexDirection: 'column',
                                 gap: '1rem',
                                 scrollBehavior: 'smooth',
-                                // FIX: Scrollen nur hier erlauben, aber kein Overscroll auf Parent
                                 overscrollBehavior: 'contain'
                             }}>
                                 {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
@@ -640,29 +646,40 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* EINGABEZEILE */}
+                            {/* EINGABEZEILE MIT TEXTAREA */}
                             <div style={{
                                 padding: '0.75rem',
                                 backgroundColor: 'var(--card-background)',
                                 borderTop: '1px solid var(--border-color)',
                                 flexShrink: 0,
-                                // FIX: Verhindert, dass man die Leiste auf Touch-Devices "greifen" und ziehen kann
                                 touchAction: 'none'
                             }}>
                                 <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
-                                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3px', flexShrink: 0 }}>
                                         {isUploading ? <Icon name="refresh" className="animate-spin" /> : <Icon name="paperclip" />}
                                     </button>
-                                    <input
-                                        type="text"
+                                    <textarea
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
+                                        onKeyDown={handleKeyDown}
                                         placeholder="Nachricht..."
-                                        className="form-input"
-                                        style={{ flex: 1, borderRadius: '99px', padding: '0.75rem 1rem' }}
+                                        className="form-input custom-scrollbar"
+                                        style={{
+                                            flex: 1,
+                                            borderRadius: '20px',
+                                            padding: '0.75rem 1rem',
+                                            resize: 'none',
+                                            minHeight: '46px',
+                                            maxHeight: '150px',
+                                            overflowY: 'auto',
+                                            fontFamily: 'inherit',
+                                            lineHeight: '1.4',
+                                            touchAction: 'auto'
+                                        }}
+                                        rows={1}
                                     />
-                                    <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0', flexShrink: 0 }}>
                                         <Icon name="share" style={{ width: '20px', height: '20px' }} />
                                     </button>
                                 </form>
