@@ -118,7 +118,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
 
         const handleResize = () => {
             // Setze die Höhe exakt auf die sichtbare Höhe (minus Tastatur)
-            setViewportHeight(`${window.visualViewport.height}px`);
+            setViewportHeight(`${window.visualViewport!.height}px`);
             // Scroll zum Ende, da sich der Bereich verkleinert hat
             scrollToBottom('auto');
         };
