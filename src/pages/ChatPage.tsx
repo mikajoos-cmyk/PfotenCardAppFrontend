@@ -337,6 +337,22 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         }
     };
 
+    // --- HELPER: Datum formatieren ---
+    const formatDateHeader = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffDays = Math.floor((now.getTime() - new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()) / (1000 * 60 * 60 * 24));
+
+        const isToday = date.toDateString() === now.toDateString();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        const isYesterday = date.toDateString() === yesterday.toDateString();
+
+        if (isToday) return "Heute";
+        if (isYesterday) return "Gestern";
+        return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
     // --- HELPER: Nachricht rendern ---
     const renderMessageContent = (msg: ChatMessage, isMe: boolean) => {
         if (msg.file_url) {
@@ -603,32 +619,76 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 scrollBehavior: 'smooth'
                             }}>
                                 {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
-                                {messages.map((msg) => {
+                                {messages.map((msg, index) => {
                                     const isMe = msg.sender_id === Number(user?.id);
+                                    const msgDate = new Date(msg.created_at).toDateString();
+                                    const prevMsgDate = index > 0 ? new Date(messages[index - 1].created_at).toDateString() : null;
+                                    const showDateSeparator = msgDate !== prevMsgDate;
+
                                     return (
-                                        <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                                            <div style={{
-                                                maxWidth: '85%',
-                                                padding: '0.75rem 1rem',
-                                                borderRadius: '1rem',
-                                                borderBottomRightRadius: isMe ? '0' : '1rem',
-                                                borderBottomLeftRadius: !isMe ? '0' : '1rem',
-                                                backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
-                                                color: isMe ? 'white' : 'var(--text-primary)',
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                                                border: isMe ? 'none' : '1px solid var(--border-color)'
-                                            }}>
-                                                {renderMessageContent(msg, isMe)}
-                                                <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
-                                                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    {isMe && (
-                                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                            {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px' }} />}
-                                                        </div>
-                                                    )}
+                                        <React.Fragment key={msg.id}>
+                                            {showDateSeparator && (
+                                                <div style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'center',
+                                                    margin: '1rem 0',
+                                                    position: 'sticky',
+                                                    top: '0',
+                                                    zIndex: 5
+                                                }}>
+                                                    <span style={{
+                                                        backgroundColor: 'rgba(0,0,0,0.05)',
+                                                        padding: '0.25rem 0.75rem',
+                                                        borderRadius: '1rem',
+                                                        fontSize: '0.75rem',
+                                                        fontWeight: 600,
+                                                        color: 'var(--text-secondary)'
+                                                    }}>
+                                                        {formatDateHeader(msg.created_at)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                                                <div style={{
+                                                    maxWidth: '85%',
+                                                    padding: '0.75rem 1rem',
+                                                    borderRadius: '1rem',
+                                                    borderBottomRightRadius: isMe ? '0' : '1rem',
+                                                    borderBottomLeftRadius: !isMe ? '0' : '1rem',
+                                                    backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
+                                                    color: isMe ? 'white' : 'var(--text-primary)',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                                    border: isMe ? 'none' : '1px solid var(--border-color)'
+                                                }}>
+                                                    {renderMessageContent(msg, isMe)}
+                                                    <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
+                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {isMe && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '16px', height: '12px' }}>
+                                                                {/* First tick */}
+                                                                <Icon name="check" style={{
+                                                                    width: '12px',
+                                                                    height: '12px',
+                                                                    color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)',
+                                                                    position: 'absolute',
+                                                                    right: msg.is_read ? '4px' : '0'
+                                                                }} />
+                                                                {/* Second tick (only if read) */}
+                                                                {msg.is_read && (
+                                                                    <Icon name="check" style={{
+                                                                        width: '12px',
+                                                                        height: '12px',
+                                                                        color: '#fff',
+                                                                        position: 'absolute',
+                                                                        right: '0'
+                                                                    }} />
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </React.Fragment>
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
