@@ -350,6 +350,11 @@ body {
     position: relative;
 }
 
+.main-content.chat-page-active {
+    overflow: hidden !important;
+    padding: 0 !important;
+}
+
 /* --- Sidebar --- */
 .sidebar {
     width: 315px;
