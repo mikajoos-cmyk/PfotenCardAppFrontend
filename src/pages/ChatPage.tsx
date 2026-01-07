@@ -6,6 +6,8 @@ import { MOCK_CONVERSATIONS_CUSTOMER, MOCK_MESSAGES_CUSTOMER, MOCK_CONVERSATIONS
 import Icon from '../components/ui/Icon';
 import { getInitials, getAvatarColorClass } from '../lib/utils';
 import InfoModal from '../components/modals/InfoModal';
+// NEU: Importieren des Hooks
+import { useVisualViewport } from '../hooks/useVisualViewport';
 
 interface ChatPageProps {
     user: User | any;
@@ -15,6 +17,9 @@ interface ChatPageProps {
 }
 
 export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode }) => {
+    // NEU: Hook aufrufen
+    useVisualViewport();
+
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
     // State
@@ -449,7 +454,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            height: '100%', // KORREKTUR: Einfach 100% nutzen, keine manuelle JS-Berechnung
+            // KORREKTUR: Nutze die CSS-Variable --app-height, die vom Hook gesetzt wird
+            height: 'var(--app-height, 100dvh)',
             position: 'relative',
             overflow: 'hidden',
             backgroundColor: 'var(--background-color)'
