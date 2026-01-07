@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { apiClient } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { ChatMessage, ChatConversation, User, View } from '../types';
@@ -26,6 +26,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     // Upload State
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    // Ref für das Textarea-Element für Auto-Resize
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Preview State
     const [previewFile, setPreviewFile] = useState<{ url: string, type: string, name: string } | null>(null);
@@ -51,6 +53,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // --- AUTO RESIZE EFFECT ---
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            // Höhe zurücksetzen, um Schrumpfen zu ermöglichen
+            textarea.style.height = 'auto';
+            // Neue Höhe basierend auf Inhalt setzen
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    }, [newMessage]);
 
     // --- POLLING SETUP ---
     useEffect(() => {
@@ -304,11 +317,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
 
     // --- KEYDOWN HANDLER FÜR TEXTAREA ---
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        // Auf Desktop: Enter ohne Shift sendet die Nachricht
-        // Auf Mobile (oder wenn Shift gedrückt): Standardverhalten (neue Zeile)
         if (e.key === 'Enter' && !e.shiftKey && isDesktop) {
             e.preventDefault();
-            // Casting ist hier sicher, da handleSendMessage ein allgemeines Event oder FormEvent erwartet
             handleSendMessage(e as unknown as React.FormEvent);
         }
     };
@@ -339,6 +349,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         if (isYesterday) return "Gestern";
         return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
+
+    // --- GROUP MESSAGES BY DATE ---
+    const groupedMessages = useMemo(() => {
+        const groups: { dateStr: string; msgs: ChatMessage[] }[] = [];
+        messages.forEach(msg => {
+            const dateStr = new Date(msg.created_at).toDateString();
+            const lastGroup = groups[groups.length - 1];
+            if (lastGroup && lastGroup.dateStr === dateStr) {
+                lastGroup.msgs.push(msg);
+            } else {
+                groups.push({ dateStr, msgs: [msg] });
+            }
+        });
+        return groups;
+    }, [messages]);
 
     // --- HELPER: Nachricht rendern ---
     const renderMessageContent = (msg: ChatMessage, isMe: boolean) => {
@@ -578,71 +603,76 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 </div>
                             </div>
 
-                            {/* NACHRICHTEN */}
+                            {/* NACHRICHTEN - GRUPPIERT NACH DATUM */}
                             <div style={{
                                 flex: 1,
                                 overflowY: 'auto',
                                 padding: '1rem',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '1rem',
+                                gap: '0', // Abstand zwischen den Gruppen wird über margin-bottom geregelt
                                 scrollBehavior: 'smooth',
                                 overscrollBehavior: 'contain'
                             }}>
                                 {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
-                                {messages.map((msg, index) => {
-                                    const isMe = msg.sender_id === Number(user?.id);
-                                    const msgDate = new Date(msg.created_at).toDateString();
-                                    const prevMsgDate = index > 0 ? new Date(messages[index - 1].created_at).toDateString() : null;
-                                    const showDateSeparator = msgDate !== prevMsgDate;
 
-                                    return (
-                                        <React.Fragment key={msg.id}>
-                                            {showDateSeparator && (
-                                                <div style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'center',
-                                                    margin: '1rem 0',
-                                                    position: 'sticky',
-                                                    top: '0',
-                                                    zIndex: 5
-                                                }}>
-                                                    <span style={{
-                                                        backgroundColor: 'rgba(0,0,0,0.05)',
-                                                        padding: '0.25rem 0.75rem',
-                                                        borderRadius: '1rem',
-                                                        fontSize: '0.75rem',
-                                                        fontWeight: 600,
-                                                        color: 'var(--text-secondary)'
-                                                    }}>
-                                                        {formatDateHeader(msg.created_at)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <div style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                                                <div style={{
-                                                    maxWidth: '85%', padding: '0.75rem 1rem', borderRadius: '1rem',
-                                                    borderBottomRightRadius: isMe ? '0' : '1rem',
-                                                    borderBottomLeftRadius: !isMe ? '0' : '1rem',
-                                                    backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
-                                                    color: isMe ? 'white' : 'var(--text-primary)',
-                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: isMe ? 'none' : '1px solid var(--border-color)'
-                                                }}>
-                                                    {renderMessageContent(msg, isMe)}
-                                                    <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
-                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        {isMe && (
-                                                            <div style={{ position: 'relative', width: msg.is_read ? '18px' : '12px', height: '12px', display: 'flex', alignItems: 'center' }}>
-                                                                <Icon name="check" style={{ width: '12px', height: '12px', color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)', position: 'absolute', left: 0 }} />
-                                                                {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px', color: '#fff', position: 'absolute', left: '6px' }} />}
+                                {groupedMessages.map((group) => (
+                                    <div key={group.dateStr} style={{ position: 'relative', marginBottom: '1.5rem' }}>
+                                        {/* Sticky Header Container */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            marginBottom: '1rem',
+                                            position: 'sticky',
+                                            top: '0',
+                                            zIndex: 5,
+                                            pointerEvents: 'none' // Klicks gehen durch
+                                        }}>
+                                            <span style={{
+                                                backgroundColor: 'rgba(0,0,0,0.05)',
+                                                backdropFilter: 'blur(4px)',
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: '1rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 600,
+                                                color: 'var(--text-secondary)',
+                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                            }}>
+                                                {formatDateHeader(group.msgs[0].created_at)}
+                                            </span>
+                                        </div>
+
+                                        {/* Nachrichten in dieser Gruppe */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            {group.msgs.map((msg, index) => {
+                                                const isMe = msg.sender_id === Number(user?.id);
+                                                return (
+                                                    <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                                                        <div style={{
+                                                            maxWidth: '85%', padding: '0.75rem 1rem', borderRadius: '1rem',
+                                                            borderBottomRightRadius: isMe ? '0' : '1rem',
+                                                            borderBottomLeftRadius: !isMe ? '0' : '1rem',
+                                                            backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
+                                                            color: isMe ? 'white' : 'var(--text-primary)',
+                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: isMe ? 'none' : '1px solid var(--border-color)'
+                                                        }}>
+                                                            {renderMessageContent(msg, isMe)}
+                                                            <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
+                                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                {isMe && (
+                                                                    <div style={{ position: 'relative', width: msg.is_read ? '18px' : '12px', height: '12px', display: 'flex', alignItems: 'center' }}>
+                                                                        <Icon name="check" style={{ width: '12px', height: '12px', color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)', position: 'absolute', left: 0 }} />
+                                                                        {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px', color: '#fff', position: 'absolute', left: '6px' }} />}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </React.Fragment>
-                                    );
-                                })}
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                                 <div ref={messagesEndRef} />
                             </div>
 
@@ -660,6 +690,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                         {isUploading ? <Icon name="refresh" className="animate-spin" /> : <Icon name="paperclip" />}
                                     </button>
                                     <textarea
+                                        ref={textareaRef}
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         onKeyDown={handleKeyDown}
@@ -671,7 +702,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                             padding: '0.75rem 1rem',
                                             resize: 'none',
                                             minHeight: '46px',
-                                            maxHeight: '150px',
+                                            maxHeight: isDesktop ? '182px' : '114px',
                                             overflowY: 'auto',
                                             fontFamily: 'inherit',
                                             lineHeight: '1.4',
