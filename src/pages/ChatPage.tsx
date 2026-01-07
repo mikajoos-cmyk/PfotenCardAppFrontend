@@ -123,6 +123,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+
     // --- DATA LOGIC ---
 
     const loadConversations = async (showLoading = true) => {
@@ -454,9 +455,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            // KORREKTUR: Nutze die CSS-Variable --app-height, die vom Hook gesetzt wird
-            height: 'var(--app-height, 100dvh)',
-            position: 'relative',
+            // WICHTIG: Auf Mobile nutzen wir position fixed, um aus dem App-Layout "auszubrechen"
+            // und die volle Höhe inkl. Keyboard-Berechnung zu nutzen.
+            position: isDesktop ? 'relative' : 'fixed',
+            inset: isDesktop ? 'auto' : 0,
+            zIndex: isDesktop ? 'auto' : 50,
+            height: isDesktop ? '100%' : 'var(--app-height, 100dvh)',
             overflow: 'hidden',
             backgroundColor: 'var(--background-color)'
         }}>
@@ -645,28 +649,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                                     {renderMessageContent(msg, isMe)}
                                                     <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
                                                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        {isMe && (
-                                                            <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '16px', height: '12px' }}>
-                                                                {/* First tick */}
-                                                                <Icon name="check" style={{
-                                                                    width: '12px',
-                                                                    height: '12px',
-                                                                    color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)',
-                                                                    position: 'absolute',
-                                                                    right: msg.is_read ? '4px' : '0'
-                                                                }} />
-                                                                {/* Second tick (only if read) */}
-                                                                {msg.is_read && (
-                                                                    <Icon name="check" style={{
-                                                                        width: '12px',
-                                                                        height: '12px',
-                                                                        color: '#fff',
-                                                                        position: 'absolute',
-                                                                        right: '0'
-                                                                    }} />
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                        {isMe && <Icon name="check" style={{ width: '12px', height: '12px', color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)' }} />}
                                                     </div>
                                                 </div>
                                             </div>
