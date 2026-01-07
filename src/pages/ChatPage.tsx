@@ -95,39 +95,40 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     }, [selectedUser]);
 
     const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-        requestAnimationFrame(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior });
-        });
+        // Kleine Verzögerung für Mobile Renderings
+        setTimeout(() => {
+            requestAnimationFrame(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior });
+            });
+        }, 100);
     };
 
     useEffect(() => {
         scrollToBottom();
     }, [messages.length, selectedUser]);
 
-    // Keyboard handling for mobile
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    // --- ÄNDERUNG: Visual Viewport Handling für Mobile Tastatur ---
+    // Statt padding-bottom nutzen wir die exakte Höhe des Visual Viewports.
+    // Das verhindert, dass der Header nach oben rausgeschoben wird.
+    const [viewportHeight, setViewportHeight] = useState<string>('100%');
 
     useEffect(() => {
+        // Nur aktivieren, wenn VisualViewport unterstützt wird (moderne Browser)
         if (!window.visualViewport) return;
 
         const handleResize = () => {
-            if (window.visualViewport) {
-                const viewportHeight = window.visualViewport.height;
-                const windowHeight = window.innerHeight;
-                const diff = windowHeight - viewportHeight;
-                setKeyboardHeight(diff > 50 ? diff : 0);
-
-                if (diff > 50) {
-                    scrollToBottom('auto');
-                }
-            }
+            // Setze die Höhe exakt auf die sichtbare Höhe (minus Tastatur)
+            setViewportHeight(`${window.visualViewport.height}px`);
+            // Scroll zum Ende, da sich der Bereich verkleinert hat
+            scrollToBottom('auto');
         };
 
         window.visualViewport.addEventListener('resize', handleResize);
-        window.visualViewport.addEventListener('scroll', handleResize);
+        // Initiale Setzung
+        handleResize();
+
         return () => {
             window.visualViewport?.removeEventListener('resize', handleResize);
-            window.visualViewport?.removeEventListener('scroll', handleResize);
         };
     }, []);
 
@@ -326,14 +327,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         }
     };
 
-    // --- HELPER: Nachricht rendern (NEU: HORIZONTAL & TRANSPARENT) ---
+    // --- HELPER: Nachricht rendern ---
     const renderMessageContent = (msg: ChatMessage, isMe: boolean) => {
         if (msg.file_url) {
             const fileName = msg.file_name || 'Datei';
             const isImage = msg.file_type === 'image';
 
             if (isImage) {
-                // Bilder (bleiben wie gehabt, nur mit Größenbegrenzung)
                 return (
                     <div className="space-y-2">
                         <div
@@ -366,11 +366,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     </div>
                 );
             } else {
-                // DOKUMENTE: Neues schlankes, horizontales Design
-                // Farben basierend auf isMe setzen
                 const textColor = isMe ? 'white' : 'var(--text-primary)';
                 const iconColor = isMe ? 'rgba(255,255,255,0.9)' : 'var(--primary-color)';
-                const hoverColor = isMe ? 'rgba(255,255,255,0.2)' : 'var(--bg-accent-gray)';
 
                 return (
                     <div className="space-x-1">
@@ -380,10 +377,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 alignItems: 'center',
                                 gap: '0.75rem',
                                 maxWidth: '280px',
-                                padding: '2px 0' // Minimales Padding
+                                padding: '2px 0'
                             }}
                         >
-                            {/* 1. Datei Icon */}
                             <div
                                 style={{ color: iconColor, cursor: 'pointer', flexShrink: 0, display: 'flex' }}
                                 onClick={() => setPreviewFile({ url: msg.file_url!, type: msg.file_type || 'document', name: fileName })}
@@ -391,7 +387,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 <Icon name="file" style={{ width: '24px', height: '24px' }} />
                             </div>
 
-                            {/* 2. Datei Name (Truncated) */}
                             <div
                                 style={{
                                     flex: 1,
@@ -410,7 +405,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 {fileName}
                             </div>
 
-                            {/* 3. Download Icon */}
                             <button
                                 onClick={(e) => handleDownload(e, msg.file_url!, fileName)}
                                 style={{
@@ -431,7 +425,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                             </button>
                         </div>
 
-                        {/* Nachrichtentext unter der Datei (falls vorhanden) */}
                         {msg.content !== 'Dokument gesendet' && (
                             <div style={{ fontSize: '0.85rem', marginTop: '0.25rem', opacity: 0.9 }}>
                                 {msg.content}
@@ -456,10 +449,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            height: '100%',
+            // WICHTIG: Die Höhe wird dynamisch angepasst, um in den sichtbaren Viewport (über Tastatur) zu passen
+            height: viewportHeight,
             position: 'relative',
-            paddingBottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0',
-            transition: 'padding-bottom 0.1s ease-out'
+            overflow: 'hidden' // Verhindert Scrollen des äußeren Containers
         }}>
             <div className="content-box" style={{
                 flex: 1, display: 'flex', padding: 0, overflow: 'hidden', marginBottom: 0,
@@ -468,7 +461,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 backgroundColor: 'var(--card-background)',
                 zIndex: 1
             }}>
-                {/* SIDEBAR */}
+                {/* SIDEBAR (Liste der Chats) */}
                 <div style={{
                     width: isDesktop ? '320px' : '100%',
                     display: (isDesktop || isMobileListVisible) ? 'flex' : 'none',
@@ -518,32 +511,27 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     </div>
                 </div>
 
-                {/* CHAT AREA */}
+                {/* CHAT AREA (Rechter Bereich) */}
                 <div style={{
                     flex: 1, display: (isDesktop || !isMobileListVisible) ? 'flex' : 'none',
                     flexDirection: 'column', backgroundColor: 'var(--background-color)', width: '100%', height: '100%'
                 }}>
                     {selectedUser ? (
-                        <div style={{ padding: '0 1rem', backgroundColor: 'var(--card-background)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', height: '60px', flexShrink: 0 }}>
-                            {!isDesktop && <button onClick={handleBackToList} style={{ background: 'none', border: 'none', padding: '0.5rem', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '-0.5rem' }}><Icon name="arrowLeft" /></button>}
-                            <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '36px', height: '36px', fontSize: '0.9rem' }}>{getInitials(selectedUser.name)}</div>
-                            <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    {selectedUser.name}
-                                    {isAdminOrStaff && <Icon name="arrowRight" style={{ width: '14px', height: '14px', opacity: 0.4 }} />}
-                                </span>
+                        <>
+                            {/* HEADER - Immer oben fixiert durch Flexbox Layout */}
+                            <div style={{ padding: '0 1rem', backgroundColor: 'var(--card-background)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem', height: '60px', flexShrink: 0 }}>
+                                {!isDesktop && <button onClick={handleBackToList} style={{ background: 'none', border: 'none', padding: '0.5rem', cursor: 'pointer', color: 'var(--text-primary)', marginLeft: '-0.5rem' }}><Icon name="arrowLeft" /></button>}
+                                <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '36px', height: '36px', fontSize: '0.9rem' }}>{getInitials(selectedUser.name)}</div>
+                                <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {selectedUser.name}
+                                        {isAdminOrStaff && <Icon name="arrowRight" style={{ width: '14px', height: '14px', opacity: 0.4 }} />}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-light)' }}>
-                            <Icon name="mail" style={{ width: '64px', height: '64px', marginBottom: '1rem', opacity: 0.2 }} />
-                            <p>Wählen Sie einen Chat aus der Liste.</p>
-                        </div>
-                    )}
 
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {selectedUser && (
-                            <>
+                            {/* MESSAGES - Scrollbarer Mittelteil */}
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
                                 {messages.map((msg) => {
                                     const isMe = msg.sender_id === Number(user?.id);
@@ -565,22 +553,26 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
-                            </>
-                        )}
-                    </div>
+                            </div>
 
-                    {selectedUser && (
-                        <div style={{ padding: '0.75rem', backgroundColor: 'var(--card-background)', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
-                            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
-                            <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                                    {isUploading ? <Icon name="refresh" className="animate-spin" style={{ width: '18px', height: '18px' }} /> : <Icon name="paperclip" style={{ width: '18px', height: '18px' }} />}
-                                </button>
-                                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Nachricht..." className="form-input" style={{ flex: 1, borderRadius: '99px', padding: '0.75rem 1rem' }} />
-                                <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                    <Icon name="share" style={{ width: '20px', height: '20px', transform: 'rotate(0deg)' }} />
-                                </button>
-                            </form>
+                            {/* INPUT - Immer unten fixiert, da letztes Element im Flex-Column */}
+                            <div style={{ padding: '0.75rem', backgroundColor: 'var(--card-background)', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
+                                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
+                                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+                                        {isUploading ? <Icon name="refresh" className="animate-spin" style={{ width: '18px', height: '18px' }} /> : <Icon name="paperclip" style={{ width: '18px', height: '18px' }} />}
+                                    </button>
+                                    <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Nachricht..." className="form-input" style={{ flex: 1, borderRadius: '99px', padding: '0.75rem 1rem' }} />
+                                    <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Icon name="share" style={{ width: '20px', height: '20px', transform: 'rotate(0deg)' }} />
+                                    </button>
+                                </form>
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-light)' }}>
+                            <Icon name="mail" style={{ width: '64px', height: '64px', marginBottom: '1rem', opacity: 0.2 }} />
+                            <p>Wählen Sie einen Chat aus der Liste.</p>
                         </div>
                     )}
                 </div>
