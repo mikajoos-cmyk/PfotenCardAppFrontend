@@ -451,11 +451,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         <div style={{
             display: 'flex',
             flexDirection: 'column',
-            // WICHTIG: KORREKTUR: Einfach 100% nutzen, da .app-container die Höhe bereits korrekt über die Variable steuert
             height: '100%',
             position: 'relative',
             overflow: 'hidden',
-            backgroundColor: 'var(--background-color)'
+            backgroundColor: 'var(--background-color)',
+            // FIX: Verhindert, dass der ganze Screen auf iOS "wackelt" (overscroll)
+            overscrollBehavior: 'none'
         }}>
             <div className="content-box" style={{
                 flex: 1,
@@ -468,7 +469,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 border: isDesktop ? '1px solid var(--border-color)' : 'none',
                 borderRadius: isDesktop ? '1rem' : '0',
                 backgroundColor: 'var(--card-background)',
-                zIndex: 1
+                zIndex: 1,
+                // FIX: Flex-Basis 0 verhindert Overflow
+                minHeight: 0
             }}>
                 {/* LISTE DER CHATS */}
                 <div style={{
@@ -477,7 +480,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     flexDirection: 'column',
                     backgroundColor: 'var(--card-background)',
                     borderRight: isDesktop ? '1px solid var(--border-color)' : 'none',
-                    height: '100%'
+                    height: '100%',
+                    minHeight: 0
                 }}>
                     <div style={{ padding: '0 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '60px', flexShrink: 0 }}>
                         <span style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '1.1rem' }}>Nachrichten</span>
@@ -530,7 +534,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     backgroundColor: 'var(--background-color)',
                     width: '100%',
                     height: '100%',
-                    position: 'relative'
+                    position: 'relative',
+                    minHeight: 0
                 }}>
                     {selectedUser ? (
                         <>
@@ -574,7 +579,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '1rem',
-                                scrollBehavior: 'smooth'
+                                scrollBehavior: 'smooth',
+                                // FIX: Scrollen nur hier erlauben, aber kein Overscroll auf Parent
+                                overscrollBehavior: 'contain'
                             }}>
                                 {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
                                 {messages.map((msg, index) => {
@@ -638,7 +645,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 padding: '0.75rem',
                                 backgroundColor: 'var(--card-background)',
                                 borderTop: '1px solid var(--border-color)',
-                                flexShrink: 0
+                                flexShrink: 0,
+                                // FIX: Verhindert, dass man die Leiste auf Touch-Devices "greifen" und ziehen kann
+                                touchAction: 'none'
                             }}>
                                 <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
                                 <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
