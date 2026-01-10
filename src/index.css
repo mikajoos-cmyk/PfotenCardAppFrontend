@@ -3551,3 +3551,111 @@ input:checked+.slider:before {
 .legal-page a:hover {
     text-decoration: underline;
 }
+
+/* --- Context Help Trigger Button --- */
+.context-help-trigger {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.context-help-trigger:hover {
+    background-color: var(--card-background);
+    color: var(--primary-color);
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+/* In der Mobile View den Button etwas verschieben, damit er nicht mit dem Menü kollidiert */
+@media (max-width: 992px) {
+    .context-help-trigger {
+        top: 0.75rem;
+        right: 0.75rem;
+        color: var(--text-primary);
+        /* Da Mobile Header weiß ist */
+    }
+}
+
+/* --- Cookie Banner Styles (Marketing Style Port) --- */
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    z-index: 10000;
+    animation: slideUp 0.5s ease-out;
+    pointer-events: none;
+    /* Damit man durch den Container durchklicken kann, wenn er padding hat */
+}
+
+.cookie-content {
+    pointer-events: auto;
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: var(--card-background);
+    /* Nutzt App-Theme */
+    border: 1px solid var(--border-color);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 0.75rem;
+    padding: 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .cookie-content {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.cookie-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.cookie-text strong {
+    color: var(--text-primary);
+}
+
+.cookie-link {
+    color: var(--primary-color);
+    text-decoration: underline;
+    margin-left: 0.5rem;
+    cursor: pointer;
+}
+
+.cookie-link:hover {
+    text-decoration: none;
+}
+
+.cookie-button {
+    white-space: nowrap;
+    padding: 0.5rem 1.5rem;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

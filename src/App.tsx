@@ -1313,11 +1313,13 @@ export default function App() {
             }
 
             <main className={`main-content ${view.page === 'chat' ? 'chat-page-active' : ''}`}>
+                {/* HIER DIE ÄNDERUNG: Genauere Bestimmung der aktuellen Seite für die Hilfe */}
                 <ContextHelp
-                    currentPage={view.page}
+                    currentPage={view.subPage ? `${view.page}_${view.subPage}` : view.page}
                     userRole={loggedInUser?.role}
                     tenantSupportEmail={appConfigData?.tenant?.support_email}
                 />
+
                 {isMobileView && (
                     <header className="mobile-header">
                         <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">

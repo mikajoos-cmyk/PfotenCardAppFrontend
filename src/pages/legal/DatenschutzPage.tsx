@@ -1,4 +1,6 @@
-import React, { FC } from 'react';
+import React, { useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Shield, Lock, Eye, Database, UserCheck, FileText, Server, CreditCard, ArrowLeft } from 'lucide-react';
 import Icon from '../../components/ui/Icon';
 
 interface DatenschutzPageProps {
@@ -7,45 +9,99 @@ interface DatenschutzPageProps {
 }
 
 export function DatenschutzPage({ onBack, showBack = true }: DatenschutzPageProps) {
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     return (
-        <div className="flex flex-col h-full bg-white dark:bg-gray-900">
-            <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-800">
-                {showBack && (
-                    <button onClick={onBack} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
-                        <Icon name="arrowLeft" />
-                    </button>
-                )}
-                <h1 className="text-lg font-bold">Datenschutz</h1>
-            </header>
+        <main className="legal-page">
+            <div className="container">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    {showBack && (
+                        <button onClick={onBack} className="back-button">
+                            <ArrowLeft size={20} />
+                            Zurück
+                        </button>
+                    )}
 
-            <div className="p-6 overflow-y-auto prose dark:prose-invert max-w-none">
-                <p className="text-sm text-gray-500">Stand: Januar 2026</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                        <div className="text-primary">
+                            <Icon name="file" width={48} height={48} />
+                        </div>
+                        <h1>Datenschutzerklärung</h1>
+                    </div>
 
-                <h3>1. Wer ist verantwortlich?</h3>
-                <p>
-                    Verantwortlicher für deine Trainingsdaten ist <strong>deine Hundeschule</strong>.
-                    Wir ([DEIN NAME], "Pfotencard") sind technischer Auftragsverarbeiter. Wir verarbeiten Daten nur im Auftrag deiner Hundeschule sicher auf unseren Servern.
-                </p>
+                    <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                        Stand: Januar 2026. Wir nehmen den Schutz Ihrer persönlichen Daten sehr ernst.
+                    </p>
 
-                <h3>2. Wo liegen die Daten? (Serverstandort)</h3>
-                <p>
-                    Unsere Server (Vercel, Supabase) befinden sich vorrangig in <strong>Frankfurt (Deutschland)</strong>.
-                    Backups werden verschlüsselt in der EU gespeichert.
-                </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                <h3>3. Drittanbieter & USA-Transfers (DPF)</h3>
-                <p>
-                    Für bestimmte Funktionen (Login, Push-Nachrichten) nutzen wir Dienstleister, die ihren Sitz in den USA haben könnten (z.B. AWS als Unterauftragnehmer von Supabase).
-                    <br /><br />
-                    <strong>Datenschutz-Garantie:</strong> Wir nutzen ausschließlich Anbieter, die nach dem <em>EU-US Data Privacy Framework (DPF)</em> zertifiziert sind oder mit denen EU-Standardvertragsklauseln (SCC) vereinbart wurden, um ein angemessenes Datenschutzniveau sicherzustellen.
-                </p>
+                        {/* 1. Verantwortliche Stelle */}
+                        <div className="bg-card">
+                            <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
+                                <UserCheck size={28} className="text-primary" style={{ marginTop: '0.25rem', flexShrink: 0 }} />
+                                <div>
+                                    <h2>1. Verantwortliche Stelle</h2>
+                                    <p>
+                                        Verantwortlich für die Datenverarbeitung ist Ihre <strong>Hundeschule</strong> (siehe Impressum der App oder Website).
+                                        <br />
+                                        Wir (Pfotencard) agieren als technischer Auftragsverarbeiter gemäß Art. 28 DSGVO.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
 
-                <h3>4. Deine Rechte</h3>
-                <p>
-                    Du kannst jederzeit die Löschung deines Accounts bei deiner Hundeschule oder direkt in der App beantragen (Account löschen).
-                </p>
+                        {/* 2. Hosting */}
+                        <div className="bg-card">
+                            <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
+                                <Server size={28} className="text-primary" style={{ marginTop: '0.25rem', flexShrink: 0 }} />
+                                <div>
+                                    <h2>2. Hosting & Infrastruktur</h2>
+                                    <p>
+                                        Unsere Server (Supabase/AWS) befinden sich vorrangig in <strong>Frankfurt (Deutschland)</strong>.
+                                        Daten werden verschlüsselt übertragen (SSL/TLS).
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. Drittanbieter */}
+                        <div className="bg-card">
+                            <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
+                                <Database size={28} className="text-primary" style={{ marginTop: '0.25rem', flexShrink: 0 }} />
+                                <div>
+                                    <h2>3. Drittanbieter & Datentransfer</h2>
+                                    <p>
+                                        Wir nutzen Dienstleister für Login und Hosting, die ihren Sitz teilweise in den USA haben (z.B. Vercel, Supabase Inc.).
+                                        <br />
+                                        <strong>Schutzgarantie:</strong> Wir arbeiten nur mit Anbietern, die nach dem <em>EU-US Data Privacy Framework (DPF)</em> zertifiziert sind oder EU-Standardvertragsklauseln (SCC) unterzeichnet haben.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. Rechte */}
+                        <div className="bg-card">
+                            <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
+                                <FileText size={28} className="text-primary" style={{ marginTop: '0.25rem', flexShrink: 0 }} />
+                                <div>
+                                    <h2>4. Deine Rechte</h2>
+                                    <p>
+                                        Du hast das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung deiner Daten.
+                                        Wende dich dazu bitte direkt an deine Hundeschule oder nutze die "Account löschen"-Funktion in den Einstellungen.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </motion.div>
             </div>
-        </div>
+        </main>
     );
-};
-
+}

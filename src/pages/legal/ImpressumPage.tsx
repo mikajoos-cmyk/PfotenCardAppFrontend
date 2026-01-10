@@ -89,20 +89,6 @@ export function ImpressumPage({ onBack, showBack = true }: ImpressumPageProps) {
                             DE123456789
                         </p>
                     </div>
-
-                    <div className="bg-card">
-                        <h2>EU-Streitschlichtung</h2>
-                        <p>
-                            Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{' '}
-                            <a
-                                href="https://ec.europa.eu/consumers/odr/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                https://ec.europa.eu/consumers/odr/
-                            </a>
-                        </p>
-                    </div>
                 </motion.div>
             </div>
         </main>
