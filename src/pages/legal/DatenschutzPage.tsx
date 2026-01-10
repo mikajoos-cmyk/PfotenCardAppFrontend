@@ -1,16 +1,20 @@
 import React, { FC } from 'react';
 import Icon from '../../components/ui/Icon';
-import { View } from '../../types';
 
-interface LegalPageProps { setView: (view: View) => void; }
+interface DatenschutzPageProps {
+    onBack?: () => void;
+    showBack?: boolean;
+}
 
-export function DatenschutzPage({ setView }: LegalPageProps) {
+export function DatenschutzPage({ onBack, showBack = true }: DatenschutzPageProps) {
     return (
         <div className="flex flex-col h-full bg-white dark:bg-gray-900">
             <header className="flex items-center gap-4 p-4 border-b border-gray-200 dark:border-gray-800">
-                <button onClick={() => setView({ page: 'dashboard' })} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
-                    <Icon name="arrowLeft" />
-                </button>
+                {showBack && (
+                    <button onClick={onBack} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+                        <Icon name="arrowLeft" />
+                    </button>
+                )}
                 <h1 className="text-lg font-bold">Datenschutz</h1>
             </header>
 
