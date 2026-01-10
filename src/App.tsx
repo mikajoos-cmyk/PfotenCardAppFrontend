@@ -36,6 +36,15 @@ import { ChatPage } from './pages/ChatPage';
 // NEU: Hook importieren
 import { useVisualViewport } from './hooks/useVisualViewport';
 
+// Legal Pages
+import { ImpressumPage } from './pages/legal/ImpressumPage';
+import { DatenschutzPage } from './pages/legal/DatenschutzPage';
+import { AGBPage } from './pages/legal/AGBPage';
+import { CookieBanner } from './components/ui/CookieBanner';
+import { ContextHelp } from './components/ui/ContextHelp'; // Importieren
+
+
+
 const getFullImageUrl = (url?: string) => {
     if (!url) return null;
     if (url.startsWith("http")) return url;
@@ -69,8 +78,12 @@ export default function App() {
 
         if (path === '/news') return { page: 'news' };
         if (path === '/chat') return { page: 'chat' };
+        if (path === '/impressum') return { page: 'impressum' };
+        if (path === '/datenschutz') return { page: 'datenschutz' };
+        if (path === '/agb') return { page: 'agb' };
 
         return { page: 'dashboard' };
+
     });
 
     // ... (Hier der ganze restliche State & Effects Code - UNVERÄNDERT) ...
@@ -1038,64 +1051,6 @@ export default function App() {
         );
     }
 
-    const isAccessingCustomerPage = view.page === 'customers' && view.subPage === 'detail' && view.customerId;
-    const allowUnauthenticatedAccess = !REQUIRE_AUTH_FOR_CUSTOMER_VIEW && isAccessingCustomerPage;
-
-    if (!authToken || !loggedInUser) {
-        if (allowUnauthenticatedAccess && directAccessedCustomer) {
-            return (
-                <div className="app-container">
-                    <div className="main-content" style={{ marginLeft: 0, width: '100%' }}>
-                        <CustomerDetailPage
-                            customer={directAccessedCustomer}
-                            transactions={transactions}
-                            setView={handleSetView}
-                            handleLevelUp={handleLevelUp}
-                            onSave={handleSaveCustomerDetails}
-                            currentUser={directAccessedCustomer}
-                            users={[]}
-                            onUploadDocuments={handleUploadDocuments}
-                            onDeleteDocument={handleDeleteDocument}
-                            fetchAppData={fetchAppData}
-                            authToken={null}
-                            onDeleteUserClick={() => { }}
-                            onToggleVipStatus={onToggleVipStatus}
-                            onToggleExpertStatus={onToggleExpertStatus}
-                            setDogFormModal={setDogFormModal}
-                            setDeletingDog={setDeletingDog}
-                            levels={appConfigData?.levels || previewConfig.levels}
-                            wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
-                            isDarkMode={isDarkMode}
-                            isPreviewMode={isPreviewMode}
-                        />
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <AuthScreen
-                onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
-                onLoginEnd={() => setServerLoading({ active: false, message: '' })}
-                onLoginSuccess={handleLoginSuccess}
-                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
-                schoolName={schoolName}
-            />
-        );
-    }
-
-    if (previewConfig.viewMode === 'login') {
-        return (
-            <AuthScreen
-                onLoginStart={() => { }}
-                onLoginEnd={() => { }}
-                onLoginSuccess={() => { }}
-                logoUrl={getFullImageUrl(previewConfig.logoUrl)}
-                schoolName={schoolName}
-            />
-        );
-    }
-
     // --- RENDER CONTENT ---
     const renderContent = () => {
         if (view.page === 'news') {
@@ -1106,7 +1061,7 @@ export default function App() {
         }
 
         if (view.page === 'dashboard') {
-            if (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde') {
+            if (loggedInUser && (loggedInUser.role === 'customer' || loggedInUser.role === 'kunde')) {
                 const customer = customers.find(c => c.id === loggedInUser.id) || (isPreviewMode ? loggedInUser : null);
                 if (!customer) return <div>Lade Daten...</div>;
 
@@ -1243,10 +1198,84 @@ export default function App() {
             );
         }
 
+        if (view.page === 'impressum') {
+            return <ImpressumPage onBack={() => handleSetView({ page: 'dashboard' })} />;
+        }
+        if (view.page === 'datenschutz') {
+            return <DatenschutzPage onBack={() => handleSetView({ page: 'dashboard' })} />;
+        }
+        if (view.page === 'agb') {
+            return <AGBPage onBack={() => handleSetView({ page: 'dashboard' })} />;
+        }
+
         return <div>Seite nicht gefunden</div>;
     };
 
-    let activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar'];
+    const isAccessingCustomerPage = view.page === 'customers' && view.subPage === 'detail' && view.customerId;
+
+    const isAccessingLegalPage = ['impressum', 'datenschutz', 'agb'].includes(view.page);
+    const allowUnauthenticatedAccess = (!REQUIRE_AUTH_FOR_CUSTOMER_VIEW && isAccessingCustomerPage) || isAccessingLegalPage;
+
+    if (!authToken || !loggedInUser) {
+        if (allowUnauthenticatedAccess && (directAccessedCustomer || isAccessingLegalPage)) {
+            return (
+                <div className="app-container">
+                    <div className="main-content" style={{ marginLeft: 0, width: '100%' }}>
+                        {isAccessingLegalPage ? renderContent() : (
+                            <CustomerDetailPage
+                                customer={directAccessedCustomer}
+                                transactions={transactions}
+                                setView={handleSetView}
+                                handleLevelUp={handleLevelUp}
+                                onSave={handleSaveCustomerDetails}
+                                currentUser={directAccessedCustomer}
+                                users={[]}
+                                onUploadDocuments={handleUploadDocuments}
+                                onDeleteDocument={handleDeleteDocument}
+                                fetchAppData={fetchAppData}
+                                authToken={null}
+                                onDeleteUserClick={() => { }}
+                                onToggleVipStatus={onToggleVipStatus}
+                                onToggleExpertStatus={onToggleExpertStatus}
+                                setDogFormModal={setDogFormModal}
+                                setDeletingDog={setDeletingDog}
+                                levels={appConfigData?.levels || previewConfig.levels}
+                                wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
+                                isDarkMode={isDarkMode}
+                                isPreviewMode={isPreviewMode}
+                            />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <AuthScreen
+                onLoginStart={() => setServerLoading({ active: true, message: 'Anmeldung läuft...' })}
+                onLoginEnd={() => setServerLoading({ active: false, message: '' })}
+                onLoginSuccess={handleLoginSuccess}
+                logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
+                schoolName={schoolName}
+            />
+        );
+    }
+
+
+    if (previewConfig.viewMode === 'login') {
+        return (
+            <AuthScreen
+                onLoginStart={() => { }}
+                onLoginEnd={() => { }}
+                onLoginSuccess={() => { }}
+                logoUrl={getFullImageUrl(previewConfig.logoUrl)}
+                schoolName={schoolName}
+            />
+        );
+    }
+
+
+    let activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar', 'chat'];
 
     return (
         <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
@@ -1284,6 +1313,11 @@ export default function App() {
             }
 
             <main className={`main-content ${view.page === 'chat' ? 'chat-page-active' : ''}`}>
+                <ContextHelp
+                    currentPage={view.page}
+                    userRole={loggedInUser?.role}
+                    tenantSupportEmail={appConfigData?.tenant?.support_email}
+                />
                 {isMobileView && (
                     <header className="mobile-header">
                         <button className="mobile-menu-button" onClick={() => setIsSidebarOpen(true)} aria-label="Menü öffnen">
@@ -1346,6 +1380,7 @@ export default function App() {
                     </div >
                 </div >
             )}
+            <CookieBanner />
         </div >
     );
 }

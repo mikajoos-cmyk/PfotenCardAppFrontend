@@ -136,6 +136,14 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
                     <Icon name="logout" />
                     <span>Abmelden</span>
                 </button>
+
+                <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                    <button className="button-as-link" style={{ fontSize: '0.75rem', color: 'var(--sidebar-text)' }} onClick={() => setView && setView({ page: 'impressum' })}>Impressum</button>
+                    <span style={{ color: 'var(--sidebar-text)', fontSize: '0.75rem' }}>|</span>
+                    <button className="button-as-link" style={{ fontSize: '0.75rem', color: 'var(--sidebar-text)' }} onClick={() => setView && setView({ page: 'datenschutz' })}>Datenschutz</button>
+                </div>
+
+
             </div>
         </aside>
     );

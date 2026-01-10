@@ -3454,3 +3454,100 @@ input:checked+.slider:before {
         overflow: hidden;
     }
 }
+
+/* --- Legal Pages Styling --- */
+.legal-page {
+    background-color: var(--background-color);
+    min-height: 100%;
+    width: 100%;
+    color: var(--text-primary);
+}
+
+.legal-page .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+.legal-page h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    margin-bottom: 2rem;
+    color: var(--text-primary);
+    letter-spacing: -0.025em;
+}
+
+.legal-page h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 2.5rem;
+    margin-bottom: 1.25rem;
+    color: var(--text-primary);
+}
+
+.legal-page h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+.legal-page p {
+    margin-bottom: 1.25rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+}
+
+.legal-page ul {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+    list-style-type: disc;
+}
+
+.legal-page li {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.legal-page .bg-card {
+    background-color: var(--card-background);
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.legal-page .text-primary {
+    color: var(--primary-color) !important;
+}
+
+.legal-page .back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 2rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.legal-page .back-button:hover {
+    background-color: var(--level-1-color-bg);
+}
+
+.legal-page a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.legal-page a:hover {
+    text-decoration: underline;
+}

@@ -1,6 +1,7 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
-export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions';
+export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions' | 'impressum' | 'datenschutz' | 'agb';
 export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions', targetAppointmentId?: number };
+
 
 export interface User {
     id: string;

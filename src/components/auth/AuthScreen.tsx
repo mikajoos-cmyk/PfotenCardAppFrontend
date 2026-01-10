@@ -215,6 +215,14 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
                             <>
                                 <div className="form-group"><label>Ihr Name</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} required /></div>
                                 <div className="form-group"><label>Hundename</label><input type="text" className="form-input" value={dogName} onChange={e => setDogName(e.target.value)} required /></div>
+
+                                <div className="form-group checkbox-group" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.85rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                                    <input type="checkbox" required id="legal-check" style={{ width: 'auto', marginTop: '0.2rem' }} />
+                                    <label htmlFor="legal-check" style={{ color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                        Ich stimme den <a href="/agb" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>AGB</a> zu und habe die <a href="/datenschutz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>Datenschutzerklärung</a> zur Kenntnis genommen.
+                                    </label>
+                                </div>
+
                             </>
                         )}
 
