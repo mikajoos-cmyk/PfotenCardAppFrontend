@@ -82,7 +82,7 @@ const CreateAppointmentModal = ({ isOpen, onClose, onCreate }: { isOpen: boolean
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, onNotify }: { event: Appointment, onClose: () => void, onAction: (type: 'book' | 'cancel' | 'participants') => void, userRole: string, isBooked: boolean, onNotify: () => void }) => {
+const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, bookingStatus, onNotify }: { event: Appointment, onClose: () => void, onAction: (type: 'book' | 'cancel' | 'participants') => void, userRole: string, isBooked: boolean, bookingStatus?: string, onNotify: () => void }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
     const isPast = new Date(event.start_time) < new Date();
@@ -142,12 +142,23 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, onNot
                         </div>
                     ) : (
                         isBooked ? (
-                            <button className="button button-danger" onClick={() => onAction('cancel')} disabled={isPast}>
-                                <Icon name="x" /> Stornieren
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                {bookingStatus === 'waitlist' && (
+                                    <button className="button button-primary" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                                        <Icon name="clock" /> Auf der Warteliste
+                                    </button>
+                                )}
+                                <button className="button button-danger" onClick={() => onAction('cancel')} disabled={isPast}>
+                                    <Icon name="x" /> Stornieren
+                                </button>
+                            </div>
                         ) : (
-                            <button className="button button-primary" onClick={() => onAction('book')} disabled={isFull || isPast}>
-                                {isFull ? 'Warteliste' : 'Jetzt anmelden'}
+                            <button
+                                className="button button-primary"
+                                onClick={() => onAction('book')}
+                                disabled={isPast}
+                            >
+                                {isFull ? 'Auf die Warteliste' : 'Jetzt anmelden'}
                             </button>
                         )
                     )}
@@ -158,25 +169,79 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, onNot
 };
 
 const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance }: { isOpen: boolean, onClose: () => void, bookings: Booking[], title: string, onToggleAttendance: (id: number) => void }) => {
+    const [activeTab, setActiveTab] = useState<'confirmed' | 'waitlist'>('confirmed');
+
     if (!isOpen) return null;
+
+    const confirmedList = bookings.filter(b => b.status === 'confirmed');
+    const waitlistList = bookings.filter(b => b.status === 'waitlist');
+
+    // Sortiere Warteliste nach Erstellungsdatum (älteste zuerst)
+    waitlistList.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    const currentList = activeTab === 'confirmed' ? confirmedList : waitlistList;
+
     return (
         <InfoModal title={`Teilnehmer: ${title}`} color="blue" onClose={onClose}>
             <div className="participants-list-container">
-                <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>{bookings.filter(b => b.status === 'confirmed').length} Anmeldungen</p>
-                {bookings.length === 0 ? <p className="text-gray-500 italic">Noch keine Anmeldungen.</p> : (
+
+                {/* TABS FÜR ANSICHTSWECHSEL */}
+                <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+                    <button
+                        onClick={() => setActiveTab('confirmed')}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderBottom: activeTab === 'confirmed' ? '2px solid var(--primary-color)' : '2px solid transparent',
+                            fontWeight: activeTab === 'confirmed' ? 600 : 400,
+                            color: activeTab === 'confirmed' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                            background: 'none', borderLeft: 'none', borderRight: 'none', borderTop: 'none', cursor: 'pointer'
+                        }}
+                    >
+                        Teilnehmer ({confirmedList.length})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('waitlist')}
+                        style={{
+                            padding: '0.5rem 1rem',
+                            borderBottom: activeTab === 'waitlist' ? '2px solid var(--brand-orange)' : '2px solid transparent',
+                            fontWeight: activeTab === 'waitlist' ? 600 : 400,
+                            color: activeTab === 'waitlist' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                            background: 'none', borderLeft: 'none', borderRight: 'none', borderTop: 'none', cursor: 'pointer'
+                        }}
+                    >
+                        Warteliste ({waitlistList.length})
+                    </button>
+                </div>
+
+                {currentList.length === 0 ? <p className="text-gray-500 italic">Keine Einträge in dieser Liste.</p> : (
                     <ul className="active-customer-list">
-                        {bookings.map((b) => (
+                        {currentList.map((b, index) => (
                             <li key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    {/* Nummerierung für Warteliste anzeigen */}
+                                    {activeTab === 'waitlist' && (
+                                        <div style={{
+                                            width: '24px', height: '24px', borderRadius: '50%',
+                                            background: 'var(--bg-accent-orange)', color: 'var(--brand-orange)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
+                                        }}>
+                                            {index + 1}
+                                        </div>
+                                    )}
+
                                     <div className={`initials-avatar small ${b.attended ? 'avatar-green' : 'avatar-gray'}`}>
                                         {b.user?.name?.charAt(0) || '?'}
                                     </div>
                                     <div>
                                         <div style={{ fontWeight: 600 }}>{b.user?.name || 'Unbekannt'}</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{b.status === 'confirmed' ? 'Bestätigt' : 'Storniert'}</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                            {activeTab === 'waitlist'
+                                                ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString()}`
+                                                : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
+                                        </div>
                                     </div>
                                 </div>
-                                {b.status === 'confirmed' && (
+                                {activeTab === 'confirmed' && b.status === 'confirmed' && (
                                     <button
                                         onClick={() => onToggleAttendance(b.id)}
                                         className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
@@ -198,7 +263,8 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 export default function AppointmentsPage({ user, token, setView }: { user: User | any, token: string | null, setView?: (view: View) => void }) {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
-    const [myBookings, setMyBookings] = useState<Set<number>>(new Set());
+    // ÄNDERUNG: Status statt nur ID speichern (Map<ID, Status>)
+    const [myBookings, setMyBookings] = useState<Map<number, string>>(new Map());
     const isPreview = !token || token === 'preview-token';
 
     // Admin State
@@ -235,7 +301,9 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
             ]);
             setAppointments(appts);
             if (Array.isArray(bookings)) {
-                setMyBookings(new Set(bookings.map((b: any) => b.appointment_id)));
+                const bookingMap = new Map<number, string>();
+                bookings.forEach((b: any) => bookingMap.set(b.appointment_id, b.status));
+                setMyBookings(bookingMap);
             }
         } catch (e: any) {
             console.error("API Error:", e);
@@ -270,11 +338,20 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
         }
 
         if (isPreview) {
+            // ... (Preview Logic bleibt gleich)
             if (type === 'book') {
-                setMyBookings(prev => new Set(prev).add(event.id));
-                alert("Preview: Erfolgreich angemeldet!");
+                // Simulate Waitlist if full
+                const isFull = (event.participants_count || 0) >= event.max_participants;
+                const status = isFull ? 'waitlist' : 'confirmed';
+                setMyBookings(prev => new Map(prev).set(event.id, status));
+
+                if (status === 'waitlist') {
+                    alert("Preview: Du bist auf der Warteliste.");
+                } else {
+                    alert("Preview: Erfolgreich angemeldet!");
+                }
             } else {
-                setMyBookings(prev => { const next = new Set(prev); next.delete(event.id); return next; });
+                setMyBookings(prev => { const next = new Map(prev); next.delete(event.id); return next; });
                 alert("Preview: Storniert.");
             }
             setSelectedEvent(null);
@@ -283,16 +360,30 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
 
         try {
             if (type === 'book') {
-                await apiClient.bookAppointment(event.id, token);
-                alert("Erfolgreich angemeldet!");
-                setMyBookings(prev => new Set(prev).add(event.id));
+                const response = await apiClient.bookAppointment(event.id, token);
+                // API sollte das Booking-Objekt zurückgeben
+                if (response.status === 'waitlist') {
+                    alert("Du wurdest auf die Warteliste gesetzt! Wir informieren dich, sobald ein Platz frei wird.");
+                    setMyBookings(prev => new Map(prev).set(event.id, 'waitlist'));
+                } else {
+                    alert("Erfolgreich angemeldet!");
+                    setMyBookings(prev => new Map(prev).set(event.id, 'confirmed'));
+                }
             } else {
-                await apiClient.cancelAppointment(event.id, token);
+                const result = await apiClient.cancelAppointment(event.id, token);
                 alert("Storniert.");
-                setMyBookings(prev => { const next = new Set(prev); next.delete(event.id); return next; });
+                if (result.promoted_user_id) {
+                    // Info für den Admin (optional, oder nur Console Log)
+                    console.log("User wurde nachgerückt:", result.promoted_user_id);
+                }
+                setMyBookings(prev => {
+                    const next = new Map(prev);
+                    next.delete(event.id);
+                    return next;
+                });
             }
             setSelectedEvent(null);
-            loadData();
+            loadData(); // Lädt die Zahlen neu (Teilnehmerzahl etc.)
         } catch (e: any) {
             alert(e.message || "Aktion fehlgeschlagen");
         }
@@ -421,6 +512,8 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                                         const free = event.max_participants - (event.participants_count || 0);
                                         const isBooked = myBookings.has(event.id);
 
+                                        const bookingStatus = myBookings.get(event.id); // 'confirmed' oder 'waitlist'
+
                                         return (
                                             <li
                                                 key={event.id}
@@ -461,15 +554,36 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                                                                 Teilnehmer
                                                             </button>
                                                         ) : (
+                                                            /* ÄNDERUNG: List View Button Logik */
                                                             isBooked ? (
-                                                                <button className="button button-outline button-small" disabled>Gebucht</button>
-                                                            ) : !isFull && (
-                                                                <button
-                                                                    className="button button-primary button-small"
-                                                                    onClick={(e) => { e.stopPropagation(); handleAction('book', event); }}
-                                                                >
-                                                                    Anmelden
-                                                                </button>
+                                                                bookingStatus === 'waitlist' ? (
+                                                                    <button className="button button-primary button-small" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                                                                        <Icon name="clock" style={{ width: '14px', height: '14px', marginRight: '4px' }} />
+                                                                        Auf der Warteliste
+                                                                    </button>
+                                                                ) : (
+                                                                    <button className="button button-outline button-small" disabled>
+                                                                        <Icon name="check" style={{ width: '14px', height: '14px', marginRight: '4px' }} />
+                                                                        Gebucht
+                                                                    </button>
+                                                                )
+                                                            ) : (
+                                                                // Wenn nicht gebucht
+                                                                isFull ? (
+                                                                    <button
+                                                                        className="button button-primary button-small"
+                                                                        onClick={(e) => { e.stopPropagation(); handleAction('book', event); }}
+                                                                    >
+                                                                        Auf die Warteliste
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        className="button button-primary button-small"
+                                                                        onClick={(e) => { e.stopPropagation(); handleAction('book', event); }}
+                                                                    >
+                                                                        Anmelden
+                                                                    </button>
+                                                                )
                                                             )
                                                         )}
                                                     </div>
@@ -501,6 +615,7 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                     onAction={(type) => handleAction(type, selectedEvent)}
                     userRole={user?.role}
                     isBooked={myBookings.has(selectedEvent.id)}
+                    bookingStatus={myBookings.get(selectedEvent.id)}
                     onNotify={() => handleNotifyParticipants(selectedEvent)}
                 />
             )}

@@ -13,6 +13,13 @@ interface AuthScreenProps {
     schoolName?: string;
 }
 
+// Füge diesen Helper hinzu oder erweitere die Komponente
+interface SubscriptionError {
+    code: string;
+    message: string;
+    support_email?: string;
+}
+
 const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSuccess, logoUrl, schoolName }) => {
     // State erweitert um 'verify'
     const [view, setView] = useState<'login' | 'register' | 'forgot' | 'verify'>('login');
@@ -22,10 +29,14 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
     const [dogName, setDogName] = useState('');
     const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
 
+    // Neuer State für Abo-Fehler
+    const [subscriptionError, setSubscriptionError] = useState<SubscriptionError | null>(null);
+
     // --- LOGIN ---
     const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
         setMessage(null);
+        setSubscriptionError(null); // Reset
         onLoginStart();
 
         try {
@@ -37,21 +48,58 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
             if (error) throw error;
 
             const token = data.session.access_token;
+            // Hier wird /api/users/me aufgerufen. Wenn das Backend 402 wirft, landet es im catch-Block.
             const userResponse = await apiClient.get('/api/users/me', token);
 
             onLoginSuccess(token, userResponse);
 
         } catch (err: any) {
             console.error(err);
-            if (err.message === 'Email not confirmed') {
+
+            // Fehler-Text parsen
+            const errorMessage = err.message || '';
+
+            // Check auf E-Mail Bestätigung (Supabase)
+            if (errorMessage === 'Email not confirmed') {
                 setMessage({
                     type: 'error',
                     text: 'E-Mail noch nicht bestätigt. Bitte prüfen Sie Ihren Posteingang oder klicken Sie unten auf "E-Mail erneut senden".'
                 });
                 setView('verify');
-            } else {
-                setMessage({ type: 'error', text: 'Login fehlgeschlagen: ' + err.message });
+                return;
             }
+
+            // --- NEU: Check auf Abo abgelaufen (Backend API 402) ---
+            if (errorMessage.includes('402')) {
+                // Versuche, das JSON aus der Fehlermeldung zu parsen
+                // Format ist meist: "API Fehler (402): {"detail":{...}}"
+                try {
+                    // Finde den JSON-Teil (alles nach dem ersten '{')
+                    const jsonStart = errorMessage.indexOf('{');
+                    if (jsonStart > -1) {
+                        const jsonStr = errorMessage.substring(jsonStart);
+                        const parsed = JSON.parse(jsonStr);
+
+                        // FastAPI gibt { detail: { ... } } zurück
+                        const detail = parsed.detail || parsed;
+
+                        if (detail.code === 'SUBSCRIPTION_EXPIRED') {
+                            setSubscriptionError({
+                                code: detail.code,
+                                message: detail.message,
+                                support_email: detail.support_email
+                            });
+                            onLoginEnd();
+                            return; // WICHTIG: Hier abbrechen, damit keine normale Fehlermeldung kommt
+                        }
+                    }
+                } catch (e) {
+                    console.error("Konnte Fehler-Details nicht parsen", e);
+                }
+            }
+
+            // Fallback: Normale Fehlermeldung
+            setMessage({ type: 'error', text: 'Login fehlgeschlagen. Bitte prüfen Sie Ihre Daten.' });
         } finally {
             onLoginEnd();
         }
@@ -167,98 +215,138 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
                     </div>
                 )}
                 <h1>{schoolName || "PfotenCard"}</h1>
-                <p className="subtitle">
-                    {view === 'login' && 'Anmelden'}
-                    {view === 'register' && 'Neues Konto erstellen'}
-                    {view === 'forgot' && 'Passwort zurücksetzen'}
-                    {view === 'verify' && 'E-Mail Bestätigung'}
-                </p>
-
-                {message && (
-                    <div style={{
-                        padding: '10px',
-                        borderRadius: '8px',
-                        marginBottom: '1rem',
-                        backgroundColor: message.type === 'error' ? '#fee2e2' : '#dcfce7',
-                        color: message.type === 'error' ? '#991b1b' : '#166534',
-                        textAlign: 'center'
-                    }}>
-                        {message.text}
-                    </div>
-                )}
-
-                {view === 'verify' ? (
-                    /* --- VERIFY SCREEN --- */
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{ margin: '2rem 0', color: 'var(--brand-green)', display: 'flex', justifyContent: 'center' }}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                                <polyline points="22,6 12,13 2,6"></polyline>
-                            </svg>
+                {/* --- NEU: Abo-Ablauf Warnung --- */}
+                {subscriptionError ? (
+                    <div style={{ textAlign: 'center', padding: '1rem' }}>
+                        <div style={{ color: '#ef4444', marginBottom: '1rem' }}>
+                            <Icon name="alert-triangle" width={48} height={48} />
                         </div>
-                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
-                            Wir haben eine Bestätigungs-E-Mail an <strong>{email}</strong> gesendet.
-                            Bitte klicken Sie auf den Link in der E-Mail, um Ihr Konto zu aktivieren.
+                        <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', color: '#7f1d1d' }}>Zugang momentan nicht möglich</h3>
+                        <p style={{ color: '#991b1b', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                            {subscriptionError.message}
                         </p>
-                        <button type="button" onClick={handleResendMail} className="button button-outline" style={{ width: '100%', marginBottom: '1rem' }}>
-                            E-Mail erneut senden
-                        </button>
-                        <button type="button" onClick={() => setView('login')} className="button button-primary" style={{ width: '100%' }}>
-                            Zum Login
+
+                        <p style={{ fontSize: '0.9rem', color: '#666' }}>
+                            Bitte wenden Sie sich direkt an Ihre Hundeschule.
+                        </p>
+
+                        {subscriptionError.support_email && (
+                            <a
+                                href={`mailto:${subscriptionError.support_email}`}
+                                className="button button-primary"
+                                style={{ display: 'inline-block', marginTop: '1.5rem', textDecoration: 'none' }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Icon name="mail" /> E-Mail an Support
+                                </div>
+                            </a>
+                        )}
+
+                        <button
+                            onClick={() => setSubscriptionError(null)}
+                            className="button button-outline"
+                            style={{ marginTop: '1rem', width: '100%' }}
+                        >
+                            Zurück zum Login
                         </button>
                     </div>
                 ) : (
-                    /* --- FORMULAR FÜR LOGIN / REGISTER / FORGOT --- */
-                    <form onSubmit={view === 'login' ? handleLogin : (view === 'register' ? handleRegister : handleForgot)}>
+                    <>
+                        {/* Hier folgt der normale Inhalt (Formular, Message Box etc.) */}
+                        <p className="subtitle">
+                            {view === 'login' && 'Anmelden'}
+                            {view === 'register' && 'Neues Konto erstellen'}
+                            {view === 'forgot' && 'Passwort zurücksetzen'}
+                            {view === 'verify' && 'E-Mail Bestätigung'}
+                        </p>
 
-                        {view === 'register' && (
-                            <>
-                                <div className="form-group"><label>Ihr Name</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} required /></div>
-                                <div className="form-group"><label>Hundename</label><input type="text" className="form-input" value={dogName} onChange={e => setDogName(e.target.value)} required /></div>
+                        {message && (
+                            <div style={{
+                                padding: '10px',
+                                borderRadius: '8px',
+                                marginBottom: '1rem',
+                                backgroundColor: message.type === 'error' ? '#fee2e2' : '#dcfce7',
+                                color: message.type === 'error' ? '#991b1b' : '#166534',
+                                textAlign: 'center'
+                            }}>
+                                {message.text}
+                            </div>
+                        )}
 
-                                <div className="form-group checkbox-group" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.85rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
-                                    <input type="checkbox" required id="legal-check" style={{ width: 'auto', marginTop: '0.2rem' }} />
-                                    <label htmlFor="legal-check" style={{ color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                                        Ich stimme den <a href="/agb" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>AGB</a> zu und habe die <a href="/datenschutz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>Datenschutzerklärung</a> zur Kenntnis genommen.
-                                    </label>
+                        {view === 'verify' ? (
+                            /* --- VERIFY SCREEN --- */
+                            <div style={{ textAlign: 'center' }}>
+                                <div style={{ margin: '2rem 0', color: 'var(--brand-green)', display: 'flex', justifyContent: 'center' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                </div>
+                                <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
+                                    Wir haben eine Bestätigungs-E-Mail an <strong>{email}</strong> gesendet.
+                                    Bitte klicken Sie auf den Link in der E-Mail, um Ihr Konto zu aktivieren.
+                                </p>
+                                <button type="button" onClick={handleResendMail} className="button button-outline" style={{ width: '100%', marginBottom: '1rem' }}>
+                                    E-Mail erneut senden
+                                </button>
+                                <button type="button" onClick={() => setView('login')} className="button button-primary" style={{ width: '100%' }}>
+                                    Zum Login
+                                </button>
+                            </div>
+                        ) : (
+                            /* --- FORMULAR FÜR LOGIN / REGISTER / FORGOT --- */
+                            <form onSubmit={view === 'login' ? handleLogin : (view === 'register' ? handleRegister : handleForgot)}>
+
+                                {view === 'register' && (
+                                    <>
+                                        <div className="form-group"><label>Ihr Name</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} required /></div>
+                                        <div className="form-group"><label>Hundename</label><input type="text" className="form-input" value={dogName} onChange={e => setDogName(e.target.value)} required /></div>
+
+                                        <div className="form-group checkbox-group" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.85rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                                            <input type="checkbox" required id="legal-check" style={{ width: 'auto', marginTop: '0.2rem' }} />
+                                            <label htmlFor="legal-check" style={{ color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                                Ich stimme den <a href="/agb" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>AGB</a> zu und habe die <a href="/datenschutz" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'underline' }}>Datenschutzerklärung</a> zur Kenntnis genommen.
+                                            </label>
+                                        </div>
+
+                                    </>
+                                )}
+
+                                <div className="form-group">
+                                    <label>E-Mail</label>
+                                    <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
                                 </div>
 
-                            </>
+                                {view !== 'forgot' && (
+                                    <PasswordInput
+                                        label="Passwort"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        required
+                                    />
+                                )}
+
+                                <button type="submit" className="button button-primary" style={{ width: '100%', marginTop: '1rem' }}>
+                                    {view === 'login' ? 'Anmelden' : (view === 'register' ? 'Registrieren' : 'Link senden')}
+                                </button>
+                            </form>
                         )}
 
-                        <div className="form-group">
-                            <label>E-Mail</label>
-                            <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
-                        </div>
-
-                        {view !== 'forgot' && (
-                            <PasswordInput
-                                label="Passwort"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                            />
+                        {/* --- NAVIGATION LINKS (nur wenn nicht im Verify-Modus) --- */}
+                        {view !== 'verify' && (
+                            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
+                                {view === 'login' && (
+                                    <>
+                                        <button className="button-as-link" onClick={() => setView('forgot')}>Passwort vergessen?</button>
+                                        <button className="button-as-link" onClick={() => setView('register')}>Noch kein Konto? Jetzt registrieren</button>
+                                    </>
+                                )}
+                                {view !== 'login' && (
+                                    <button className="button-as-link" onClick={() => setView('login')}>Zurück zum Login</button>
+                                )}
+                            </div>
                         )}
-
-                        <button type="submit" className="button button-primary" style={{ width: '100%', marginTop: '1rem' }}>
-                            {view === 'login' ? 'Anmelden' : (view === 'register' ? 'Registrieren' : 'Link senden')}
-                        </button>
-                    </form>
-                )}
-
-                {/* --- NAVIGATION LINKS (nur wenn nicht im Verify-Modus) --- */}
-                {view !== 'verify' && (
-                    <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center' }}>
-                        {view === 'login' && (
-                            <>
-                                <button className="button-as-link" onClick={() => setView('forgot')}>Passwort vergessen?</button>
-                                <button className="button-as-link" onClick={() => setView('register')}>Noch kein Konto? Jetzt registrieren</button>
-                            </>
-                        )}
-                        {view !== 'login' && (
-                            <button className="button-as-link" onClick={() => setView('login')}>Zurück zum Login</button>
-                        )}
-                    </div>
+                    </>
                 )}
             </div>
         </div>
