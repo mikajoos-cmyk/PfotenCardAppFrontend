@@ -56,11 +56,21 @@ async function handleResponse(response: Response) {
     }
 
     if (!response.ok) {
+        // --- ÄNDERUNG HIER ---
+        // Wir versuchen, den Body zu lesen, auch wenn es ein Fehler ist.
+        const errorBody = await response.text().catch(() => null);
+
+        // Wenn es ein 402 Fehler ist (Abo abgelaufen), werfen wir den Body als Error-Message,
+        // damit wir ihn im AuthScreen parsen können.
+        if (response.status === 402 && errorBody) {
+            throw new Error(errorBody);
+        }
+
         if (response.status === 404) {
             console.warn("API 404: Ressource oder Tenant nicht gefunden.");
         }
-        const errorText = await response.text().catch(() => response.statusText);
-        throw new Error(`API Fehler (${response.status}): ${errorText || response.statusText}`);
+
+        throw new Error(errorBody || `API Fehler (${response.status}): ${response.statusText}`);
     }
 
     // 204 No Content handling

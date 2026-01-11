@@ -69,32 +69,28 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
                 return;
             }
 
-            // --- NEU: Check auf Abo abgelaufen (Backend API 402) ---
-            if (errorMessage.includes('402')) {
-                // Versuche, das JSON aus der Fehlermeldung zu parsen
-                // Format ist meist: "API Fehler (402): {"detail":{...}}"
+            // --- HIER: Logik um den JSON Fehler zu erkennen ---
+            // Wir prüfen, ob im Error-String unser Error-Code steckt
+            if (errorMessage.includes('SUBSCRIPTION_EXPIRED')) {
                 try {
-                    // Finde den JSON-Teil (alles nach dem ersten '{')
-                    const jsonStart = errorMessage.indexOf('{');
-                    if (jsonStart > -1) {
-                        const jsonStr = errorMessage.substring(jsonStart);
-                        const parsed = JSON.parse(jsonStr);
+                    // Da api.ts den Body als String wirft, versuchen wir zu parsen
+                    // Manchmal ist es direkt das JSON, manchmal in "detail" verschachtelt
+                    let parsed = JSON.parse(errorMessage);
 
-                        // FastAPI gibt { detail: { ... } } zurück
-                        const detail = parsed.detail || parsed;
+                    // FastAPI gibt oft { "detail": { "code": ... } } zurück
+                    if (parsed.detail) parsed = parsed.detail;
 
-                        if (detail.code === 'SUBSCRIPTION_EXPIRED') {
-                            setSubscriptionError({
-                                code: detail.code,
-                                message: detail.message,
-                                support_email: detail.support_email
-                            });
-                            onLoginEnd();
-                            return; // WICHTIG: Hier abbrechen, damit keine normale Fehlermeldung kommt
-                        }
+                    if (parsed.code === 'SUBSCRIPTION_EXPIRED') {
+                        setSubscriptionError({
+                            code: parsed.code,
+                            message: parsed.message,
+                            support_email: parsed.support_email
+                        });
+                        onLoginEnd();
+                        return; // Abbruch, damit keine Standard-Fehlermeldung kommt
                     }
                 } catch (e) {
-                    console.error("Konnte Fehler-Details nicht parsen", e);
+                    console.error("Konnte Error-JSON nicht parsen", e);
                 }
             }
 
