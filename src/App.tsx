@@ -47,6 +47,34 @@ import { ContextHelp } from './components/ui/ContextHelp'; // Importieren
 import PWAInstallPrompt from './components/ui/PWAInstallPrompt';
 
 
+const generateOpaqueIcon = (url: string, backgroundColor: string = '#FFFFFF'): Promise<string> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                // Hintergrund füllen
+                ctx.fillStyle = backgroundColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Bild darüber zeichnen
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL('image/png'));
+            } else {
+                resolve(url);
+            }
+        };
+        img.onerror = () => {
+            console.warn('Konnte Icon für iOS nicht generieren, nutze Original.');
+            resolve(url);
+        };
+    });
+};
+
 
 const getFullImageUrl = (url?: string) => {
     if (!url) return null;
@@ -652,76 +680,58 @@ export default function App() {
         }
 
         const rawLogoUrl = appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl;
-        const fullLogoUrl = getFullImageUrl(rawLogoUrl);
+        // Stelle sicher, dass wir eine absolute URL haben für Windows/Manifest
+        const baseUrl = getFullImageUrl(rawLogoUrl);
+        const fullLogoUrl = baseUrl ? (baseUrl.startsWith('http') ? baseUrl : window.location.origin + baseUrl) : window.location.origin + '/paw.png';
 
-        // --- Dynamic Favicon & Manifest & Apple Touch Icon ---
-        if (fullLogoUrl) {
-            // 1. Favicon (bereits vorhanden)
-            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-            if (!link) {
-                link = document.createElement('link');
-                link.rel = 'icon';
-                document.head.appendChild(link);
-            }
-            link.href = fullLogoUrl;
+        // --- 1. Dynamic Favicon (Browser Tab) ---
+        let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+        if (!link) {
+            link = document.createElement('link');
+            link.rel = 'icon';
+            document.head.appendChild(link);
+        }
+        link.href = fullLogoUrl;
+        link.type = "image/png"; // Explizit PNG setzen für Windows Kompatibilität
 
-            // 2. Apple Touch Icon
+        // --- 2. Apple Touch Icon (iOS Fix: Schwarzer Hintergrund) ---
+        generateOpaqueIcon(fullLogoUrl, '#FFFFFF').then((opaqueIconUrl) => {
             let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
             if (!appleLink) {
                 appleLink = document.createElement('link');
                 appleLink.rel = 'apple-touch-icon';
                 document.head.appendChild(appleLink);
             }
-            appleLink.href = fullLogoUrl;
-        } else {
-            // Fallback for Icon
-            let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
-            if (link) {
-                link.href = '/paw.png';
-            }
-            // Fallback for Apple Touch Icon
-            let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
-            if (appleLink) {
-                appleLink.href = '/paw.png';
-            }
-        }
+            appleLink.href = opaqueIconUrl;
+        });
 
-        // 3. Dynamic Manifest
+        // --- 3. Dynamic Manifest (Android & Windows Fixes) ---
         const manifest = {
             id: window.location.origin + "/",
             scope: window.location.origin + "/",
             short_name: schoolName || "PfotenCard",
-            name: schoolName ? `${schoolName} - PfotenCard` : "Dog-School Connect - PfotenCard",
+            name: schoolName ? `${schoolName}` : "PfotenCard",
+            // ANDROID FIX: Kein 'maskable' verwenden, wenn das Bild nicht dafür gemacht ist (verhindert Abschneiden)
+            // WINDOWS FIX: Absolute URLs verwenden
             icons: [
                 {
-                    src: fullLogoUrl || "/paw.png",
+                    src: fullLogoUrl,
                     type: "image/png",
                     sizes: "192x192",
                     purpose: "any"
                 },
                 {
-                    src: fullLogoUrl || "/paw.png",
+                    src: fullLogoUrl,
                     type: "image/png",
                     sizes: "512x512",
                     purpose: "any"
-                },
-                {
-                    src: fullLogoUrl || "/paw.png",
-                    type: "image/png",
-                    sizes: "192x192",
-                    purpose: "maskable"
-                },
-                {
-                    src: fullLogoUrl || "/paw.png",
-                    type: "image/png",
-                    sizes: "512x512",
-                    purpose: "maskable"
                 }
             ],
             start_url: window.location.origin + "/",
             display: "standalone",
-            theme_color: appConfigData?.tenant?.config?.branding?.primary_color || "#263238",
-            background_color: "#FFFFFF"
+            theme_color: appConfigData?.tenant?.config?.branding?.primary_color || "#22C55E",
+            background_color: "#FFFFFF",
+            orientation: "portrait"
         };
 
         const stringManifest = JSON.stringify(manifest);
