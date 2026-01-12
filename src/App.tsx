@@ -140,6 +140,13 @@ export default function App() {
 
     const [isServerLoading, setServerLoading] = useState<{ active: boolean; message: string }>({ active: false, message: '' });
 
+    // NEU: State für Cookie-Consent (Initialwert direkt aus localStorage lesen)
+    const [cookieConsent, setCookieConsent] = useState(!!localStorage.getItem('cookie-consent-seen'));
+
+    const handleCookieAccept = () => {
+        setCookieConsent(true);
+    };
+
     // Removed customerPage state in favor of global View
     const [directAccessedCustomer, setDirectAccessedCustomer] = useState<any | null>(null);
 
@@ -742,6 +749,24 @@ export default function App() {
         if (manifestLink) {
             manifestLink.setAttribute('href', manifestURL);
         }
+
+        // --- 4. Windows Tile Fix (NEU HINZUFÜGEN) ---
+        // Windows benötigt spezielle Meta-Tags für das Startmenü-Icon
+        let msTileImg: HTMLMetaElement | null = document.querySelector("meta[name='msapplication-TileImage']");
+        if (!msTileImg) {
+            msTileImg = document.createElement('meta');
+            msTileImg.name = 'msapplication-TileImage';
+            document.head.appendChild(msTileImg);
+        }
+        msTileImg.content = fullLogoUrl;
+
+        let msTileColor: HTMLMetaElement | null = document.querySelector("meta[name='msapplication-TileColor']");
+        if (!msTileColor) {
+            msTileColor = document.createElement('meta');
+            msTileColor.name = 'msapplication-TileColor';
+            document.head.appendChild(msTileColor);
+        }
+        msTileColor.content = appConfigData?.tenant?.config?.branding?.primary_color || "#22C55E";
 
     }, [schoolName, appConfigData, previewConfig.logoUrl]);
 
@@ -1482,9 +1507,13 @@ export default function App() {
                     </div >
                 </div >
             )}
-            <CookieBanner />
+            {/* MODIFIZIERT: Callback übergeben */}
+            <CookieBanner onAccept={handleCookieAccept} />
+
+            {/* MODIFIZIERT: installAllowed prop übergeben */}
             <PWAInstallPrompt
                 primaryColor={appConfigData?.tenant?.config?.branding?.primary_color || '#22C55E'}
+                installAllowed={cookieConsent}
             />
         </div >
     );

@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-export function CookieBanner() {
+// NEU: Interface für die Props definieren
+interface CookieBannerProps {
+    onAccept?: () => void;
+}
+
+// NEU: Props in der Komponente empfangen
+export function CookieBanner({ onAccept }: CookieBannerProps) {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -14,6 +20,8 @@ export function CookieBanner() {
     const handleAccept = () => {
         localStorage.setItem('cookie-consent-seen', 'true');
         setIsVisible(false);
+        // NEU: Callback aufrufen, falls vorhanden
+        if (onAccept) onAccept();
     };
 
     if (!isVisible) return null;

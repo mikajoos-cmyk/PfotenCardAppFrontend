@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Icon from './Icon';
 
-const PWAInstallPrompt: React.FC<{ primaryColor: string }> = ({ primaryColor }) => {
+// NEU: 'installAllowed' prop hinzugefügt
+const PWAInstallPrompt: React.FC<{ primaryColor: string; installAllowed: boolean }> = ({ primaryColor, installAllowed }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [platform, setPlatform] = useState<'ios' | 'android' | 'other' | null>(null);
     const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    // NEU: Interner Status, ob die App "bereit" für die Anzeige wäre (unabhängig von Cookies)
+    const [isReadyToShow, setIsReadyToShow] = useState(false);
 
     useEffect(() => {
         // Check if already installed
@@ -23,7 +27,8 @@ const PWAInstallPrompt: React.FC<{ primaryColor: string }> = ({ primaryColor }) 
         if (/iphone|ipad|ipod/.test(ua)) {
             setPlatform('ios');
             // Show iOS prompt after a short delay
-            setTimeout(() => setIsVisible(true), 3000);
+            // ÄNDERUNG: Statt setIsVisible(true) nutzen wir setIsReadyToShow(true)
+            setTimeout(() => setIsReadyToShow(true), 3000);
         } else if (/android/.test(ua)) {
             setPlatform('android');
         }
@@ -32,13 +37,23 @@ const PWAInstallPrompt: React.FC<{ primaryColor: string }> = ({ primaryColor }) 
             e.preventDefault();
             setDeferredPrompt(e);
             setPlatform('android');
-            setIsVisible(true);
+            // ÄNDERUNG: Statt setIsVisible(true) nutzen wir setIsReadyToShow(true)
+            setIsReadyToShow(true);
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
         return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }, []);
+
+    // NEU: Dieser Effect schaltet das Fenster erst sichtbar, WENN:
+    // 1. Die App bereit ist (Event gefeuert oder iOS Timeout)
+    // 2. UND die Cookies akzeptiert sind (installAllowed)
+    useEffect(() => {
+        if (isReadyToShow && installAllowed) {
+            setIsVisible(true);
+        }
+    }, [isReadyToShow, installAllowed]);
 
     const handleInstallClick = async () => {
         if (!deferredPrompt) return;
