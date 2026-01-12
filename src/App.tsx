@@ -1434,7 +1434,7 @@ export default function App() {
             )}
             <CookieBanner />
             <PWAInstallPrompt
-                primaryColor={appConfigData?.tenant?.config?.branding?.primary_color || previewConfig.branding?.primary_color || '#22C55E'}
+                primaryColor={appConfigData?.tenant?.config?.branding?.primary_color || '#22C55E'}
             />
         </div >
     );
