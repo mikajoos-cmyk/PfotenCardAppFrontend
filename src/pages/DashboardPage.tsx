@@ -1,5 +1,6 @@
 import React, { FC, useMemo, useState } from 'react';
-import { View } from '../types';
+import { View, AppStatus } from '../types';
+import LiveStatusBanner from '../components/ui/LiveStatusBanner';
 import Icon from '../components/ui/Icon';
 import KpiCard from '../components/ui/KpiCard';
 import InfoModal from '../components/modals/InfoModal'; // Importieren
@@ -11,9 +12,10 @@ interface DashboardPageProps {
     currentUser: any;
     onKpiClick: (type: string, color: string) => void;
     setView: (view: View) => void;
+    appStatus?: AppStatus | null;
 }
 
-const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView }) => {
+const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus }) => {
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
         isOpen: false, title: '', content: null, color: 'blue'
@@ -97,8 +99,9 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
         <>
             <header className="page-header">
                 <h1>Willkommen, {currentUser.name}!</h1>
-                <p>Übersicht Ihrer Hundeschul-Wertkarten</p>
             </header>
+
+            <LiveStatusBanner statusData={appStatus || null} />
             <div className="kpi-grid">
                 <KpiCard
                     title="Kunden gesamt"

@@ -1,7 +1,9 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './lib/supabase';
 import { apiClient } from './lib/api';
-import { User, View } from './types';
+import { User, View, AppStatus } from './types';
+
+import './status-tabs.css';
 
 // Components
 import LoadingSpinner from './components/ui/LoadingSpinner';
@@ -92,6 +94,7 @@ export default function App() {
     const [users, setUsers] = useState<any[]>([]);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
 
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({ isOpen: false, title: '', content: null, color: 'green' });
     const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
@@ -579,6 +582,17 @@ export default function App() {
         }
     }, [view.customerId]);
 
+    const handleUpdateAppStatus = async (status: 'active' | 'cancelled' | 'partial', message: string) => {
+        if (!authToken) return;
+        try {
+            const newStatus = await apiClient.updateAppStatus({ status, message }, authToken);
+            setAppStatus(newStatus);
+        } catch (e) {
+            console.error("Failed to update status", e);
+            alert("Fehler beim Aktualisieren des Status.");
+        }
+    };
+
     const fetchAppData = async (forceLoadingScreen: boolean = false) => {
         if (isPreviewMode) return;
         if (!authToken) { setIsLoading(false); return; }
@@ -590,10 +604,13 @@ export default function App() {
         }
 
         try {
-            const [configRes, currentUser] = await Promise.all([
+            const [configRes, currentUser, statusRes] = await Promise.all([
                 apiClient.getConfig().catch(err => console.warn("Config load failed", err)),
-                apiClient.get('/api/users/me', authToken)
+                apiClient.get('/api/users/me', authToken),
+                apiClient.getAppStatus(authToken).catch(() => null)
             ]);
+
+            if (statusRes) setAppStatus(statusRes);
 
             if (configRes) {
                 setAppConfigData(configRes);
@@ -671,24 +688,40 @@ export default function App() {
 
         // 3. Dynamic Manifest
         const manifest = {
+            id: window.location.origin + "/",
+            scope: window.location.origin + "/",
             short_name: schoolName || "PfotenCard",
             name: schoolName ? `${schoolName} - PfotenCard` : "Dog-School Connect - PfotenCard",
             icons: [
                 {
                     src: fullLogoUrl || "/paw.png",
                     type: "image/png",
-                    sizes: "192x192"
+                    sizes: "192x192",
+                    purpose: "any"
                 },
                 {
                     src: fullLogoUrl || "/paw.png",
                     type: "image/png",
-                    sizes: "512x512"
+                    sizes: "512x512",
+                    purpose: "any"
+                },
+                {
+                    src: fullLogoUrl || "/paw.png",
+                    type: "image/png",
+                    sizes: "192x192",
+                    purpose: "maskable"
+                },
+                {
+                    src: fullLogoUrl || "/paw.png",
+                    type: "image/png",
+                    sizes: "512x512",
+                    purpose: "maskable"
                 }
             ],
-            start_url: ".",
+            start_url: window.location.origin + "/",
             display: "standalone",
             theme_color: appConfigData?.tenant?.config?.branding?.primary_color || "#263238",
-            background_color: appConfigData?.tenant?.config?.branding?.background_color || "#F3F4F6"
+            background_color: "#FFFFFF"
         };
 
         const stringManifest = JSON.stringify(manifest);
@@ -1150,6 +1183,7 @@ export default function App() {
                         if (kpi === 'customers') setView({ page: 'customers' });
                     }}
                     setView={handleSetView}
+                    appStatus={appStatus}
                 />
             );
         }
@@ -1233,7 +1267,13 @@ export default function App() {
 
         if (view.page === 'appointments') {
             return (
-                <AppointmentsPage user={loggedInUser} token={authToken} setView={handleSetView} />
+                <AppointmentsPage
+                    user={loggedInUser}
+                    token={authToken}
+                    setView={handleSetView}
+                    appStatus={appStatus}
+                    onUpdateStatus={handleUpdateAppStatus}
+                />
             );
         }
 

@@ -137,3 +137,10 @@ export interface ChatConversation {
     last_message?: ChatMessage;
     unread_count: number;
 }
+
+export interface AppStatus {
+    id: number;
+    status: 'active' | 'cancelled' | 'partial';
+    message: string | null;
+    updated_at: string;
+}

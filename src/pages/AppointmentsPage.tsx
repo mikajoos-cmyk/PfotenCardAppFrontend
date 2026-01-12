@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiClient, Appointment, Booking } from '../lib/api';
-import { User, View } from '../types';
+import { User, View, AppStatus } from '../types';
+import LiveStatusBanner from '../components/ui/LiveStatusBanner';
+import LiveStatusModal from '../components/modals/LiveStatusModal';
 import Icon from '../components/ui/Icon';
 import InfoModal from '../components/modals/InfoModal';
 
@@ -298,73 +300,64 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
             <div className="participants-list-container">
 
                 {/* TABS FÜR ANSICHTSWECHSEL */}
-                <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+                <div className="segmented-tabs">
                     <button
                         onClick={() => setActiveTab('confirmed')}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            borderBottom: activeTab === 'confirmed' ? '2px solid var(--primary-color)' : '2px solid transparent',
-                            fontWeight: activeTab === 'confirmed' ? 600 : 400,
-                            color: activeTab === 'confirmed' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                            background: 'none', borderLeft: 'none', borderRight: 'none', borderTop: 'none', cursor: 'pointer'
-                        }}
+                        className={`segmented-tab-btn ${activeTab === 'confirmed' ? 'active' : ''}`}
                     >
-                        Teilnehmer ({confirmedList.length})
+                        Teilnehmer <span className="tab-badge">{confirmedList.length}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('waitlist')}
-                        style={{
-                            padding: '0.5rem 1rem',
-                            borderBottom: activeTab === 'waitlist' ? '2px solid var(--brand-orange)' : '2px solid transparent',
-                            fontWeight: activeTab === 'waitlist' ? 600 : 400,
-                            color: activeTab === 'waitlist' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                            background: 'none', borderLeft: 'none', borderRight: 'none', borderTop: 'none', cursor: 'pointer'
-                        }}
+                        className={`segmented-tab-btn ${activeTab === 'waitlist' ? 'active' : ''}`}
                     >
-                        Warteliste ({waitlistList.length})
+                        Warteliste <span className="tab-badge">{waitlistList.length}</span>
                     </button>
                 </div>
 
-                {currentList.length === 0 ? <p className="text-gray-500 italic">Keine Einträge in dieser Liste.</p> : (
-                    <ul className="active-customer-list">
-                        {currentList.map((b, index) => (
-                            <li key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                    {/* Nummerierung für Warteliste anzeigen */}
-                                    {activeTab === 'waitlist' && (
-                                        <div style={{
-                                            width: '24px', height: '24px', borderRadius: '50%',
-                                            background: 'var(--bg-accent-orange)', color: 'var(--brand-orange)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
-                                        }}>
-                                            {index + 1}
-                                        </div>
-                                    )}
+                <div className="tab-content-container" key={activeTab}>
+                    {currentList.length === 0 ? <p className="text-gray-500 italic">Keine Einträge in dieser Liste.</p> : (
+                        <ul className="active-customer-list">
+                            {/* ... list items ... */}
+                            {currentList.map((b, index) => (
+                                <li key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid var(--border-color)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        {/* Nummerierung für Warteliste anzeigen */}
+                                        {activeTab === 'waitlist' && (
+                                            <div style={{
+                                                width: '24px', height: '24px', borderRadius: '50%',
+                                                background: 'var(--bg-accent-orange)', color: 'var(--brand-orange)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold'
+                                            }}>
+                                                {index + 1}
+                                            </div>
+                                        )}
 
-                                    <div className={`initials-avatar small ${b.attended ? 'avatar-green' : 'avatar-gray'}`}>
-                                        {b.user?.name?.charAt(0) || '?'}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: 600 }}>{b.user?.name || 'Unbekannt'}</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                            {activeTab === 'waitlist'
-                                                ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString()}`
-                                                : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
+                                        <div className={`initials-avatar small ${b.attended ? 'avatar-green' : 'avatar-gray'}`}>
+                                            {b.user?.name?.charAt(0) || '?'}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontWeight: 600 }}>{b.user?.name || 'Unbekannt'}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                {activeTab === 'waitlist'
+                                                    ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString()}`
+                                                    : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                {activeTab === 'confirmed' && b.status === 'confirmed' && (
-                                    <button
-                                        onClick={() => onToggleAttendance(b.id)}
-                                        className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
-                                    >
-                                        {b.attended ? <><Icon name="check" /> Anwesend</> : 'Abstempeln'}
-                                    </button>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                                    {activeTab === 'confirmed' && b.status === 'confirmed' && (
+                                        <button
+                                            onClick={() => onToggleAttendance(b.id)}
+                                            className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
+                                        >
+                                            {b.attended ? <><Icon name="check" /> Anwesend</> : 'Abstempeln'}
+                                        </button>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
             </div>
         </InfoModal>
     );
@@ -372,7 +365,13 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
 // --- MAIN PAGE ---
 
-export default function AppointmentsPage({ user, token, setView }: { user: User | any, token: string | null, setView?: (view: View) => void }) {
+export default function AppointmentsPage({ user, token, setView, appStatus, onUpdateStatus }: {
+    user: User | any,
+    token: string | null,
+    setView?: (view: View) => void,
+    appStatus?: AppStatus | null,
+    onUpdateStatus?: (status: any, message: string) => void
+}) {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
     // ÄNDERUNG: Status statt nur ID speichern (Map<ID, Status>)
@@ -388,6 +387,7 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
     const [participantsOpen, setParticipantsOpen] = useState(false);
     const [currentParticipants, setCurrentParticipants] = useState<Booking[]>([]);
     const [currentApptTitle, setCurrentApptTitle] = useState('');
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
     // Detail Modal State
     const [selectedEvent, setSelectedEvent] = useState<Appointment | null>(null);
@@ -637,11 +637,19 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                 </div>
 
                 {user?.role === 'admin' && (
-                    <button className="button button-primary" onClick={() => setIsCreateOpen(true)}>
-                        <Icon name="plus" /> <span className="hidden-mobile">Termin erstellen</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <button className="button button-outline" onClick={() => setIsStatusModalOpen(true)}>
+                            <Icon name="activity" style={{ marginRight: '0.5rem' }} /> Globalen Status
+                        </button>
+
+                        <button className="button button-primary" onClick={() => setIsCreateOpen(true)}>
+                            <Icon name="plus" /> <span className="hidden-mobile">Termin erstellen</span>
+                        </button>
+                    </div>
                 )}
             </header>
+
+            <LiveStatusBanner statusData={appStatus || null} />
 
             {loading ? <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Lade Termine...</div> : (
                 <div className="event-list-container">
@@ -786,6 +794,14 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                         ))
                     )}
                 </div>
+            )}
+
+            {isStatusModalOpen && onUpdateStatus && (
+                <LiveStatusModal
+                    currentStatus={appStatus || null}
+                    onClose={() => setIsStatusModalOpen(false)}
+                    onSave={onUpdateStatus}
+                />
             )}
 
             <AppointmentModal

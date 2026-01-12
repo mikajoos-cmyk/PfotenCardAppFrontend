@@ -275,6 +275,15 @@ export const apiClient = {
 
     markChatRead: async (otherUserId: number, token: string | null) => {
         return apiClient.post(`/api/chat/${otherUserId}/read`, {}, token);
+    },
+
+    // --- APP STATUS ---
+    getAppStatus: async (token: string | null) => {
+        return apiClient.get('/api/status', token);
+    },
+
+    updateAppStatus: async (data: { status: string, message: string }, token: string | null) => {
+        return apiClient.put('/api/status', data, token);
     }
 };
 

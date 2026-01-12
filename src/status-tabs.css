@@ -1,0 +1,166 @@
+/* --- Live Status Banner & Modal --- */
+.status-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    margin-bottom: 2rem;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.status-banner.is-active {
+    background: linear-gradient(135deg, #28a745, #218838);
+}
+
+.status-banner.is-cancelled {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+}
+
+.status-banner.is-partial {
+    background: linear-gradient(135deg, #28a745, #ffc107 55%, #dc3545 85%);
+}
+
+.status-banner-content {
+    flex-grow: 1;
+    text-align: left;
+}
+
+.status-banner-headline {
+    margin: 0;
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+}
+
+.status-banner-message {
+    margin: 0.25rem 0 0;
+    font-weight: 500;
+    font-size: 0.95rem;
+    opacity: 0.95;
+    white-space: pre-wrap;
+}
+
+.status-banner-time {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+/* Status Modal Selection Buttons */
+.status-selection-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-selection-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    background: var(--card-background);
+    color: var(--text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.status-selection-btn:hover {
+    background: var(--background-color);
+}
+
+.status-selection-btn.active {
+    border-color: transparent;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-selection-btn.active.status-active {
+    background-color: var(--brand-green);
+}
+
+.status-selection-btn.active.status-partial {
+    background-color: var(--brand-orange);
+}
+
+.status-selection-btn.active.status-cancelled {
+    background-color: var(--brand-red);
+}
+
+/* --- Segmented Tabs --- */
+.segmented-tabs {
+    display: flex;
+    background: var(--background-color);
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+    position: relative;
+    z-index: 1;
+}
+
+.segmented-tab-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.segmented-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.segmented-tab-btn.active {
+    background: var(--card-background);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+    transform: translateY(-1px);
+}
+
+.tab-badge {
+    font-size: 0.75rem;
+    background: var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    transition: all 0.2s ease;
+    font-weight: 700;
+}
+
+.segmented-tab-btn.active .tab-badge {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Page Transition Look */
+.tab-content-container {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
