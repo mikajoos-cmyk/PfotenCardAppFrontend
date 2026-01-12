@@ -568,6 +568,24 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
         }
     };
 
+    const handleDelete = async (appointmentId: number) => {
+        if (!confirm("Möchten Sie diesen Termin wirklich unwiderruflich löschen? Alle Buchungen dazu werden ebenfalls gelöscht.")) {
+            return;
+        }
+
+        if (isPreview) {
+            setAppointments(appointments.filter(a => a.id !== appointmentId));
+            return;
+        }
+
+        try {
+            await apiClient.delete(`/api/appointments/${appointmentId}`, token);
+            loadData();
+        } catch (e) {
+            alert("Fehler beim Löschen des Termins");
+        }
+    };
+
     // --- GROUPING LOGIC ---
     const eventsByWeek = useMemo(() => {
         const now = new Date();
@@ -696,6 +714,17 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                                                             title="Bearbeiten"
                                                         >
                                                             <Icon name="edit" />
+                                                        </button>
+                                                        <button
+                                                            className="button button-outline button-small"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDelete(event.id);
+                                                            }}
+                                                            style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
+                                                            title="Löschen"
+                                                        >
+                                                            <Icon name="trash" />
                                                         </button>
                                                     </div>
                                                 )}

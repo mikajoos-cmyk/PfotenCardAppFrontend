@@ -42,6 +42,7 @@ import { DatenschutzPage } from './pages/legal/DatenschutzPage';
 import { AGBPage } from './pages/legal/AGBPage';
 import { CookieBanner } from './components/ui/CookieBanner';
 import { ContextHelp } from './components/ui/ContextHelp'; // Importieren
+import PWAInstallPrompt from './components/ui/PWAInstallPrompt';
 
 
 
@@ -1432,6 +1433,9 @@ export default function App() {
                 </div >
             )}
             <CookieBanner />
+            <PWAInstallPrompt
+                primaryColor={appConfigData?.tenant?.config?.branding?.primary_color || previewConfig.branding?.primary_color || '#22C55E'}
+            />
         </div >
     );
 }

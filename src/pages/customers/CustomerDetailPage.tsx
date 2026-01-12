@@ -417,7 +417,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 const mainRequirements = requirements.filter((r: any) => !r.is_additional);
 
                                 // Prüfen ob Anforderungen erfüllt für Aufstieg
-                                const requirementsMet = requirements.length > 0 && requirements.every((r: any) => {
+                                const requirementsMet = requirements.every((r: any) => {
                                     const progress = getProgressForLevel(customer, level.id, levelsToUse);
                                     // Wir prüfen sowohl die ID als String als auch als Zahl
                                     const reqKey = r.training_type_id ? String(r.training_type_id) : String(r.id);

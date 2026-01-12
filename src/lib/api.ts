@@ -240,6 +240,20 @@ export const apiClient = {
         return apiClient.post('/api/news', data, token);
     },
 
+    updateNews: async (postId: number, data: {
+        title?: string;
+        content?: string;
+        image_url?: string;
+        target_level_ids?: number[];
+        target_appointment_ids?: number[];
+    }, token: string | null) => {
+        return apiClient.put(`/api/news/${postId}`, data, token);
+    },
+
+    deleteNews: async (postId: number, token: string | null) => {
+        return apiClient.delete(`/api/news/${postId}`, token);
+    },
+
     // --- CHAT ---
     sendChatMessage: async (data: {
         content: string;

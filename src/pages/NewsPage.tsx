@@ -27,6 +27,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [submitting, setSubmitting] = useState(false);
+    const [editingPost, setEditingPost] = useState<NewsPost | null>(null);
 
     // Audience Selection State
     const [availableLevels, setAvailableLevels] = useState<any[]>([]);
@@ -119,30 +120,71 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
         }
     };
 
-    const handleCreatePost = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            await apiClient.createNews({
+            const postData = {
                 title: newTitle,
                 content: newContent,
                 image_url: uploadedImageUrl || undefined,
                 target_level_ids: audienceType === 'specific_levels' ? selectedLevelIds : [],
                 target_appointment_ids: audienceType === 'specific_appointments' ? selectedAppointmentIds : []
-            }, token);
+            };
 
-            setNewTitle('');
-            setNewContent('');
-            setUploadedImageUrl('');
-            setAudienceType('all');
-            setSelectedLevelIds([]);
-            setSelectedAppointmentIds([]);
-            setIsCreating(false);
+            if (editingPost) {
+                await apiClient.updateNews(editingPost.id, postData, token);
+            } else {
+                await apiClient.createNews(postData, token);
+            }
+
+            resetForm();
             fetchNews();
         } catch (error) {
-            alert('Fehler beim Erstellen des Beitrags');
+            alert(editingPost ? 'Fehler beim Aktualisieren des Beitrags' : 'Fehler beim Erstellen des Beitrags');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const resetForm = () => {
+        setNewTitle('');
+        setNewContent('');
+        setUploadedImageUrl('');
+        setAudienceType('all');
+        setSelectedLevelIds([]);
+        setSelectedAppointmentIds([]);
+        setIsCreating(false);
+        setEditingPost(null);
+    };
+
+    const handleEditClick = (post: NewsPost) => {
+        setEditingPost(post);
+        setNewTitle(post.title);
+        setNewContent(post.content);
+        setUploadedImageUrl(post.image_url || '');
+
+        if (post.target_level_ids && post.target_level_ids.length > 0) {
+            setAudienceType('specific_levels');
+            setSelectedLevelIds(post.target_level_ids);
+        } else if (post.target_appointment_ids && post.target_appointment_ids.length > 0) {
+            setAudienceType('specific_appointments');
+            setSelectedAppointmentIds(post.target_appointment_ids);
+        } else {
+            setAudienceType('all');
+        }
+
+        setIsCreating(true);
+    };
+
+    const handleDeletePost = async (postId: number) => {
+        if (!window.confirm('Möchten Sie diesen Beitrag wirklich löschen?')) return;
+
+        try {
+            await apiClient.deleteNews(postId, token);
+            fetchNews();
+        } catch (error) {
+            alert('Fehler beim Löschen des Beitrags');
         }
     };
 
@@ -206,7 +248,47 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                                 )}
                                 <div style={{ padding: '1.5rem' }}>
                                     <div className="news-item-header">
-                                        <h2 className="news-item-title">{post.title}</h2>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                                            <h2 className="news-item-title">{post.title}</h2>
+                                            {isAdminOrStaff && (
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        onClick={() => handleEditClick(post)}
+                                                        className="button-icon"
+                                                        title="Bearbeiten"
+                                                        style={{
+                                                            color: 'var(--text-secondary)',
+                                                            background: 'transparent',
+                                                            border: 'none',
+                                                            padding: '4px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                    >
+                                                        <Icon name="edit" style={{ width: '18px', height: '18px' }} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePost(post.id)}
+                                                        className="button-icon"
+                                                        title="Löschen"
+                                                        style={{
+                                                            color: 'var(--danger-color)',
+                                                            background: 'transparent',
+                                                            border: 'none',
+                                                            padding: '4px',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                    >
+                                                        <Icon name="trash" style={{ width: '18px', height: '18px' }} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="news-item-meta">
                                             <Icon name="calendar" style={{ width: '16px', height: '16px' }} />
                                             {new Date(post.created_at).toLocaleDateString('de-DE')}
@@ -239,11 +321,11 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                     <div className="modal-overlay">
                         <div className="modal-content">
                             <div className="modal-header blue">
-                                <h2>Neuen Beitrag erstellen</h2>
-                                <button className="close-button" onClick={() => setIsCreating(false)}><Icon name="x" /></button>
+                                <h2>{editingPost ? 'Beitrag bearbeiten' : 'Neuen Beitrag erstellen'}</h2>
+                                <button className="close-button" onClick={resetForm}><Icon name="x" /></button>
                             </div>
                             <div className="modal-body">
-                                <form onSubmit={handleCreatePost} className="form-grid-single">
+                                <form onSubmit={handleSubmit} className="form-grid-single">
                                     <div className="form-group">
                                         <label>Titel</label>
                                         <input
@@ -605,9 +687,9 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                                         />
                                     </div>
                                     <div className="modal-footer">
-                                        <button type="button" className="button button-outline" onClick={() => setIsCreating(false)}>Abbrechen</button>
+                                        <button type="button" className="button button-outline" onClick={resetForm}>Abbrechen</button>
                                         <button type="submit" disabled={submitting || isUploading} className="button button-primary">
-                                            {submitting ? 'Wird gespeichert...' : 'Veröffentlichen'}
+                                            {submitting ? 'Wird gespeichert...' : (editingPost ? 'Speichern' : 'Veröffentlichen')}
                                         </button>
                                     </div>
                                 </form>
