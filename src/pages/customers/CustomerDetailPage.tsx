@@ -65,9 +65,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         return 1; // Fallback
     };
 
-    const [isEditing, setIsEditing] = useState(false);
+    const [editingSection, setEditingSection] = useState<'personal' | 'balance' | 'level' | null>(null);
+    const isEditing = editingSection !== null;
     const [editedData, setEditedData] = useState({
-        firstName: '', lastName: '', email: '', phone: '', dogName: '', chip: '', breed: '', birth_date: ''
+        firstName: '', lastName: '', email: '', phone: '', dogName: '', chip: '', breed: '', birth_date: '',
+        balance: 0, levelId: 0
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [viewingDocument, setViewingDocument] = useState<DocumentFile | null>(null);
@@ -89,7 +91,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         }
     }, []);
 
-    const handleStartEditing = () => {
+    const handleStartEditing = (section: 'personal' | 'balance' | 'level') => {
         setEditedData({
             firstName: firstName,
             lastName: lastName,
@@ -98,23 +100,31 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
             dogName: dog?.name || '',
             chip: dog?.chip || '',
             breed: dog?.breed || '',
-            birth_date: dog?.birth_date || ''
+            birth_date: dog?.birth_date || '',
+            balance: customer.balance || 0,
+            levelId: currentLevelId
         });
-        setIsEditing(true);
+        setEditingSection(section);
     };
 
-    const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-        setEditedData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value, type } = e.target;
+        setEditedData(prev => ({
+            ...prev,
+            [name]: type === 'number' ? parseFloat(value) : value
+        }));
     };
 
-    const handleCancelEdit = () => setIsEditing(false);
+    const handleCancelEdit = () => setEditingSection(null);
 
     const handleSave = () => {
         const userPayload = {
             ...customer,
             name: `${editedData.firstName} ${editedData.lastName}`.trim(),
             email: editedData.email,
-            phone: editedData.phone
+            phone: editedData.phone,
+            balance: editedData.balance,
+            level_id: editedData.levelId
         };
 
         let dogPayload = null;
@@ -127,7 +137,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         }
 
         onSave(userPayload, dogPayload).then(() => {
-            setIsEditing(false);
+            setEditingSection(null);
         });
     };
 
@@ -183,14 +193,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                 <div className="header-actions" style={{ marginLeft: 'auto' }}>
                     {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter' || currentUser.id === customer.id) &&
                         <>
-                            {isEditing ? (
+                            {editingSection === 'personal' ? (
                                 <>
                                     <button className="button button-outline" onClick={handleCancelEdit}>Abbrechen</button>
-                                    <button className="button button-secondary" onClick={handleSave}>Speichern</button>
+                                    <button className="button button-primary" onClick={handleSave}>Speichern</button>
                                 </>
                             ) : (
                                 <>
-                                    <button className="button button-outline" onClick={handleStartEditing}>Stammdaten bearbeiten</button>
+                                    <button className="button button-outline" onClick={() => handleStartEditing('personal')}>Stammdaten bearbeiten</button>
                                     {currentUser.role === 'admin' && (
                                         customer.is_vip ? (
                                             <button className="button button-outline" onClick={() => onToggleVipStatus(customer)}>
@@ -229,14 +239,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 {getInitials(firstName, lastName)}
                             </div>
                             <div className="personal-data-fields">
-                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Vorname</label>{isEditing ? <input type="text" name="firstName" value={editedData.firstName} onChange={handleInputChange} disabled /> : <p>{firstName}</p>}</div></div>
-                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Nachname</label>{isEditing ? <input type="text" name="lastName" value={editedData.lastName} onChange={handleInputChange} disabled /> : <p>{lastName}</p>}</div></div>
+                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Vorname</label>{editingSection === 'personal' ? <input type="text" name="firstName" value={editedData.firstName} onChange={handleInputChange} disabled /> : <p>{firstName}</p>}</div></div>
+                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Nachname</label>{editingSection === 'personal' ? <input type="text" name="lastName" value={editedData.lastName} onChange={handleInputChange} disabled /> : <p>{lastName}</p>}</div></div>
 
                                 <div className="data-field">
                                     <Icon name="mail" />
                                     <div className="field-content">
                                         <label>E-Mail</label>
-                                        {isEditing ? (
+                                        {editingSection === 'personal' ? (
                                             <input
                                                 type="email"
                                                 name="email"
@@ -254,35 +264,35 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <Icon name="phone" />
                                     <div className="field-content">
                                         <label>Telefon</label>
-                                        {isEditing ? <input type="tel" name="phone" value={editedData.phone} onChange={handleInputChange} /> : <p>{customer.phone || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="tel" name="phone" value={editedData.phone} onChange={handleInputChange} /> : <p>{customer.phone || '-'}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
                                     <Icon name="heart" />
                                     <div className="field-content">
                                         <label>Hund</label>
-                                        {isEditing ? <input type="text" name="dogName" value={editedData.dogName} onChange={handleInputChange} /> : <p>{dogName}</p>}
+                                        {editingSection === 'personal' ? <input type="text" name="dogName" value={editedData.dogName} onChange={handleInputChange} /> : <p>{dogName}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
                                     <Icon name="paw" />
                                     <div className="field-content">
                                         <label>Rasse</label>
-                                        {isEditing ? <input type="text" name="breed" value={editedData.breed} onChange={handleInputChange} /> : <p>{dog?.breed || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="text" name="breed" value={editedData.breed} onChange={handleInputChange} /> : <p>{dog?.breed || '-'}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
                                     <Icon name="calendar" />
                                     <div className="field-content">
                                         <label>Geburtstag</label>
-                                        {isEditing ? <input type="date" name="birth_date" value={editedData.birth_date} onChange={handleInputChange} /> : <p>{dog?.birth_date || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="date" name="birth_date" value={editedData.birth_date} onChange={handleInputChange} /> : <p>{dog?.birth_date || '-'}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
                                     <Icon name="calendar" />
                                     <div className="field-content">
                                         <label>Chipnummer</label>
-                                        {isEditing ? <input type="text" name="chip" value={editedData.chip} onChange={handleInputChange} /> : <p>{dog?.chip || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="text" name="chip" value={editedData.chip} onChange={handleInputChange} /> : <p>{dog?.chip || '-'}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -292,12 +302,79 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     <div className="content-box account-overview-box">
                         <h2>Konto-Übersicht</h2>
                         <div className="overview-tile-grid">
-                            <div className="overview-tile balance"><div className="tile-content"><span className="label">Aktuelles Guthaben</span><span className="value">{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div></div>
+                            <div className="overview-tile balance">
+                                <div className="tile-content">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span className="label">Aktuelles Guthaben</span>
+                                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                            <button className="button-as-link" onClick={() => handleStartEditing('balance')} style={{ padding: 0, height: 'auto' }}>
+                                                <Icon name="edit" width={14} height={14} />
+                                            </button>
+                                        )}
+                                        {editingSection === 'balance' && (
+                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                <button className="button-as-link" onClick={handleSave} style={{ padding: 0, height: 'auto', color: 'var(--success-color)' }}>
+                                                    <Icon name="check" width={16} height={16} />
+                                                </button>
+                                                <button className="button-as-link" onClick={handleCancelEdit} style={{ padding: 0, height: 'auto', color: 'var(--error-color)' }}>
+                                                    <Icon name="close" width={16} height={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {editingSection === 'balance' && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            <input
+                                                type="number"
+                                                name="balance"
+                                                value={editedData.balance}
+                                                onChange={handleInputChange}
+                                                className="form-input"
+                                                style={{ padding: '0.25rem 0.5rem', fontSize: '1rem', width: '100px' }}
+                                            />
+                                            <span style={{ fontWeight: 600 }}>€</span>
+                                        </div>
+                                    ) : (
+                                        <span className="value">{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
+                                    )}
+                                </div>
+                            </div>
                             <button className="overview-tile clickable transactions" onClick={() => setIsTxModalOpen(true)}><div className="tile-content"><span className="label">Transaktionen gesamt</span><span className="value">{customerTransactions.length}</span></div></button>
                             <div className="overview-tile level">
                                 <div className="tile-content">
-                                    <span className="label">{displayLevel?.name}</span>
-                                    <span className="value">{`${levelTerm} ${(customer.level_id || customer.current_level_id) ? levelsToUse.findIndex((l: any) => l.id === (customer.level_id || customer.current_level_id)) + 1 : 1}`}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span className="label">{displayLevel?.name}</span>
+                                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                            <button className="button-as-link" onClick={() => handleStartEditing('level')} style={{ padding: 0, height: 'auto' }}>
+                                                <Icon name="edit" width={14} height={14} />
+                                            </button>
+                                        )}
+                                        {editingSection === 'level' && (
+                                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                <button className="button-as-link" onClick={handleSave} style={{ padding: 0, height: 'auto', color: 'var(--success-color)' }}>
+                                                    <Icon name="check" width={16} height={16} />
+                                                </button>
+                                                <button className="button-as-link" onClick={handleCancelEdit} style={{ padding: 0, height: 'auto', color: 'var(--error-color)' }}>
+                                                    <Icon name="close" width={16} height={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {editingSection === 'level' && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') ? (
+                                        <select
+                                            name="levelId"
+                                            value={editedData.levelId}
+                                            onChange={handleInputChange}
+                                            className="form-input"
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', width: 'auto' }}
+                                        >
+                                            {levelsToUse.map((l: any, idx: number) => (
+                                                <option key={l.id} value={l.id}>{levelTerm} {idx + 1}: {l.name}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <span className="value">{`${levelTerm} ${(customer.level_id || customer.current_level_id) ? levelsToUse.findIndex((l: any) => l.id === (customer.level_id || customer.current_level_id)) + 1 : 1}`}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>

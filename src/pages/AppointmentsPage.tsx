@@ -31,48 +31,134 @@ const getCategoryColor = (title: string): string => {
 
 // --- MODALS ---
 
-const CreateAppointmentModal = ({ isOpen, onClose, onCreate }: { isOpen: boolean, onClose: () => void, onCreate: (data: any) => void }) => {
-    const [formData, setFormData] = useState({ title: '', description: '', date: '', start_time: '', end_time: '', location: '', max_participants: 10 });
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, initialData }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], initialData?: Appointment | null }) => {
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        date: '',
+        start_time: '',
+        duration: 60,
+        location: '',
+        max_participants: 10,
+        trainer_id: '',
+        target_level_ids: [] as number[]
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            const start = new Date(initialData.start_time);
+            const end = new Date(initialData.end_time);
+            const dur = Math.round((end.getTime() - start.getTime()) / 60000);
+
+            setFormData({
+                title: initialData.title || '',
+                description: initialData.description || '',
+                date: start.toISOString().split('T')[0],
+                start_time: start.toTimeString().slice(0, 5),
+                duration: dur > 0 ? dur : 60,
+                location: initialData.location || '',
+                max_participants: initialData.max_participants || 10,
+                trainer_id: initialData.trainer_id?.toString() || '',
+                target_level_ids: (initialData.target_levels && initialData.target_levels.length > 0)
+                    ? initialData.target_levels.map((l: any) => l.id)
+                    : (initialData.target_level_ids || [])
+            });
+        } else {
+            setFormData({
+                title: '',
+                description: '',
+                date: '',
+                start_time: '',
+                duration: 60,
+                location: '',
+                max_participants: 10,
+                trainer_id: '',
+                target_level_ids: []
+            });
+        }
+    }, [initialData, isOpen]);
 
     if (!isOpen) return null;
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const start = new Date(`${formData.date}T${formData.start_time}`);
-        const end = new Date(`${formData.date}T${formData.end_time}`);
-        onCreate({
+        const end = new Date(start.getTime() + formData.duration * 60000);
+        onSave({
             title: formData.title,
             description: formData.description,
             start_time: start.toISOString(),
             end_time: end.toISOString(),
             location: formData.location,
-            max_participants: Number(formData.max_participants)
+            max_participants: Number(formData.max_participants),
+            trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
+            target_level_ids: formData.target_level_ids
         });
+    };
+
+    const toggleLevel = (id: number) => {
+        setFormData(prev => ({
+            ...prev,
+            target_level_ids: prev.target_level_ids.includes(id)
+                ? prev.target_level_ids.filter(l => l !== id)
+                : [...prev.target_level_ids, id]
+        }));
     };
 
     return (
         <div className="modal-overlay">
             <div className="modal-content">
                 <div className="modal-header blue">
-                    <h2>Neuen Termin erstellen</h2>
+                    <h2>{initialData ? 'Termin bearbeiten' : 'Neuen Termin erstellen'}</h2>
                     <button className="close-button" onClick={onClose}><Icon name="x" /></button>
                 </div>
                 <div className="modal-body">
                     <form onSubmit={handleSubmit} className="form-grid-single">
                         <div className="form-group"><label>Titel</label><input required className="form-input" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="z.B. Welpen-Spielstunde" /></div>
+
                         <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
                             <div style={{ flex: 1 }}><label>Datum</label><input type="date" required className="form-input" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
                             <div style={{ flex: 1 }}><label>Max. Teilnehmer</label><input type="number" required className="form-input" value={formData.max_participants} onChange={e => setFormData({ ...formData, max_participants: parseInt(e.target.value) })} /></div>
                         </div>
+
                         <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ flex: 1 }}><label>Start</label><input type="time" required className="form-input" value={formData.start_time} onChange={e => setFormData({ ...formData, start_time: e.target.value })} /></div>
-                            <div style={{ flex: 1 }}><label>Ende</label><input type="time" required className="form-input" value={formData.end_time} onChange={e => setFormData({ ...formData, end_time: e.target.value })} /></div>
+                            <div style={{ flex: 1 }}><label>Startzeit</label><input type="time" required className="form-input" value={formData.start_time} onChange={e => setFormData({ ...formData, start_time: e.target.value })} /></div>
+                            <div style={{ flex: 1 }}><label>Dauer (Minuten)</label><input type="number" required className="form-input" value={formData.duration} onChange={e => setFormData({ ...formData, duration: parseInt(e.target.value) })} /></div>
                         </div>
+
+                        <div className="form-group">
+                            <label>Trainer</label>
+                            <select className="form-input" value={formData.trainer_id} onChange={e => setFormData({ ...formData, trainer_id: e.target.value })}>
+                                <option value="">Bitte auswählen...</option>
+                                {staffUsers.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>Für Level (Mehrfachauswahl)</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                {allLevels.map(lvl => (
+                                    <button
+                                        key={lvl.id}
+                                        type="button"
+                                        onClick={() => toggleLevel(lvl.id)}
+                                        className={`button button-small ${formData.target_level_ids.includes(lvl.id) ? 'button-primary' : 'button-outline'}`}
+                                        style={{ fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}
+                                    >
+                                        {lvl.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="form-group"><label>Ort</label><input className="form-input" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Hundeplatz / Online" /></div>
                         <div className="form-group"><label>Beschreibung</label><textarea className="form-input" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." /></div>
+
                         <div className="modal-footer">
                             <button type="button" onClick={onClose} className="button button-outline">Abbrechen</button>
-                            <button type="submit" className="button button-primary">Erstellen</button>
+                            <button type="submit" className="button button-primary">{initialData ? 'Speichern' : 'Erstellen'}</button>
                         </div>
                     </form>
                 </div>
@@ -122,9 +208,35 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
                     )}
 
                     <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.5rem' }}>Beschreibung</h4>
-                    <p style={{ lineHeight: '1.6', color: 'var(--text-primary)' }}>
+                    <p style={{ lineHeight: '1.6', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
                         {event.description || 'Keine weitere Beschreibung verfügbar.'}
                     </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.25rem' }}>Trainer</h4>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div className="initials-avatar small avatar-gray" style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
+                                    {event.trainer?.name?.charAt(0) || '?'}
+                                </div>
+                                <span style={{ fontSize: '0.9rem' }}>{event.trainer?.name || 'Kein Trainer zugewiesen'}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.25rem' }}>Zielgruppe</h4>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                                {event.target_levels && event.target_levels.length > 0 ? (
+                                    event.target_levels.map((lvl: any) => (
+                                        <span key={lvl.id} style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--bg-accent)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}>
+                                            {lvl.name}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Alle Level</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer mit Buttons nebeneinander */}
@@ -269,6 +381,10 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
 
     // Admin State
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [editingEvent, setEditingEvent] = useState<Appointment | null>(null);
+    const [staffUsers, setStaffUsers] = useState<any[]>([]);
+    const [allLevels, setAllLevels] = useState<any[]>([]);
+
     const [participantsOpen, setParticipantsOpen] = useState(false);
     const [currentParticipants, setCurrentParticipants] = useState<Booking[]>([]);
     const [currentApptTitle, setCurrentApptTitle] = useState('');
@@ -292,14 +408,22 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
         }
 
         try {
-            const [appts, bookings] = await Promise.all([
+            const [appts, bookings, staff, config] = await Promise.all([
                 apiClient.getAppointments(token),
                 apiClient.getMyBookings(token).catch(e => {
                     console.warn("Could not fetch user bookings:", e);
                     return [];
-                })
+                }),
+                apiClient.getStaff(token).catch(() => []),
+                apiClient.getConfig().catch(() => null)
             ]);
+            console.log("Loaded Appointments:", appts);
+            console.log("Loaded Staff:", staff);
             setAppointments(appts);
+            setStaffUsers(staff);
+            if (config && config.levels) {
+                setAllLevels(config.levels);
+            }
             if (Array.isArray(bookings)) {
                 const bookingMap = new Map<number, string>();
                 bookings.forEach((b: any) => bookingMap.set(b.appointment_id, b.status));
@@ -314,20 +438,31 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
 
     // --- ACTIONS ---
 
-    const handleCreate = async (data: any) => {
+    const handleSave = async (data: any) => {
         if (isPreview) {
-            const newAppt = { ...data, id: Date.now(), participants_count: 0 };
-            setAppointments([...appointments, newAppt]);
+            if (editingEvent) {
+                setAppointments(appointments.map(a => a.id === editingEvent.id ? { ...a, ...data } : a));
+            } else {
+                const newAppt = { ...data, id: Date.now(), participants_count: 0 };
+                setAppointments([...appointments, newAppt]);
+            }
             setIsCreateOpen(false);
+            setEditingEvent(null);
             return;
         }
 
         try {
-            await apiClient.createAppointment(data, token);
+            console.log("Saving Appointment Data:", data);
+            if (editingEvent) {
+                await apiClient.updateAppointment(editingEvent.id, data, token);
+            } else {
+                await apiClient.createAppointment(data, token);
+            }
             setIsCreateOpen(false);
+            setEditingEvent(null);
             loadData();
         } catch (e) {
-            alert("Fehler beim Erstellen");
+            alert("Fehler beim Speichern");
         }
     };
 
@@ -526,17 +661,43 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                                                         <span>{formatDate(date)} &bull; {formatTime(date)}</span>
                                                         {event.location && <span className="event-location">&bull; {event.location}</span>}
                                                     </div>
+                                                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                                                        {event.trainer && (
+                                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-card)', padding: '0.1rem 0.5rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                                                                <Icon name="user" style={{ width: '10px', height: '10px' }} />
+                                                                {event.trainer.name}
+                                                            </div>
+                                                        )}
+                                                        {event.target_levels?.map((lvl: any) => (
+                                                            <div key={lvl.id} style={{ fontSize: '0.7rem', color: 'var(--primary-color)', background: 'var(--bg-accent)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600 }}>
+                                                                {lvl.name}
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
 
                                                 {/* Aktions-Bereich rechts */}
                                                 {(user.role === 'admin' || user.role === 'mitarbeiter') && (
-                                                    <button
-                                                        className="button button-outline button-small notify-bell-btn"
-                                                        onClick={(e) => { e.stopPropagation(); handleNotifyParticipants(event); }}
-                                                        title="Teilnehmer benachrichtigen"
-                                                    >
-                                                        <Icon name="bell" />
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                        <button
+                                                            className="button button-outline button-small notify-bell-btn"
+                                                            onClick={(e) => { e.stopPropagation(); handleNotifyParticipants(event); }}
+                                                            title="Teilnehmer benachrichtigen"
+                                                        >
+                                                            <Icon name="bell" />
+                                                        </button>
+                                                        <button
+                                                            className="button button-outline button-small"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingEvent(event);
+                                                                setIsCreateOpen(true);
+                                                            }}
+                                                            title="Bearbeiten"
+                                                        >
+                                                            <Icon name="edit" />
+                                                        </button>
+                                                    </div>
                                                 )}
 
                                                 <div className="event-actions">
@@ -598,7 +759,17 @@ export default function AppointmentsPage({ user, token, setView }: { user: User 
                 </div>
             )}
 
-            <CreateAppointmentModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onCreate={handleCreate} />
+            <AppointmentModal
+                isOpen={isCreateOpen}
+                onClose={() => {
+                    setIsCreateOpen(false);
+                    setEditingEvent(null);
+                }}
+                onSave={handleSave}
+                allLevels={allLevels}
+                staffUsers={staffUsers}
+                initialData={editingEvent}
+            />
 
             <ParticipantsModal
                 isOpen={participantsOpen}

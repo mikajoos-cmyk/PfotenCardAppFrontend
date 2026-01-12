@@ -128,6 +128,10 @@ export const apiClient = {
         return handleResponse(response);
     },
 
+    updateAppointment: async (appointmentId: number, data: any, token: string | null) => {
+        return apiClient.put(`/api/appointments/${appointmentId}`, data, token);
+    },
+
     upload: async (path: string, file: File, token: string | null) => {
         const formData = new FormData();
         formData.append("upload_file", file);
@@ -269,6 +273,10 @@ export interface Appointment {
     location?: string;
     max_participants: number;
     participants_count?: number;
+    trainer_id?: number;
+    target_level_ids?: number[];
+    trainer?: any;
+    target_levels?: any[];
     created_at: string;
 }
 

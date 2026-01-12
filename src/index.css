@@ -230,8 +230,8 @@ body {
 }
 
 .sidebar-header .logo {
-    width: 40px;
-    height: 40px;
+    width: 40px !important;
+    height: 40px !important;
     object-fit: contain;
     flex-shrink: 0;
 }
@@ -255,7 +255,28 @@ body {
 
 .sidebar-nav {
     flex-grow: 1;
+    overflow-y: auto;
+    /* Damit Scrolleiste nicht direkt am Text klebt */
+    padding-right: 0.5rem;
+    /* Scrollbar Styling für Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) transparent;
 }
+
+/* Scrollbar Styling für Webkit (Chrome, Safari, Edge) */
+.sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 20px;
+}
+
 
 .nav-link {
     display: flex;
@@ -364,125 +385,7 @@ body {
     flex-direction: column;
 }
 
-/* --- Sidebar --- */
-.sidebar {
-    width: 315px;
-    background-color: var(--sidebar-bg);
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem 1rem;
-    flex-shrink: 0;
-    transition: width 0.3s ease;
-}
 
-.sidebar-header {
-    padding: 0 0.5rem 1.5rem 0.5rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--sidebar-text-hover, #ffffff);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    position: relative;
-}
-
-.sidebar-header .logo {
-    width: 40px !important;
-    height: 40px !important;
-    object-fit: contain;
-}
-
-.sidebar-nav {
-    flex-grow: 1;
-}
-
-.nav-link {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    border-radius: 8px;
-    text-decoration: none;
-    color: var(--sidebar-text);
-    font-weight: 500;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    position: relative;
-    white-space: nowrap;
-}
-
-.nav-link:hover {
-    background-color: var(--sidebar-hover-bg, #334155);
-    color: var(--sidebar-text-hover);
-}
-
-.nav-link.active {
-    background-color: var(--sidebar-active-bg);
-    color: white;
-    font-weight: 600;
-}
-
-.nav-link svg {
-    width: 22px;
-    height: 22px;
-    flex-shrink: 0;
-}
-
-.sidebar-footer {
-    border-top: 1px solid #334155;
-    padding-top: 1rem;
-}
-
-.user-profile-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    overflow: hidden;
-}
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.3;
-    color: var(--sidebar-text-hover);
-    white-space: nowrap;
-}
-
-.user-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.user-role {
-    font-size: 0.8rem;
-    color: var(--sidebar-text);
-    text-transform: capitalize;
-}
-
-.logout-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--sidebar-text);
-    padding: 0.5rem;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    margin-top: 1rem;
-    width: 100%;
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-start;
-}
-
-.logout-button:hover {
-    background-color: var(--sidebar-hover-bg, #334155);
-}
 
 .preview-action-button {
     background-color: var(--brand-blue);

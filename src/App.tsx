@@ -636,7 +636,9 @@ export default function App() {
         const rawLogoUrl = appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl;
         const fullLogoUrl = getFullImageUrl(rawLogoUrl);
 
+        // --- Dynamic Favicon & Manifest & Apple Touch Icon ---
         if (fullLogoUrl) {
+            // 1. Favicon (bereits vorhanden)
             let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
             if (!link) {
                 link = document.createElement('link');
@@ -644,12 +646,59 @@ export default function App() {
                 document.head.appendChild(link);
             }
             link.href = fullLogoUrl;
+
+            // 2. Apple Touch Icon
+            let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+            if (!appleLink) {
+                appleLink = document.createElement('link');
+                appleLink.rel = 'apple-touch-icon';
+                document.head.appendChild(appleLink);
+            }
+            appleLink.href = fullLogoUrl;
         } else {
+            // Fallback for Icon
             let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
             if (link) {
                 link.href = '/paw.png';
             }
+            // Fallback for Apple Touch Icon
+            let appleLink: HTMLLinkElement | null = document.querySelector("link[rel='apple-touch-icon']");
+            if (appleLink) {
+                appleLink.href = '/paw.png';
+            }
         }
+
+        // 3. Dynamic Manifest
+        const manifest = {
+            short_name: schoolName || "PfotenCard",
+            name: schoolName ? `${schoolName} - PfotenCard` : "Dog-School Connect - PfotenCard",
+            icons: [
+                {
+                    src: fullLogoUrl || "/paw.png",
+                    type: "image/png",
+                    sizes: "192x192"
+                },
+                {
+                    src: fullLogoUrl || "/paw.png",
+                    type: "image/png",
+                    sizes: "512x512"
+                }
+            ],
+            start_url: ".",
+            display: "standalone",
+            theme_color: appConfigData?.tenant?.config?.branding?.primary_color || "#263238",
+            background_color: appConfigData?.tenant?.config?.branding?.background_color || "#F3F4F6"
+        };
+
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(blob);
+
+        const manifestLink = document.querySelector('#app-manifest');
+        if (manifestLink) {
+            manifestLink.setAttribute('href', manifestURL);
+        }
+
     }, [schoolName, appConfigData, previewConfig.logoUrl]);
 
     const handleLoginSuccess = (token: string, user: any) => {
