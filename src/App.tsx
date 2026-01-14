@@ -1011,6 +1011,16 @@ export default function App() {
                 await apiClient.delete(`/api/users/${deleteUserModal.id}`, authToken);
                 await fetchAppData();
                 console.log('Benutzer erfolgreich gelöscht!');
+
+                // Redirect to customer list if we were in a customer detail view
+                if (view.page === 'customers' && view.subPage === 'detail') {
+                    handleSetView({ page: 'customers' });
+                }
+                // Redirect to users list if we were in users page (to refresh correctly)
+                else if (view.page === 'users') {
+                    handleSetView({ page: 'users' });
+                }
+
             } catch (error) {
                 console.error("Fehler beim Löschen des Benutzers:", error);
                 alert(`Fehler: ${error}`);
