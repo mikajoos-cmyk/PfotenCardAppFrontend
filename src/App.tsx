@@ -512,15 +512,29 @@ export default function App() {
         const isPreview = new URLSearchParams(window.location.search).get('mode') === 'preview';
         if (isPreview) return;
 
+        // 1. Check direkt beim Laden (falls der Hash schon da ist)
+        const initialHash = window.location.hash;
+        if (initialHash && (initialHash.includes('type=invite') || initialHash.includes('type=recovery'))) {
+            setShowPasswordReset(true);
+        }
+
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'PASSWORD_RECOVERY') {
                 setShowPasswordReset(true);
             } else if (event === 'SIGNED_IN' && session) {
 
-                // NEU: Wenn durch Einladungs-Link eingeloggt -> Passwort-Fenster öffnen
+                // 2. Check beim Login-Event (Supabase-Event)
+                const currentHash = window.location.hash;
+                // Prüfen ob es sich um einen Invite oder Recovery Link handelt
+                if (currentHash && (currentHash.includes('type=invite') || currentHash.includes('type=recovery'))) {
+                    setShowPasswordReset(true);
+                }
+
+                // Fallback für die alte Logik (falls doch mal der Pfad genutzt wird)
                 if (window.location.pathname === '/update-password') {
                     setShowPasswordReset(true);
                 }
+
                 if (!loggedInUser || loggedInUser.auth_id !== session.user.id) {
                     try {
                         const userResponse = await apiClient.get('/api/users/me', session.access_token);
