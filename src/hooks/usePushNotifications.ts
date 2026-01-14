@@ -40,7 +40,7 @@ export const usePushNotifications = () => {
             const subscriptionJSON = subscription.toJSON();
 
             // Token aus localStorage holen (wie in anderen Hooks)
-            const token = localStorage.getItem('sb-token');
+            const token = localStorage.getItem('authToken');
 
             await apiClient.post('/api/notifications/subscribe', {
                 endpoint: subscriptionJSON.endpoint,
