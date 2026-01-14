@@ -22,6 +22,7 @@ import DeleteUserModal from './components/modals/DeleteUserModal';
 import DeleteDocumentModal from './components/modals/DeleteDocumentModal';
 import DogFormModal from './components/modals/DogFormModal';
 import DeleteDogModal from './components/modals/DeleteDogModal';
+import NotificationSettingsModal from './components/modals/NotificationSettingsModal';
 
 // Pages
 import DashboardPage from './pages/DashboardPage';
@@ -137,6 +138,7 @@ export default function App() {
     const [deletingDocument, setDeletingDocument] = useState<any | null>(null);
     const [dogFormModal, setDogFormModal] = useState<{ isOpen: boolean; dog: any | null }>({ isOpen: false, dog: null });
     const [deletingDog, setDeletingDog] = useState<any | null>(null);
+    const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
 
     const [isServerLoading, setServerLoading] = useState<{ active: boolean; message: string }>({ active: false, message: '' });
 
@@ -1437,6 +1439,7 @@ export default function App() {
                     activeModules={activeModules}
                     unreadChatCount={unreadChatCount}
                     hasNewNews={hasNewNews}
+                    onOpenNotifications={() => setNotificationSettingsOpen(true)}
                 />
             ) : (
                 <Sidebar
@@ -1452,6 +1455,7 @@ export default function App() {
                     activeModules={activeModules}
                     unreadChatCount={unreadChatCount}
                     hasNewNews={hasNewNews}
+                    onOpenNotifications={() => setNotificationSettingsOpen(true)}
                 />
             )
             }
@@ -1517,6 +1521,12 @@ export default function App() {
             {deletingDog && (
                 <DeleteDogModal dog={deletingDog} onClose={() => setDeletingDog(null)} onConfirm={() => { handleDeleteDog(deletingDog.id); setDeletingDog(null); }} />
             )}
+
+            <NotificationSettingsModal
+                isOpen={notificationSettingsOpen}
+                onClose={() => setNotificationSettingsOpen(false)}
+                token={authToken}
+            />
 
             {isServerLoading.active && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 }}>

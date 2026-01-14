@@ -20,6 +20,7 @@ interface CustomerSidebarProps {
     activeModules?: string[];
     unreadChatCount?: number;
     hasNewNews?: boolean;
+    onOpenNotifications?: () => void;
 }
 
 const CustomerSidebar: FC<CustomerSidebarProps> = ({
@@ -27,7 +28,8 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
     isPreviewMode, onToggleRole,
     activeModules = ['news', 'documents', 'calendar', 'chat'],
     unreadChatCount = 0,
-    hasNewNews = false
+    hasNewNews = false,
+    onOpenNotifications
 }) => {
 
     // Navigation Logik vereinheitlichen (Legacy Support für activePage prop)
@@ -130,6 +132,11 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
                             <span className="user-name">{user.name}</span>
                             <span className="user-role">Kunde</span>
                         </div>
+                        {onOpenNotifications && (
+                            <button className="button-icon-only" onClick={onOpenNotifications} title="Benachrichtigungen" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}>
+                                <Icon name="bell" />
+                            </button>
+                        )}
                     </div>
                 </div>
                 <button className="logout-button" onClick={onLogout} aria-label="Abmelden">

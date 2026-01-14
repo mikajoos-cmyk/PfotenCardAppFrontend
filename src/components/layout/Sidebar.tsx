@@ -17,6 +17,7 @@ interface SidebarProps {
     activeModules?: string[];
     unreadChatCount?: number;
     hasNewNews?: boolean;
+    onOpenNotifications?: () => void;
 }
 
 const Sidebar: FC<SidebarProps> = ({
@@ -31,7 +32,8 @@ const Sidebar: FC<SidebarProps> = ({
     onToggleRole,
     activeModules = ['news', 'documents', 'calendar', 'chat'],
     unreadChatCount = 0,
-    hasNewNews = false
+    hasNewNews = false,
+    onOpenNotifications
 }) => {
     const navItems = [
         { id: 'dashboard', label: 'Übersicht', icon: 'dashboard', roles: ['admin', 'mitarbeiter'] },
@@ -122,6 +124,11 @@ const Sidebar: FC<SidebarProps> = ({
                             <span className="user-name">{user.name}</span>
                             <span className="user-role">{user.role}</span>
                         </div>
+                        {onOpenNotifications && (
+                            <button className="button-icon-only" onClick={onOpenNotifications} title="Benachrichtigungen" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}>
+                                <Icon name="bell" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
