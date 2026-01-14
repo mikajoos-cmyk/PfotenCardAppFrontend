@@ -150,7 +150,7 @@ export default function App() {
     // Removed customerPage state in favor of global View
     const [directAccessedCustomer, setDirectAccessedCustomer] = useState<any | null>(null);
 
-    const [showPasswordReset, setShowPasswordReset] = useState(false);
+    const [showPasswordReset, setShowPasswordReset] = useState(window.location.pathname === '/update-password');
     const [newPassword, setNewPassword] = useState('');
 
     // Config State
@@ -516,6 +516,11 @@ export default function App() {
             if (event === 'PASSWORD_RECOVERY') {
                 setShowPasswordReset(true);
             } else if (event === 'SIGNED_IN' && session) {
+
+                // NEU: Wenn durch Einladungs-Link eingeloggt -> Passwort-Fenster öffnen
+                if (window.location.pathname === '/update-password') {
+                    setShowPasswordReset(true);
+                }
                 if (!loggedInUser || loggedInUser.auth_id !== session.user.id) {
                     try {
                         const userResponse = await apiClient.get('/api/users/me', session.access_token);
