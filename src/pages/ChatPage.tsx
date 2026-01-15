@@ -6,6 +6,7 @@ import { MOCK_CONVERSATIONS_CUSTOMER, MOCK_MESSAGES_CUSTOMER, MOCK_CONVERSATIONS
 import Icon from '../components/ui/Icon';
 import { getInitials, getAvatarColorClass } from '../lib/utils';
 import InfoModal from '../components/modals/InfoModal';
+import { ContextHelp } from '../components/ui/ContextHelp';
 
 interface ChatPageProps {
     user: User | any;
@@ -601,6 +602,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                         <Icon name="arrowRight" style={{ width: '16px', height: '16px', opacity: 0.6 }} />
                                     </span>
                                 </div>
+                                <ContextHelp
+                                    currentPage="chat"
+                                    userRole={user?.role}
+                                    floating={false}
+                                />
                             </div>
 
                             {/* NACHRICHTEN - GRUPPIERT NACH DATUM */}

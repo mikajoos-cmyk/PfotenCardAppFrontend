@@ -10,6 +10,8 @@ export interface User {
     role: UserRole;
     customerId?: string;
     createdAt: Date;
+    notifications_email?: boolean;
+    notifications_push?: boolean;
 }
 
 export interface Appointment {
@@ -69,6 +71,8 @@ export interface Customer {
     role?: UserRole;
     chip?: string;
     is_active?: boolean;
+    notifications_email?: boolean;
+    notifications_push?: boolean;
 }
 
 export interface Transaction {

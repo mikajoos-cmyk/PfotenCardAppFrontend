@@ -8,12 +8,14 @@ interface ContextHelpProps {
     currentPage: string;
     userRole: 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
     tenantSupportEmail?: string;
+    floating?: boolean;
 }
 
 export const ContextHelp: React.FC<ContextHelpProps> = ({
     currentPage,
     userRole,
-    tenantSupportEmail
+    tenantSupportEmail,
+    floating = true
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -99,11 +101,11 @@ export const ContextHelp: React.FC<ContextHelpProps> = ({
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="context-help-trigger"
+                className={floating ? "context-help-trigger" : "context-help-inline"}
                 aria-label="Hilfe öffnen"
                 title="Hilfe anzeigen"
             >
-                <HelpCircle size={24} />
+                <HelpCircle size={floating ? 24 : 20} />
             </button>
 
             {isOpen && mounted && createPortal(modalContent, document.body)}

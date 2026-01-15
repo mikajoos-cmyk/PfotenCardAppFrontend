@@ -125,7 +125,17 @@ const Sidebar: FC<SidebarProps> = ({
                             <span className="user-role">{user.role}</span>
                         </div>
                         {onOpenNotifications && (
-                            <button className="button-icon-only" onClick={onOpenNotifications} title="Benachrichtigungen" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}>
+                            <button
+                                className="button-icon-only"
+                                onClick={() => {
+                                    onOpenNotifications();
+                                    if (window.innerWidth <= 992) {
+                                        setSidebarOpen(false);
+                                    }
+                                }}
+                                title="Benachrichtigungen"
+                                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-secondary)' }}
+                            >
                                 <Icon name="bell" />
                             </button>
                         )}

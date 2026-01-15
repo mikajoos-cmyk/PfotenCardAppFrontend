@@ -1472,11 +1472,13 @@ export default function App() {
 
             <main className={`main-content ${view.page === 'chat' ? 'chat-page-active' : ''}`}>
                 {/* HIER DIE ÄNDERUNG: Genauere Bestimmung der aktuellen Seite für die Hilfe */}
-                <ContextHelp
-                    currentPage={view.subPage ? `${view.page}_${view.subPage}` : view.page}
-                    userRole={loggedInUser?.role}
-                    tenantSupportEmail={appConfigData?.tenant?.support_email}
-                />
+                {view.page !== 'chat' && (
+                    <ContextHelp
+                        currentPage={view.subPage ? `${view.page}_${view.subPage}` : view.page}
+                        userRole={loggedInUser?.role}
+                        tenantSupportEmail={appConfigData?.tenant?.support_email}
+                    />
+                )}
 
                 {isMobileView && (
                     <header className="mobile-header">
@@ -1536,6 +1538,8 @@ export default function App() {
                 isOpen={notificationSettingsOpen}
                 onClose={() => setNotificationSettingsOpen(false)}
                 token={authToken}
+                user={loggedInUser}
+                onRefresh={fetchAppData}
             />
 
             {isServerLoading.active && (

@@ -3489,6 +3489,49 @@ input:checked+.slider:before {
     }
 }
 
+.context-help-inline {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+}
+
+.context-help-inline:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--primary-color);
+    opacity: 1;
+}
+
+/* In der Mobile Chat Header View etwas anpassen */
+.chat-page-active .context-help-inline {
+    color: white;
+    /* Da der mobile Chat-Header dunkel ist */
+    opacity: 0.8;
+}
+
+.chat-page-active .context-help-inline:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+}
+
+@media (min-width: 993px) {
+    .chat-page-active .context-help-inline {
+        color: var(--text-secondary);
+    }
+
+    .chat-page-active .context-help-inline:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        color: var(--primary-color);
+    }
+}
+
 /* --- Cookie Banner Styles (Marketing Style Port) --- */
 .cookie-banner {
     position: fixed;
@@ -3519,7 +3562,6 @@ input:checked+.slider:before {
 
 @media (min-width: 640px) {
     .cookie-content {
-        flex-direction: row;
         align-items: center;
         justify-content: space-between;
     }
@@ -3690,25 +3732,31 @@ input:checked+.slider:before {
     color: white;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
+
 .status-banner.is-active {
     background: linear-gradient(135deg, #28a745, #218838);
 }
+
 .status-banner.is-cancelled {
     background: linear-gradient(135deg, #dc3545, #c82333);
 }
+
 .status-banner.is-partial {
     background: linear-gradient(135deg, #28a745, #ffc107 55%, #dc3545 85%);
 }
+
 .status-banner-content {
     flex-grow: 1;
     text-align: center;
 }
+
 .status-banner-message {
     margin: 0;
     font-weight: 600;
     font-size: 1.1rem;
     white-space: pre-wrap;
 }
+
 .status-banner-time {
     margin: 0.25rem 0 0;
     font-size: 0.85rem;
@@ -3721,6 +3769,7 @@ input:checked+.slider:before {
     gap: 0.5rem;
     margin-bottom: 1.5rem;
 }
+
 .status-selection-btn {
     flex: 1;
     padding: 0.75rem;
@@ -3732,21 +3781,26 @@ input:checked+.slider:before {
     cursor: pointer;
     transition: all 0.2s;
 }
+
 .status-selection-btn:hover {
     background: var(--background-color);
 }
+
 .status-selection-btn.active {
     border-color: transparent;
     color: white;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 .status-selection-btn.active.status-active {
     background-color: var(--brand-green);
 }
+
 .status-selection-btn.active.status-partial {
     background-color: var(--brand-orange);
 }
+
 .status-selection-btn.active.status-cancelled {
     background-color: var(--brand-red);
 }
@@ -3762,6 +3816,7 @@ input:checked+.slider:before {
     position: relative;
     z-index: 1;
 }
+
 .segmented-tab-btn {
     flex: 1;
     border: none;
@@ -3779,10 +3834,12 @@ input:checked+.slider:before {
     font-family: inherit;
     font-size: 0.95rem;
 }
+
 .segmented-tab-btn:hover {
     color: var(--text-primary);
     background: rgba(0, 0, 0, 0.02);
 }
+
 .segmented-tab-btn.active {
     background: var(--card-background);
     color: var(--text-primary);
@@ -3790,6 +3847,7 @@ input:checked+.slider:before {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
     transform: translateY(-1px);
 }
+
 .tab-badge {
     font-size: 0.75rem;
     background: var(--border-color);
@@ -3799,6 +3857,7 @@ input:checked+.slider:before {
     transition: all 0.2s ease;
     font-weight: 700;
 }
+
 .segmented-tab-btn.active .tab-badge {
     background: var(--primary-color);
     color: white;
@@ -3814,6 +3873,7 @@ input:checked+.slider:before {
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
