@@ -18,6 +18,11 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
     const [errorMessage, setErrorMessage] = useState('');
     const [activeTab, setActiveTab] = useState<'email' | 'push'>('email');
 
+    // PWA Install State
+    const [isStandalone, setIsStandalone] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [platform, setPlatform] = useState<'ios' | 'android' | 'other' | null>(null);
+
     // Local state for all settings
     const [settings, setSettings] = useState({
         notif_email_overall: user?.notif_email_overall ?? true,
@@ -36,6 +41,30 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
 
         reminder_offset_minutes: user?.reminder_offset_minutes ?? 60,
     });
+
+    useEffect(() => {
+        // Standalone Check
+        const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+        setIsStandalone(!!standalone);
+
+        // Platform detection
+        const ua = window.navigator.userAgent.toLowerCase();
+        if (/iphone|ipad|ipod/.test(ua)) {
+            setPlatform('ios');
+        } else if (/android/.test(ua)) {
+            setPlatform('android');
+        } else {
+            setPlatform('other');
+        }
+
+        const handleBeforeInstallPrompt = (e: any) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
 
     useEffect(() => {
         if (user && isOpen) {
@@ -101,6 +130,16 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
 
     const handleOffsetBlur = () => {
         handleSaveField('reminder_offset_minutes', settings.reminder_offset_minutes);
+    };
+
+    const handleInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setIsStandalone(true);
+        }
+        setDeferredPrompt(null);
     };
 
     const renderToggleRow = (label: string, description: string, icon: any, key: keyof typeof settings, disabled: boolean = false, accent: string = 'blue') => (
@@ -235,6 +274,68 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
                             </>
                         ) : (
                             <>
+                                {/* PWA Info Section */}
+                                {!isStandalone && (
+                                    <div style={{
+                                        padding: '1rem',
+                                        backgroundColor: 'var(--bg-accent-orange)',
+                                        borderRadius: '0.75rem',
+                                        marginBottom: '1.5rem',
+                                        border: '1px solid var(--text-accent-orange)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.75rem'
+                                    }}>
+                                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                            <div style={{ color: 'var(--text-accent-orange)', marginTop: '2px' }}>
+                                                <Icon name="alertCircle" width={20} height={20} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: '600', color: 'var(--text-accent-orange)', fontSize: '0.95rem' }}>
+                                                    App nicht installiert
+                                                </div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-accent-orange)', opacity: 0.9, lineHeight: '1.4' }}>
+                                                    Um Push-Benachrichtigungen zu erhalten, musst du die PfotenCard App zum Startbildschirm deines Handys hinzufügen.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {platform === 'ios' ? (
+                                            <div style={{
+                                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                                padding: '0.75rem',
+                                                borderRadius: '0.5rem',
+                                                fontSize: '0.85rem',
+                                                color: 'var(--text-accent-orange)'
+                                            }}>
+                                                <div style={{ marginBottom: '0.4rem', display: 'flex', gap: '0.5rem' }}>
+                                                    <strong>1.</strong> Tippe auf das Teilen-Icon (Viereck mit Pfeil).
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <strong>2.</strong> Wähle "Zum Home-Bildschirm" aus.
+                                                </div>
+                                            </div>
+                                        ) : deferredPrompt ? (
+                                            <button
+                                                className="button"
+                                                onClick={handleInstall}
+                                                style={{
+                                                    backgroundColor: 'var(--text-accent-orange)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    width: '100%'
+                                                }}
+                                            >
+                                                App zum Startbildschirm hinzufügen
+                                            </button>
+                                        ) : (
+                                            <div style={{ fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', opacity: 0.8, color: 'var(--text-accent-orange)' }}>
+                                                Öffne dein Browsermenü und wähle "App installieren".
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {renderToggleRow("Alle Push erlauben", "Hauptschalter für Push-Benachrichtigungen", "bell", "notif_push_overall", false, "green")}
                                 <div style={{
                                     paddingLeft: '1rem',

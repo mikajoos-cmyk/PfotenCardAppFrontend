@@ -15,15 +15,21 @@ export interface User {
 
     notif_email_overall?: boolean;
     notif_email_chat?: boolean;
-    notif_email_system?: boolean;
+    notif_email_news?: boolean;      // <--- Neu
     notif_email_booking?: boolean;
+    notif_email_reminder?: boolean;  // <--- Neu
     notif_email_alert?: boolean;
+    notif_email_system?: boolean;    // (Optional beibehalten falls noch genutzt)
 
     notif_push_overall?: boolean;
     notif_push_chat?: boolean;
-    notif_push_system?: boolean;
+    notif_push_news?: boolean;       // <--- Neu
     notif_push_booking?: boolean;
+    notif_push_reminder?: boolean;   // <--- Neu
     notif_push_alert?: boolean;
+    notif_push_system?: boolean;     // (Optional beibehalten falls noch genutzt)
+
+    reminder_offset_minutes?: number; // <--- Neu
 }
 
 export interface Appointment {
@@ -88,15 +94,21 @@ export interface Customer {
 
     notif_email_overall?: boolean;
     notif_email_chat?: boolean;
-    notif_email_system?: boolean;
+    notif_email_news?: boolean;      // <--- Neu
     notif_email_booking?: boolean;
+    notif_email_reminder?: boolean;  // <--- Neu
     notif_email_alert?: boolean;
+    notif_email_system?: boolean;
 
     notif_push_overall?: boolean;
     notif_push_chat?: boolean;
-    notif_push_system?: boolean;
+    notif_push_news?: boolean;       // <--- Neu
     notif_push_booking?: boolean;
+    notif_push_reminder?: boolean;   // <--- Neu
     notif_push_alert?: boolean;
+    notif_push_system?: boolean;
+
+    reminder_offset_minutes?: number; // <--- Neu
 }
 
 export interface Transaction {
