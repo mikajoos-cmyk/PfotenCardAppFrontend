@@ -12,6 +12,18 @@ export interface User {
     createdAt: Date;
     notifications_email?: boolean;
     notifications_push?: boolean;
+
+    notif_email_overall?: boolean;
+    notif_email_chat?: boolean;
+    notif_email_system?: boolean;
+    notif_email_booking?: boolean;
+    notif_email_alert?: boolean;
+
+    notif_push_overall?: boolean;
+    notif_push_chat?: boolean;
+    notif_push_system?: boolean;
+    notif_push_booking?: boolean;
+    notif_push_alert?: boolean;
 }
 
 export interface Appointment {
@@ -73,6 +85,18 @@ export interface Customer {
     is_active?: boolean;
     notifications_email?: boolean;
     notifications_push?: boolean;
+
+    notif_email_overall?: boolean;
+    notif_email_chat?: boolean;
+    notif_email_system?: boolean;
+    notif_email_booking?: boolean;
+    notif_email_alert?: boolean;
+
+    notif_push_overall?: boolean;
+    notif_push_chat?: boolean;
+    notif_push_system?: boolean;
+    notif_push_booking?: boolean;
+    notif_push_alert?: boolean;
 }
 
 export interface Transaction {
