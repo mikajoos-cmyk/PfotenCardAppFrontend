@@ -1448,9 +1448,16 @@ body {
 }
 
 .tx-button.topup {
-    background-color: var(--brand-green);
-    border-color: var(--brand-green);
+    background: linear-gradient(135deg, var(--brand-green), #16a34a);
+    border: none;
     color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.tx-button.topup:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #22c55e, #15803d);
+    box-shadow: 0 8px 15px rgba(34, 197, 94, 0.2);
 }
 
 .tx-button.topup .amount {
@@ -1463,9 +1470,16 @@ body {
 }
 
 .tx-button.debit {
-    background-color: var(--brand-red);
-    border-color: var(--brand-red);
+    background: linear-gradient(135deg, var(--brand-red), #dc2626);
+    border: none;
     color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.tx-button.debit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    box-shadow: 0 8px 15px rgba(239, 68, 68, 0.2);
 }
 
 .tx-button.debit .amount {

@@ -5,6 +5,8 @@ import Icon from '../components/ui/Icon';
 import KpiCard from '../components/ui/KpiCard';
 import InfoModal from '../components/modals/InfoModal'; // Importieren
 import { getInitials, getAvatarColorClass } from '../lib/utils';
+import TopUpModal from '../components/modals/TopUpModal'; // NEU
+import { Wallet } from 'lucide-react'; // NEU
 
 interface DashboardPageProps {
     customers: any[];
@@ -13,13 +15,18 @@ interface DashboardPageProps {
     onKpiClick: (type: string, color: string) => void;
     setView: (view: View) => void;
     appStatus?: AppStatus | null;
+    token: string | null; // NEU
+    fetchAppData: (force?: boolean) => void; // NEU
+    balanceConfig?: any; // NEU
 }
 
-const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus }) => {
+const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus, token, fetchAppData, balanceConfig }) => {
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
         isOpen: false, title: '', content: null, color: 'blue'
     });
+
+    const [isTopUpOpen, setIsTopUpOpen] = useState(false); // NEU
 
     const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const today = new Date();
@@ -97,8 +104,13 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
 
     return (
         <>
-            <header className="page-header">
+            <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h1>Willkommen, {currentUser.name}!</h1>
+                {(currentUser.role === 'customer' || currentUser.role === 'kunde') && (
+                    <button className="button button-primary" onClick={() => setIsTopUpOpen(true)}>
+                        <Wallet size={18} style={{ marginRight: '0.5rem' }} /> Guthaben aufladen
+                    </button>
+                )}
             </header>
 
             <LiveStatusBanner statusData={appStatus || null} />
@@ -178,6 +190,19 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                 <InfoModal title={modal.title} color={modal.color} onClose={() => setModal({ ...modal, isOpen: false })}>
                     {modal.content}
                 </InfoModal>
+            )}
+
+            {/* Top-Up Modal */}
+            {isTopUpOpen && (
+                <TopUpModal
+                    token={token}
+                    balanceConfig={balanceConfig}
+                    onClose={() => setIsTopUpOpen(false)}
+                    onSuccess={() => {
+                        setIsTopUpOpen(false);
+                        fetchAppData(true);
+                    }}
+                />
             )}
         </>
     );

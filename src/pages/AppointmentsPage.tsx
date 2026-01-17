@@ -112,6 +112,13 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validierung: Wenn Dropdown für Leistung sichtbar ist (Automatisierung aktiv), muss eine gewählt sein.
+        if (showLeistung && !formData.training_type_id) {
+            alert("Bitte wählen Sie eine Leistung aus (erforderlich für die aktive Automatisierung).");
+            return;
+        }
+
         const start = new Date(`${formData.date}T${formData.start_time}`);
         const end = new Date(`${formData.date}T${formData.end_time}`);
         onSave({
@@ -191,11 +198,14 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                             <div className="form-group">
                                 <label>Leistung (für Abrechnung & Fortschritt)</label>
                                 <select className="form-input" value={formData.training_type_id} onChange={e => setFormData({ ...formData, training_type_id: e.target.value })}>
-                                    <option value="">Keine Leistung</option>
+                                    <option value="">Leistung wählen...</option>
                                     {allServices.map(s => (
                                         <option key={s.id} value={s.id}>{s.name} ({s.default_price}€)</option>
                                     ))}
                                 </select>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
+                                    Wird benötigt, da Automatisierungen aktiv sind.
+                                </p>
                             </div>
                         )}
 
@@ -292,6 +302,12 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
                             <span style={{ fontWeight: 500 }}>{formatTime(date)}</span>
                         </div>
                     </div>
+                    {event.training_type && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                            <Icon name="activity" style={{ color: 'var(--brand-orange)' }} />
+                            <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
+                        </div>
+                    )}
                     {event.location && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                             <Icon name="mapPin" style={{ color: 'var(--primary-color)' }} />
@@ -721,7 +737,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         if (!apptId) return;
 
         try {
-            let results: any;
+            let results: any[];
             if (autoBillingEnabled) {
                 // billAllParticipants handles both billing AND progress on backend
                 results = await apiClient.billAllParticipants(apptId, token);
@@ -730,11 +746,22 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             }
 
             const successCount = results.filter((r: any) => r.status === 'success').length;
-            const errorCount = results.filter((r: any) => r.status === 'error').length;
+            const errors = results.filter((r: any) => r.status === 'error');
+            const errorCount = errors.length;
 
             let msg = `${successCount} Teilnehmer erfolgreich verarbeitet.`;
             if (errorCount > 0) {
-                msg += `\n${errorCount} Fehler aufgetreten.`;
+                msg += `\n\nFehler bei ${errorCount} Teilnehmer(n):`;
+                // Zeige die ersten paar Fehlermeldungen an
+                errors.slice(0, 5).forEach((err: any) => {
+                    // Falls der User im Resultat enthalten ist (Backend müsste das ggf. mitsenden oder wir suchen in currentParticipants)
+                    const participant = currentParticipants.find(p => p.id === err.booking_id);
+                    const name = participant?.user?.name || `ID ${err.booking_id}`;
+                    msg += `\n• ${name}: ${err.detail || 'Unbekannter Fehler'}`;
+                });
+                if (errorCount > 5) {
+                    msg += `\n... und ${errorCount - 5} weitere.`;
+                }
             }
             alert(msg);
             loadData();
@@ -983,6 +1010,12 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                         {event.location && <span className="event-location">&bull; {event.location}</span>}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                                                        {event.training_type && (
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--brand-orange)', background: 'var(--bg-accent-orange)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--warning-color-light)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                                <Icon name="activity" style={{ width: '10px', height: '10px' }} />
+                                                                {event.training_type.name}
+                                                            </div>
+                                                        )}
                                                         {event.trainer && (
                                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-card)', padding: '0.1rem 0.5rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                                                                 <Icon name="user" style={{ width: '10px', height: '10px' }} />
@@ -1121,7 +1154,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 onToggleAttendance={handleToggleAttendance}
                 onBillParticipant={handleBillParticipant}
                 onBillAll={handleBillAllParticipants}
-                showBilling={autoBillingEnabled}
+                showBilling={autoBillingEnabled || autoProgressEnabled}
                 showProgress={autoProgressEnabled}
             />
 

@@ -208,10 +208,10 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
             )}
 
             {isCreatingIntent && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-blur-[2px]">
-                    <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4">
-                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-                        <p className="font-medium text-slate-700">Bereite Zahlung vor...</p>
+                <div className="modal-overlay" style={{ zIndex: 3000 }}>
+                    <div className="modal-content" style={{ maxWidth: '300px', padding: '2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                        <Loader2 className="animate-spin" style={{ color: 'var(--brand-blue)' }} size={32} />
+                        <p className="font-medium">Bereite Zahlung vor...</p>
                     </div>
                 </div>
             )}

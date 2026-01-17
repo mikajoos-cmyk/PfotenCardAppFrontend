@@ -1255,6 +1255,9 @@ export default function App() {
                     }}
                     setView={handleSetView}
                     appStatus={appStatus}
+                    token={authToken}
+                    fetchAppData={fetchAppData}
+                    balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
                 />
             );
         }
