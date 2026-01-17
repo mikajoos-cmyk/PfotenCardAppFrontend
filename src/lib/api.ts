@@ -225,6 +225,17 @@ export const apiClient = {
         return apiClient.put(`/api/bookings/${bookingId}/attendance`, {}, token);
     },
 
+    billBooking: async (bookingId: number, token: string | null) => {
+        return apiClient.post(`/api/bookings/${bookingId}/bill`, {}, token);
+    },
+
+    billAllParticipants: async (appointmentId: number, token: string | null) => {
+        return apiClient.post(`/api/appointments/${appointmentId}/bill-all`, {}, token);
+    },
+    grantAllParticipants: async (appointmentId: number, token: string | null) => {
+        return apiClient.post(`/api/appointments/${appointmentId}/grant-progress`, {}, token);
+    },
+
     // --- NEWS ---
     getNews: async (token: string | null) => {
         return apiClient.get('/api/news', token);
@@ -284,6 +295,10 @@ export const apiClient = {
 
     updateAppStatus: async (data: { status: string, message: string }, token: string | null) => {
         return apiClient.put('/api/status', data, token);
+    },
+
+    createTopUpIntent: async (data: { amount: number, bonus: number }, token: string | null) => {
+        return apiClient.post('/api/stripe/create-topup-intent', data, token);
     }
 };
 
@@ -298,8 +313,10 @@ export interface Appointment {
     participants_count?: number;
     trainer_id?: number;
     target_level_ids?: number[];
+    training_type_id?: number;
     is_open_for_all?: boolean;
     trainer?: any;
+    training_type?: any;
     target_levels?: any[];
     created_at: string;
 }

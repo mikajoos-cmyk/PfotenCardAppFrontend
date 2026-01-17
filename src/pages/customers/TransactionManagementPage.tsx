@@ -2,6 +2,9 @@ import React, { FC, useState } from 'react';
 import { Customer, View, User, Transaction } from '../../types';
 import Icon from '../../components/ui/Icon';
 import TransactionConfirmationModal from '../../components/modals/TransactionConfirmationModal';
+import { StripePaymentModal } from '../../components/modals/StripePaymentModal';
+import { apiClient } from '../../lib/api';
+import { Loader2 } from 'lucide-react';
 
 interface TransactionManagementPageProps {
     customer: Customer;
@@ -13,18 +16,24 @@ interface TransactionManagementPageProps {
         allow_custom_top_up: boolean;
         top_up_options: { amount: number; bonus: number }[];
     };
+    authToken: string | null;
+    fetchAppData: () => Promise<void>;
 }
 
 const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
-    customer, setView, onConfirmTransaction, currentUser, services, balanceConfig
+    customer, setView, onConfirmTransaction, currentUser, services, balanceConfig, authToken, fetchAppData
 }) => {
     const [modalData, setModalData] = useState<any>(null);
     const [customTopup, setCustomTopup] = useState('');
     const [customDebitAmount, setCustomDebitAmount] = useState('');
     const [customDebitDesc, setCustomDebitDesc] = useState('');
+    const [stripeModalData, setStripeModalData] = useState<{ clientSecret: string; amount: number; bonus: number } | null>(null);
+    const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+
+    const isCustomer = currentUser.role === 'customer' || currentUser.role === 'kunde';
 
     // FIX: Dynamische Auflade-Optionen aus Config
-    const topups = (balanceConfig?.top_up_options && balanceConfig.top_up_options.length > 0)
+    let topups = (balanceConfig?.top_up_options && balanceConfig.top_up_options.length > 0)
         ? balanceConfig.top_up_options.map(opt => ({
             title: `Aufladung ${opt.amount}€`,
             amount: opt.amount,
@@ -36,6 +45,11 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
             { title: 'Aufladung 100€', amount: 100, bonus: 15 },
         ];
 
+    // Filter für Kunden: Nur Optionen mit Bonus anzeigen
+    if (isCustomer) {
+        topups = topups.filter(t => t.bonus > 0);
+    }
+
     // FIX: Dynamische Leistungen aus DB (TrainingTypes)
     const debits = (services && services.length > 0)
         ? services.map(s => ({
@@ -45,16 +59,39 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
         }))
         : [];
 
-    const handleTxClick = (data: any) => {
+    const handleTxClick = async (data: any) => {
         if (data.bonus !== undefined) {
             const totalAmount = data.amount + data.bonus;
-            setModalData({
-                title: data.title,
-                amount: totalAmount,
-                type: 'topup',
-                baseAmount: data.amount,
-                bonus: data.bonus
-            });
+
+            if (isCustomer) {
+                // Stripe Flow für Kunden
+                setIsCreatingIntent(true);
+                try {
+                    const response = await apiClient.createTopUpIntent({
+                        amount: data.amount,
+                        bonus: data.bonus
+                    }, authToken);
+                    setStripeModalData({
+                        clientSecret: response.clientSecret,
+                        amount: data.amount,
+                        bonus: data.bonus
+                    });
+                } catch (error) {
+                    console.error("Stripe Intent Error:", error);
+                    alert("Konnte Bezahlvorgang nicht starten. Bitte versuche es später erneut.");
+                } finally {
+                    setIsCreatingIntent(false);
+                }
+            } else {
+                // Admin Flow (direkte Buchung)
+                setModalData({
+                    title: data.title,
+                    amount: totalAmount,
+                    type: 'topup',
+                    baseAmount: data.amount,
+                    bonus: data.bonus
+                });
+            }
         } else {
             setModalData({
                 title: data.title,
@@ -96,7 +133,7 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
                     <Icon name="arrowLeft" />
                 </button>
                 <div className="detail-header-info">
-                    <h1>Transaktionen verwalten</h1>
+                    <h1>{isCustomer ? 'Guthaben aufladen' : 'Transaktionen verwalten'}</h1>
                     <p>für {customer.name}</p>
                 </div>
             </header>
@@ -118,7 +155,7 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
                         </button>
                     ))}
                 </div>
-                {(balanceConfig?.allow_custom_top_up !== false) && (
+                {(balanceConfig?.allow_custom_top_up !== false && !isCustomer) && (
                     <div className="custom-entry-form" style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
                         <input type="number" className="form-input" placeholder="Individuell..." value={customTopup} onChange={e => setCustomTopup(e.target.value)} />
                         <button className="button button-primary" onClick={handleCustomTopup}>Aufladen</button>
@@ -126,25 +163,27 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
                 )}
             </div>
 
-            <div className="tx-section debits">
-                <h3>Leistungen</h3>
-                {debits.length > 0 ? (
-                    <div className="tx-grid">
-                        {debits.map((d, idx) => (
-                            <button key={idx} className="tx-button debit" onClick={() => handleTxClick(d)} disabled={customer.balance + d.amount < 0}>
-                                <div className="info"><div className="title">{d.title}</div></div>
-                                <div className="amount">{d.amount.toFixed(0)} €</div>
-                            </button>
-                        ))}
-                    </div>
-                ) : <p className="text-gray-500 italic">Keine Leistungen konfiguriert.</p>}
+            {!isCustomer && (
+                <div className="tx-section debits">
+                    <h3>Leistungen</h3>
+                    {debits.length > 0 ? (
+                        <div className="tx-grid">
+                            {debits.map((d, idx) => (
+                                <button key={idx} className="tx-button debit" onClick={() => handleTxClick(d)} disabled={customer.balance + d.amount < 0}>
+                                    <div className="info"><div className="title">{d.title}</div></div>
+                                    <div className="amount">{d.amount.toFixed(0)} €</div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : <p className="text-gray-500 italic">Keine Leistungen konfiguriert.</p>}
 
-                <div className="custom-entry-form" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <input type="text" className="form-input" placeholder="Beschreibung" style={{ flexGrow: 2 }} value={customDebitDesc} onChange={e => setCustomDebitDesc(e.target.value)} />
-                    <input type="number" className="form-input" placeholder="Betrag" style={{ flexGrow: 1 }} value={customDebitAmount} onChange={e => setCustomDebitAmount(e.target.value)} />
-                    <button className="button button-danger" onClick={handleCustomDebit}>Abbuchen</button>
+                    <div className="custom-entry-form" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                        <input type="text" className="form-input" placeholder="Beschreibung" style={{ flexGrow: 2 }} value={customDebitDesc} onChange={e => setCustomDebitDesc(e.target.value)} />
+                        <input type="number" className="form-input" placeholder="Betrag" style={{ flexGrow: 1 }} value={customDebitAmount} onChange={e => setCustomDebitAmount(e.target.value)} />
+                        <button className="button button-danger" onClick={handleCustomDebit}>Abbuchen</button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {modalData && <TransactionConfirmationModal
                 customer={customer}
@@ -153,6 +192,29 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
                 onConfirm={() => { onConfirmTransaction(modalData); setModalData(null); }}
                 currentUser={currentUser}
             />}
+
+            {stripeModalData && (
+                <StripePaymentModal
+                    isOpen={!!stripeModalData}
+                    onClose={() => setStripeModalData(null)}
+                    onSuccess={() => {
+                        setStripeModalData(null);
+                        fetchAppData(); // Daten neu laden, um Guthaben zu aktualisieren
+                    }}
+                    clientSecret={stripeModalData.clientSecret}
+                    amount={stripeModalData.amount}
+                    bonus={stripeModalData.bonus}
+                />
+            )}
+
+            {isCreatingIntent && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/20 backdrop-blur-[2px]">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                        <p className="font-medium text-slate-700">Bereite Zahlung vor...</p>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

@@ -41,7 +41,7 @@ const getCategoryColor = (event: Appointment): string => {
 
 // --- MODALS ---
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, initialData }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], initialData?: Appointment | null }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -52,6 +52,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
         location: '',
         max_participants: 10,
         trainer_id: '',
+        training_type_id: '',
         target_level_ids: [] as number[],
         is_open_for_all: false
     });
@@ -83,6 +84,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                 location: initialData.location || '',
                 max_participants: initialData.max_participants || 10,
                 trainer_id: initialData.trainer_id?.toString() || '',
+                training_type_id: initialData.training_type_id?.toString() || '',
                 target_level_ids: (initialData.target_levels && initialData.target_levels.length > 0)
                     ? initialData.target_levels.map((l: any) => l.id)
                     : (initialData.target_level_ids || []),
@@ -99,6 +101,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                 location: '',
                 max_participants: 10,
                 trainer_id: '',
+                training_type_id: '',
                 target_level_ids: [],
                 is_open_for_all: false
             });
@@ -120,6 +123,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
             location: formData.location,
             max_participants: Number(formData.max_participants),
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
+            training_type_id: formData.training_type_id ? Number(formData.training_type_id) : null,
             target_level_ids: formData.target_level_ids
         });
     };
@@ -182,6 +186,18 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                             </div>
                         </div>
 
+
+                        {showLeistung && (
+                            <div className="form-group">
+                                <label>Leistung (für Abrechnung & Fortschritt)</label>
+                                <select className="form-input" value={formData.training_type_id} onChange={e => setFormData({ ...formData, training_type_id: e.target.value })}>
+                                    <option value="">Keine Leistung</option>
+                                    {allServices.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} ({s.default_price}€)</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         <div className="form-group">
                             <label>Trainer</label>
@@ -360,7 +376,17 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
     );
 };
 
-const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance }: { isOpen: boolean, onClose: () => void, bookings: Booking[], title: string, onToggleAttendance: (id: number) => void }) => {
+const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress }: {
+    isOpen: boolean,
+    onClose: () => void,
+    bookings: Booking[],
+    title: string,
+    onToggleAttendance: (id: number) => void,
+    onBillParticipant?: (id: number) => void,
+    onBillAll?: () => void,
+    showBilling?: boolean,
+    showProgress?: boolean
+}) => {
     const [activeTab, setActiveTab] = useState<'confirmed' | 'waitlist'>('confirmed');
 
     if (!isOpen) return null;
@@ -393,6 +419,15 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                     </button>
                 </div>
 
+                {activeTab === 'confirmed' && confirmedList.length > 0 && (showBilling || showProgress) && onBillAll && (
+                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button onClick={onBillAll} className="button button-primary button-small">
+                            <Icon name={showBilling ? "credit-card" : "check-circle"} />
+                            {showBilling && showProgress ? " Alle Abrechnen & Fortschritt" : showBilling ? " Alle Abrechnen" : " Alle Fortschritte erteilen"}
+                        </button>
+                    </div>
+                )}
+
                 <div className="tab-content-container" key={activeTab}>
                     {currentList.length === 0 ? <p className="text-gray-500 italic">Keine Einträge in dieser Liste.</p> : (
                         <ul className="active-customer-list">
@@ -423,14 +458,25 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                             </div>
                                         </div>
                                     </div>
-                                    {activeTab === 'confirmed' && b.status === 'confirmed' && (
-                                        <button
-                                            onClick={() => onToggleAttendance(b.id)}
-                                            className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
-                                        >
-                                            {b.attended ? <><Icon name="check" /> Anwesend</> : 'Abstempeln'}
-                                        </button>
-                                    )}
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {activeTab === 'confirmed' && b.status === 'confirmed' && showBilling && onBillParticipant && (
+                                            <button
+                                                onClick={() => onBillParticipant(b.id)}
+                                                className="button button-outline button-small"
+                                                title="Abrechnen"
+                                            >
+                                                <Icon name="credit-card" />
+                                            </button>
+                                        )}
+                                        {activeTab === 'confirmed' && b.status === 'confirmed' && (
+                                            <button
+                                                onClick={() => onToggleAttendance(b.id)}
+                                                className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
+                                            >
+                                                {b.attended ? <><Icon name="check" /> Anwesend</> : 'Abstempeln'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -461,6 +507,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [editingEvent, setEditingEvent] = useState<Appointment | null>(null);
     const [staffUsers, setStaffUsers] = useState<any[]>([]);
     const [allLevels, setAllLevels] = useState<any[]>([]);
+    const [allServices, setAllServices] = useState<any[]>([]);
 
     const [participantsOpen, setParticipantsOpen] = useState(false);
     const [currentParticipants, setCurrentParticipants] = useState<Booking[]>([]);
@@ -474,6 +521,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
     const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
     const [openForAllColor, setOpenForAllColor] = useState('#10b981');
+    const [autoBillingEnabled, setAutoBillingEnabled] = useState(false);
+    const [autoProgressEnabled, setAutoProgressEnabled] = useState(false);
 
 
     useEffect(() => {
@@ -508,8 +557,17 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             if (config && config.levels) {
                 setAllLevels(config.levels);
             }
-            if (config && config.tenant && config.tenant.config && config.tenant.config.branding) {
-                setOpenForAllColor(config.tenant.config.branding.open_for_all_color || '#10b981');
+            if (config && config.training_types) {
+                setAllServices(config.training_types);
+            }
+            if (config && config.tenant && config.tenant.config) {
+                const tc = config.tenant.config;
+                setAutoBillingEnabled(!!tc.auto_billing_enabled);
+                setAutoProgressEnabled(!!tc.auto_progress_enabled);
+
+                if (tc.branding) {
+                    setOpenForAllColor(tc.branding.open_for_all_color || '#10b981');
+                }
             }
             if (Array.isArray(bookings)) {
                 const bookingMap = new Map<number, string>();
@@ -638,6 +696,50 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         } catch (e) {
             console.error(e);
             alert("Konnte Teilnehmer nicht laden.");
+        }
+    };
+
+    const handleBillParticipant = async (bookingId: number) => {
+        if (!confirm("Guthaben für diesen Termin jetzt abziehen?")) return;
+        try {
+            await apiClient.billBooking(bookingId, token);
+            alert("Abrechnung erfolgreich.");
+            loadData();
+        } catch (e: any) {
+            alert(e.message || "Fehler bei der Abrechnung");
+        }
+    };
+
+    const handleBillAllParticipants = async () => {
+        if (!currentParticipants.some(b => b.status === 'confirmed')) {
+            alert("Keine bestätigten Teilnehmer zum Abrechnen.");
+            return;
+        }
+        if (!confirm(`Möchtest du wirklich alle ${currentParticipants.filter(b => b.status === 'confirmed').length} Teilnehmer gleichzeitig abrechnen?`)) return;
+
+        const apptId = currentParticipants[0]?.appointment_id;
+        if (!apptId) return;
+
+        try {
+            let results: any;
+            if (autoBillingEnabled) {
+                // billAllParticipants handles both billing AND progress on backend
+                results = await apiClient.billAllParticipants(apptId, token);
+            } else {
+                results = await apiClient.grantAllParticipants(apptId, token);
+            }
+
+            const successCount = results.filter((r: any) => r.status === 'success').length;
+            const errorCount = results.filter((r: any) => r.status === 'error').length;
+
+            let msg = `${successCount} Teilnehmer erfolgreich verarbeitet.`;
+            if (errorCount > 0) {
+                msg += `\n${errorCount} Fehler aufgetreten.`;
+            }
+            alert(msg);
+            loadData();
+        } catch (e: any) {
+            alert(e.message || "Fehler bei der Sammel-Aktion");
         }
     };
 
@@ -1006,7 +1108,9 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 onSave={handleSave}
                 allLevels={allLevels}
                 staffUsers={staffUsers}
+                allServices={allServices}
                 initialData={editingEvent}
+                showLeistung={autoBillingEnabled || autoProgressEnabled}
             />
 
             <ParticipantsModal
@@ -1015,6 +1119,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 bookings={currentParticipants}
                 title={currentApptTitle}
                 onToggleAttendance={handleToggleAttendance}
+                onBillParticipant={handleBillParticipant}
+                onBillAll={handleBillAllParticipants}
+                showBilling={autoBillingEnabled}
+                showProgress={autoProgressEnabled}
             />
 
             {selectedEvent && (

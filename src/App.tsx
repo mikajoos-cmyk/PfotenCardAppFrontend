@@ -1308,6 +1308,8 @@ export default function App() {
                         currentUser={loggedInUser}
                         services={appConfigData?.training_types || previewConfig.services || []}
                         balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
+                        authToken={authToken}
+                        fetchAppData={fetchAppData}
                     />
                 );
             }

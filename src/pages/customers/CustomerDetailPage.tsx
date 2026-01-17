@@ -223,6 +223,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id) })}>Guthaben verwalten</button>
                                         </>
                                     )}
+                                    {String(currentUser.id) === String(customer.id) && (currentUser.role === 'customer' || currentUser.role === 'kunde') && (
+                                        <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id) })}>Guthaben aufladen</button>
+                                    )}
                                 </>
                             )}
                         </>
