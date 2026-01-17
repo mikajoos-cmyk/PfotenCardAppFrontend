@@ -545,6 +545,11 @@ export default function App() {
                         console.error("Auth Change Error:", err);
                     }
                 }
+            } else if (event === 'TOKEN_REFRESHED' && session) {
+                // HIER DER FIX: Token erneuern, damit API Calls weiter funktionieren
+                console.log('PfotenCard: Token refreshed!', session.access_token.substring(0, 10) + '...');
+                localStorage.setItem('authToken', session.access_token);
+                setAuthToken(session.access_token);
             } else if (event === 'SIGNED_OUT') {
                 handleLogout();
             }

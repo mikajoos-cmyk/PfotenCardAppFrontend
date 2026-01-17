@@ -298,6 +298,7 @@ export interface Appointment {
     participants_count?: number;
     trainer_id?: number;
     target_level_ids?: number[];
+    is_open_for_all?: boolean;
     trainer?: any;
     target_levels?: any[];
     created_at: string;

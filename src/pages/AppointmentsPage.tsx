@@ -19,8 +19,16 @@ const formatDate = (date: Date) => new Intl.DateTimeFormat('de-DE', { weekday: '
 const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(date) + ' Uhr';
 
 // Farben basierend auf Keywords
-const getCategoryColor = (title: string): string => {
-    const t = title.toLowerCase();
+// Farben basierend auf Level oder Keywords
+const getCategoryColor = (event: Appointment): string => {
+    // 1. Wenn Level-Farbe vorhanden ist, nimm die erste
+    if (event.target_levels && event.target_levels.length > 0) {
+        const firstLevelWithColor = event.target_levels.find(l => l.color);
+        if (firstLevelWithColor) return firstLevelWithColor.color;
+    }
+
+    // 2. Fallback auf Keywords
+    const t = (event.title || "").toLowerCase();
     if (t.includes('welpe')) return 'orchid';
     if (t.includes('grund') || t.includes('basis') || t.includes('level 2')) return 'limegreen';
     if (t.includes('fort') || t.includes('level 3')) return 'skyblue';
@@ -39,12 +47,25 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
         description: '',
         date: '',
         start_time: '',
+        end_time: '',
         duration: 60,
         location: '',
         max_participants: 10,
         trainer_id: '',
-        target_level_ids: [] as number[]
+        target_level_ids: [] as number[],
+        is_open_for_all: false
     });
+
+    // Helper to calc end time
+    const calculateEndTime = (start: string, duration: number) => {
+        if (!start) return '';
+        try {
+            const [h, m] = start.split(':').map(Number);
+            const date = new Date();
+            date.setHours(h, m + duration);
+            return date.toTimeString().slice(0, 5); // HH:MM
+        } catch (e) { return ''; }
+    };
 
     useEffect(() => {
         if (initialData) {
@@ -57,13 +78,15 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                 description: initialData.description || '',
                 date: start.toISOString().split('T')[0],
                 start_time: start.toTimeString().slice(0, 5),
-                duration: dur > 0 ? dur : 60,
+                end_time: end.toTimeString().slice(0, 5),
+                duration: dur,
                 location: initialData.location || '',
                 max_participants: initialData.max_participants || 10,
                 trainer_id: initialData.trainer_id?.toString() || '',
                 target_level_ids: (initialData.target_levels && initialData.target_levels.length > 0)
                     ? initialData.target_levels.map((l: any) => l.id)
-                    : (initialData.target_level_ids || [])
+                    : (initialData.target_level_ids || []),
+                is_open_for_all: initialData.is_open_for_all || false
             });
         } else {
             setFormData({
@@ -71,11 +94,13 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                 description: '',
                 date: '',
                 start_time: '',
+                end_time: '',
                 duration: 60,
                 location: '',
                 max_participants: 10,
                 trainer_id: '',
-                target_level_ids: []
+                target_level_ids: [],
+                is_open_for_all: false
             });
         }
     }, [initialData, isOpen]);
@@ -85,12 +110,13 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const start = new Date(`${formData.date}T${formData.start_time}`);
-        const end = new Date(start.getTime() + formData.duration * 60000);
+        const end = new Date(`${formData.date}T${formData.end_time}`);
         onSave({
             title: formData.title,
             description: formData.description,
             start_time: start.toISOString(),
             end_time: end.toISOString(),
+            is_open_for_all: formData.is_open_for_all,
             location: formData.location,
             max_participants: Number(formData.max_participants),
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
@@ -118,15 +144,44 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                     <form onSubmit={handleSubmit} className="form-grid-single">
                         <div className="form-group"><label>Titel</label><input required className="form-input" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="z.B. Welpen-Spielstunde" /></div>
 
+
                         <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ flex: 1 }}><label>Datum</label><input type="date" required className="form-input" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
+                            <div style={{ flex: 1 }}><label>Datum</label><input type="date" required className="form-input" style={{ colorScheme: 'dark' }} value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
                             <div style={{ flex: 1 }}><label>Max. Teilnehmer</label><input type="number" required className="form-input" value={formData.max_participants} onChange={e => setFormData({ ...formData, max_participants: parseInt(e.target.value) })} /></div>
                         </div>
 
                         <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ flex: 1 }}><label>Startzeit</label><input type="time" required className="form-input" value={formData.start_time} onChange={e => setFormData({ ...formData, start_time: e.target.value })} /></div>
-                            <div style={{ flex: 1 }}><label>Dauer (Minuten)</label><input type="number" required className="form-input" value={formData.duration} onChange={e => setFormData({ ...formData, duration: parseInt(e.target.value) })} /></div>
+                            <div style={{ flex: 1 }}>
+                                <label>Startzeit</label>
+                                <input
+                                    type="time"
+                                    required
+                                    className="form-input"
+                                    style={{ colorScheme: 'dark' }}
+                                    value={formData.start_time}
+                                    onChange={e => {
+                                        const newStart = e.target.value;
+                                        const newEnd = calculateEndTime(newStart, formData.duration);
+                                        setFormData({ ...formData, start_time: newStart, end_time: newEnd });
+                                    }}
+                                />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <label>Dauer (Min)</label>
+                                <input
+                                    type="number"
+                                    required
+                                    className="form-input"
+                                    value={formData.duration}
+                                    onChange={e => {
+                                        const newDur = parseInt(e.target.value) || 0;
+                                        const newEnd = calculateEndTime(formData.start_time, newDur);
+                                        setFormData({ ...formData, duration: newDur, end_time: newEnd });
+                                    }}
+                                />
+                            </div>
                         </div>
+
 
                         <div className="form-group">
                             <label>Trainer</label>
@@ -138,22 +193,36 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, init
                             </select>
                         </div>
 
-                        <div className="form-group">
-                            <label>Für Level (Mehrfachauswahl)</label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                {allLevels.map(lvl => (
-                                    <button
-                                        key={lvl.id}
-                                        type="button"
-                                        onClick={() => toggleLevel(lvl.id)}
-                                        className={`button button-small ${formData.target_level_ids.includes(lvl.id) ? 'button-primary' : 'button-outline'}`}
-                                        style={{ fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}
-                                    >
-                                        {lvl.name}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                            <label style={{ margin: 0 }}>Alle dürfen kommen (Level-System deaktivieren)</label>
+                            <label className="switch">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.is_open_for_all}
+                                    onChange={e => setFormData({ ...formData, is_open_for_all: e.target.checked })}
+                                />
+                                <span className="slider round"></span>
+                            </label>
                         </div>
+
+                        {!formData.is_open_for_all && (
+                            <div className="form-group">
+                                <label>Für Level (Mehrfachauswahl)</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                    {allLevels.map(lvl => (
+                                        <button
+                                            key={lvl.id}
+                                            type="button"
+                                            onClick={() => toggleLevel(lvl.id)}
+                                            className={`button button-small ${formData.target_level_ids.includes(lvl.id) ? 'button-primary' : 'button-outline'}`}
+                                            style={{ fontSize: '0.8rem', padding: '0.2rem 0.6rem' }}
+                                        >
+                                            {lvl.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="form-group"><label>Ort</label><input className="form-input" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Hundeplatz / Online" /></div>
                         <div className="form-group"><label>Beschreibung</label><textarea className="form-input" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." /></div>
@@ -176,16 +245,21 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
     const isPast = new Date(event.start_time) < new Date();
     const date = new Date(event.start_time);
 
-    // Header Farbe basierend auf Event-Titel
-    const headerColorClass = getCategoryColor(event.title) === 'orchid' ? 'purple'
-        : getCategoryColor(event.title) === 'tomato' ? 'red'
+    // Header Farbe basierend auf Event-Titel oder Level-Farbe
+    const levelColor = getCategoryColor(event);
+    const headerColorClass = levelColor === 'orchid' ? 'purple'
+        : levelColor === 'tomato' ? 'red'
             : 'blue';
+
+    const headerStyle = !['purple', 'red', 'blue'].includes(headerColorClass)
+        ? { backgroundColor: levelColor }
+        : {};
 
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className={`modal-header ${headerColorClass}`}>
+                <div className={`modal-header ${headerColorClass}`} style={headerStyle}>
                     <h2 style={{ color: 'white' }}>{event.title}</h2>
                     <button className="close-button" onClick={onClose}><Icon name="x" /></button>
                 </div>
@@ -227,7 +301,11 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
                         <div>
                             <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.25rem' }}>Zielgruppe</h4>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                                {event.target_levels && event.target_levels.length > 0 ? (
+                                {event.is_open_for_all ? (
+                                    <span style={{ fontSize: '0.75rem', padding: '0.1rem 0.6rem', borderRadius: '12px', background: 'var(--bg-accent-success)', color: 'var(--brand-green)', fontWeight: 600, border: '1px solid var(--success-color-light)' }}>
+                                        Alle dürfen kommen
+                                    </span>
+                                ) : event.target_levels && event.target_levels.length > 0 ? (
                                     event.target_levels.map((lvl: any) => (
                                         <span key={lvl.id} style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--bg-accent)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}>
                                             {lvl.name}
@@ -392,6 +470,12 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     // Detail Modal State
     const [selectedEvent, setSelectedEvent] = useState<Appointment | null>(null);
 
+    const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
+    // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
+    const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
+    const [openForAllColor, setOpenForAllColor] = useState('#10b981');
+
+
     useEffect(() => {
         loadData();
     }, [token, user]);
@@ -423,6 +507,9 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             setStaffUsers(staff);
             if (config && config.levels) {
                 setAllLevels(config.levels);
+            }
+            if (config && config.tenant && config.tenant.config && config.tenant.config.branding) {
+                setOpenForAllColor(config.tenant.config.branding.open_for_all_color || '#10b981');
             }
             if (Array.isArray(bookings)) {
                 const bookingMap = new Map<number, string>();
@@ -592,9 +679,45 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         // Zeige auch Events von heute an (Hours 0 setzten)
         const displayStart = new Date(now.setHours(0, 0, 0, 0));
 
-        const futureEvents = appointments
-            .filter(a => new Date(a.start_time) >= displayStart)
-            .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+        let filtered = appointments
+            .filter(a => {
+                const nowTime = now.getTime();
+                const eventTime = new Date(a.start_time).getTime();
+                // "Heute" beginnt um 00:00 - alles davor ist Vergangenheit (historisch für heute relevant? 
+                // Meistens will man ab "jetzt" oder ab "heute morgen" sehen.
+                // Logik für "Zukunft" = Ab heute (displayStart).
+                // Logik für "Vergangenheit" = Vor heute (displayStart).
+
+                const isFutureOrToday = eventTime >= displayStart.getTime();
+
+                if (activeTab === 'mine') {
+                    // 1. Muss gebucht sein
+                    if (!myBookings.has(a.id)) return false;
+
+                    // 2. Zeitfilter beachten
+                    if (bookingTimeFilter === 'future') {
+                        return isFutureOrToday;
+                    } else {
+                        // Vergangenheit
+                        return !isFutureOrToday;
+                    }
+                }
+
+                // Tab "Alle": Nur Zukunft/Heute anzeigen (Standardverhalten)
+                return isFutureOrToday;
+            });
+
+        const sortedEvents = filtered.sort((a, b) => {
+            const timeA = new Date(a.start_time).getTime();
+            const timeB = new Date(b.start_time).getTime();
+
+            // Bei Vergangenheit: Neueste zuerst (damit man nicht scrollen muss für das letzte Event)
+            if (activeTab === 'mine' && bookingTimeFilter === 'past') {
+                return timeB - timeA;
+            }
+            // Sonst (Zukunft): Nächste Events zuerst
+            return timeA - timeB;
+        });
 
         const groups: { header: string; events: Appointment[] }[] = [];
         let currentGroup: { header: string; events: Appointment[] } | null = null;
@@ -608,7 +731,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
         }
 
-        futureEvents.forEach(event => {
+        sortedEvents.forEach(event => {
             const date = new Date(event.start_time);
             const year = date.getFullYear();
             const week = getWeek(date);
@@ -626,7 +749,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         });
 
         return groups;
-    }, [appointments]);
+    }, [appointments, activeTab, bookingTimeFilter, myBookings]);
 
     return (
         <div className="appointments-page-container">
@@ -651,6 +774,55 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
             <LiveStatusBanner statusData={appStatus || null} />
 
+            {/* Color Legend */}
+            <div className="color-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: openForAllColor }}></span>
+                    <span>Alle Level</span>
+                </div>
+                {allLevels.map(lvl => (
+                    <div key={lvl.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: lvl.color || 'gold' }}></span>
+                        <span>{lvl.name}</span>
+                    </div>
+                ))}
+            </div>
+
+            <div className="segmented-tabs" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+                <button
+                    onClick={() => setActiveTab('all')}
+                    className={`segmented-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+                >
+                    Alle Termine
+                </button>
+                <button
+                    onClick={() => setActiveTab('mine')}
+                    className={`segmented-tab-btn ${activeTab === 'mine' ? 'active' : ''}`}
+                >
+                    Meine Buchungen
+                </button>
+            </div>
+
+            {/* Sub-Filter für "Meine Buchungen" */}
+            {activeTab === 'mine' && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
+                    <button
+                        className={`button ${bookingTimeFilter === 'future' ? 'button-primary' : 'button-outline'}`}
+                        style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                        onClick={() => setBookingTimeFilter('future')}
+                    >
+                        Aktuell & Kommend
+                    </button>
+                    <button
+                        className={`button ${bookingTimeFilter === 'past' ? 'button-primary' : 'button-outline'}`}
+                        style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                        onClick={() => setBookingTimeFilter('past')}
+                    >
+                        Vergangenheit
+                    </button>
+                </div>
+            )}
+
             {loading ? <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Lade Termine...</div> : (
                 <div className="event-list-container">
                     {eventsByWeek.length === 0 ? (
@@ -669,19 +841,40 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                     {group.events.map(event => {
                                         const date = new Date(event.start_time);
                                         const isFull = (event.participants_count || 0) >= event.max_participants;
-                                        const colorClass = `cat-${getCategoryColor(event.title)}`;
                                         const free = event.max_participants - (event.participants_count || 0);
                                         const isBooked = myBookings.has(event.id);
-
                                         const bookingStatus = myBookings.get(event.id); // 'confirmed' oder 'waitlist'
+
+                                        const targetLevels = event.target_levels || [];
+                                        let barColors = targetLevels.map((l: any) => l.color || 'gold');
+                                        if (event.is_open_for_all) {
+                                            barColors = [openForAllColor];
+                                        } else if (barColors.length === 0) {
+                                            barColors.push('gold');
+                                        }
 
                                         return (
                                             <li
                                                 key={event.id}
-                                                className={`event-item-styled ${colorClass}`}
+                                                className="event-item-styled"
+                                                style={{ position: 'relative', overflow: 'hidden' }}
                                             >
+                                                {/* Neuer Farbbalken links */}
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    left: 0,
+                                                    top: 0,
+                                                    bottom: 0,
+                                                    width: '8px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column'
+                                                }}>
+                                                    {barColors.map((color: string, i: number) => (
+                                                        <div key={i} style={{ flex: 1, backgroundColor: color }} />
+                                                    ))}
+                                                </div>
                                                 {/* Klickbarer Bereich für Details */}
-                                                <div className="event-details" onClick={() => setSelectedEvent(event)}>
+                                                <div className="event-details" style={{ paddingLeft: '1.25rem' }} onClick={() => setSelectedEvent(event)}>
                                                     <span className="event-title">{event.title}</span>
                                                     <div className="event-line-2">
                                                         <span>{formatDate(date)} &bull; {formatTime(date)}</span>

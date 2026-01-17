@@ -36,8 +36,19 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
         reminder_offset_minutes: user?.reminder_offset_minutes ?? 60,
     });
 
+    // Track if we have synced with the user prop for this open session
+    const hasSyncedRef = React.useRef(false);
+
+    // Reset sync flag when modal closes
     useEffect(() => {
-        if (user && isOpen) {
+        if (!isOpen) {
+            hasSyncedRef.current = false;
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        // Only sync if we haven't synced yet for this session
+        if (user && isOpen && !hasSyncedRef.current) {
             setSettings({
                 notif_email_overall: user.notif_email_overall ?? true,
                 notif_email_chat: user.notif_email_chat ?? true,
@@ -55,6 +66,7 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
 
                 reminder_offset_minutes: user.reminder_offset_minutes ?? 60,
             });
+            hasSyncedRef.current = true;
         }
     }, [user, isOpen]);
 
