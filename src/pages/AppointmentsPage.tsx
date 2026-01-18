@@ -438,7 +438,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                 {activeTab === 'confirmed' && confirmedList.length > 0 && (showBilling || showProgress) && onBillAll && (
                     <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
                         <button onClick={onBillAll} className="button button-primary button-small">
-                            <Icon name={showBilling ? "credit-card" : "check-circle"} />
+                            <Icon name={showBilling ? "dollar" : "check-circle"} />
                             {showBilling && showProgress ? " Alle Abrechnen & Fortschritt" : showBilling ? " Alle Abrechnen" : " Alle Fortschritte erteilen"}
                         </button>
                     </div>
@@ -481,7 +481,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                                 className="button button-outline button-small"
                                                 title="Abrechnen"
                                             >
-                                                <Icon name="credit-card" />
+                                                <Icon name="dollar" />
                                             </button>
                                         )}
                                         {activeTab === 'confirmed' && b.status === 'confirmed' && (
@@ -820,8 +820,15 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 const isFutureOrToday = eventTime >= displayStart.getTime();
 
                 if (activeTab === 'mine') {
-                    // 1. Muss gebucht sein
-                    if (!myBookings.has(a.id)) return false;
+                    // 1. Rollen-basierte Filterung
+                    const isStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
+                    if (isStaff) {
+                        // Für Mitarbeiter: Kurse anzeigen, bei denen sie Trainer sind
+                        if (a.trainer_id !== user?.id) return false;
+                    } else {
+                        // Für Kunden: Nur gebuchte Termine
+                        if (!myBookings.has(a.id)) return false;
+                    }
 
                     // 2. Zeitfilter beachten
                     if (bookingTimeFilter === 'future') {
@@ -928,7 +935,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     onClick={() => setActiveTab('mine')}
                     className={`segmented-tab-btn ${activeTab === 'mine' ? 'active' : ''}`}
                 >
-                    Meine Buchungen
+                    {(user?.role === 'admin' || user?.role === 'mitarbeiter') ? 'Meine Kurse' : 'Meine Buchungen'}
                 </button>
             </div>
 

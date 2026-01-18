@@ -18,9 +18,10 @@ interface DashboardPageProps {
     token: string | null; // NEU
     fetchAppData: (force?: boolean) => void; // NEU
     balanceConfig?: any; // NEU
+    activeModules?: string[]; // NEU
 }
 
-const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus, token, fetchAppData, balanceConfig }) => {
+const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus, token, fetchAppData, balanceConfig, activeModules }) => {
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
         isOpen: false, title: '', content: null, color: 'blue'
@@ -106,7 +107,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
         <>
             <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h1>Willkommen, {currentUser.name}!</h1>
-                {(currentUser.role === 'customer' || currentUser.role === 'kunde') && (
+                {(currentUser.role === 'customer' || currentUser.role === 'kunde') && activeModules?.includes('balance_topup') && (
                     <button className="button button-primary" onClick={() => setIsTopUpOpen(true)}>
                         <Wallet size={18} style={{ marginRight: '0.5rem' }} /> Guthaben aufladen
                     </button>

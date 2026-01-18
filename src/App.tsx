@@ -1258,6 +1258,7 @@ export default function App() {
                     token={authToken}
                     fetchAppData={fetchAppData}
                     balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
+                    activeModules={activeModules}
                 />
             );
         }
