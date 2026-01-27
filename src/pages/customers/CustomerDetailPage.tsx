@@ -3,6 +3,7 @@ import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
 import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet } from '../../lib/utils';
 import { API_BASE_URL, apiClient } from '../../lib/api';
+import { hasPermission } from '../../lib/permissions';
 import Icon from '../../components/ui/Icon';
 import InfoModal from '../../components/modals/InfoModal';
 import DocumentViewerModal from '../../components/modals/DocumentViewerModal';
@@ -12,7 +13,7 @@ interface CustomerDetailPageProps {
     customer: any;
     transactions: any[];
     setView: (view: View) => void;
-    handleLevelUp: (customerId: string, newLevelId: number) => void;
+    handleLevelUp: (customerId: string, newLevelId: number, dogId?: number) => void;
     onSave: (user: any, dog: any) => Promise<void>;
     currentUser: any;
     users: any[];
@@ -31,13 +32,21 @@ interface CustomerDetailPageProps {
     isDarkMode?: boolean;
     // NEU
     isPreviewMode?: boolean;
+    onConfirmTransaction: (txData: {
+        title: string;
+        amount: number;
+        type: 'topup' | 'debit';
+        meta?: { requirementId?: string };
+        baseAmount?: number;
+        dogId?: number | null;
+    }) => Promise<void>;
 }
 
 const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, authToken, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
-    wording, isDarkMode, isPreviewMode
+    wording, isDarkMode, isPreviewMode, onConfirmTransaction
 }) => {
 
     const levelTerm = wording?.level || 'Level';
@@ -46,14 +55,21 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const nameParts = customer.name ? customer.name.split(' ') : [''];
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(' ');
-    const dog = customer.dogs && customer.dogs.length > 0 ? customer.dogs[0] : null;
-    const dogName = dog?.name || '-';
+
+    // NEU: Dog-Tab Logik
+    const dogs = customer.dogs || [];
+    const [activeDogId, setActiveDogId] = useState<number | null>(dogs.length > 0 ? dogs[0].id : null);
+
+    const activeDog = dogs.find((d: any) => d.id === activeDogId) || (dogs.length > 0 ? dogs[0] : null);
+    const dogName = activeDog?.name || '-';
 
     // Levels laden oder Mock nutzen
     const levelsToUse = levels || LEVELS;
 
     // FIX: Initiales Level bestimmen (vermeidet Fehler, wenn ID 1 nicht existiert)
-    const getInitialLevelId = () => {
+    const getInitialLevelId = (targetDog: any = null) => {
+        const dogToUse = targetDog || activeDog;
+        if (dogToUse?.current_level_id) return dogToUse.current_level_id;
         if (customer.level_id) return customer.level_id;
         if (customer.current_level_id) return customer.current_level_id;
         // Wenn kein Level gesetzt ist, nimm das mit dem niedrigsten Rang (Standard: Level 1)
@@ -65,7 +81,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         return 1; // Fallback
     };
 
-    const [editingSection, setEditingSection] = useState<'personal' | 'balance' | 'level' | null>(null);
+    const [editingSection, setEditingSection] = useState<'personal' | 'balance' | 'level' | 'additional' | null>(null);
     const isEditing = editingSection !== null;
     const [editedData, setEditedData] = useState({
         firstName: '', lastName: '', email: '', phone: '', dogName: '', chip: '', breed: '', birth_date: '',
@@ -91,16 +107,16 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         }
     }, []);
 
-    const handleStartEditing = (section: 'personal' | 'balance' | 'level') => {
+    const handleStartEditing = (section: 'personal' | 'balance' | 'level' | 'additional') => {
         setEditedData({
             firstName: firstName,
             lastName: lastName,
             email: customer.email || '',
             phone: customer.phone || '',
-            dogName: dog?.name || '',
-            chip: dog?.chip || '',
-            breed: dog?.breed || '',
-            birth_date: dog?.birth_date || '',
+            dogName: activeDog?.name || '',
+            chip: activeDog?.chip || '',
+            breed: activeDog?.breed || '',
+            birth_date: activeDog?.birth_date || '',
             balance: customer.balance || 0,
             levelId: currentLevelId
         });
@@ -129,8 +145,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
         let dogPayload = null;
         if (editedData.dogName) {
-            if (dog) {
-                dogPayload = { ...dog, name: editedData.dogName, chip: editedData.chip, breed: editedData.breed, birth_date: editedData.birth_date };
+            if (activeDog) {
+                dogPayload = { ...activeDog, name: editedData.dogName, chip: editedData.chip, breed: editedData.breed, birth_date: editedData.birth_date, current_level_id: editedData.levelId };
             } else {
                 dogPayload = { name: editedData.dogName, chip: editedData.chip, breed: editedData.breed, birth_date: editedData.birth_date };
             }
@@ -150,15 +166,12 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         }
     };
 
-    // Helper Vars
-    const canLevelUp = areLevelRequirementsMet(customer, levelsToUse);
     const customerTransactions = transactions.filter(t => t.user_id === customer.id);
-    const creator = users.find(u => u.id === customer.createdBy);
-    const currentLevelId = customer.level_id || customer.current_level_id || getInitialLevelId();
-
-    // Button nur anzeigen wenn möglich und nicht das letzte Level
     const lastLevel = levelsToUse[levelsToUse.length - 1];
-    const showLevelUpButton = canLevelUp && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (currentLevelId !== lastLevel?.id);
+    const currentLevelId = activeDog?.current_level_id || customer.level_id || customer.current_level_id || getInitialLevelId();
+    const canDoLevelUpCurrent = areLevelRequirementsMet(customer, levelsToUse, activeDogId || undefined);
+
+    const showLevelUpButton = canDoLevelUpCurrent && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (currentLevelId !== lastLevel?.id);
 
     let displayLevel = levelsToUse.find((l: any) => l.id === currentLevelId) || levelsToUse[0];
     if (customer.is_vip) { displayLevel = { ...VIP_LEVEL, name: `${vipTerm}-Kunde` }; }
@@ -176,6 +189,30 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                 <span className="req-progress">{currentCount} / {req.required}</span>
             </li>
         );
+
+    };
+
+    const handleToggleAdditionalService = async (req: any, levelId: number) => {
+        // Prüfen ob bereits erledigt
+        const progress = getProgressForLevel(customer, levelId, levelsToUse);
+        const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
+        const currentCount = progress[reqKey] || 0;
+        const isCompleted = currentCount >= (req.required_count || req.required || 1);
+
+        if (isCompleted) {
+            // Optional: Löschen/Rückgängig machen (aktuell nicht gefordert, aber hier Platzhalter)
+            // alert("Bereits erledigt.");
+            return;
+        }
+
+        // Neue 0€ Transaktion anlegen
+        await onConfirmTransaction({
+            title: `Zusatzleistung: ${req.name || 'Unbekannt'}`,
+            amount: 0,
+            type: 'debit', // oder 'info' wenn unterstützt, aber debit 0€ ist ok
+            meta: { requirementId: reqKey },
+            dogId: activeDogId
+        });
     };
 
     const customerDocuments = customer.documents || [];
@@ -214,17 +251,19 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     )}
                                     {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
                                         <>
-                                            <button
-                                                className="button button-outline"
-                                                style={{ borderColor: 'var(--brand-red)', color: 'var(--brand-red)' }}
-                                                onClick={() => onDeleteUserClick(customer)}>
-                                                Kunde löschen
-                                            </button>
-                                            <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id) })}>Guthaben verwalten</button>
+                                            {hasPermission(currentUser, 'can_delete_customers') && (
+                                                <button
+                                                    className="button button-outline"
+                                                    style={{ borderColor: 'var(--brand-red)', color: 'var(--brand-red)' }}
+                                                    onClick={() => onDeleteUserClick(customer)}>
+                                                    Kunde löschen
+                                                </button>
+                                            )}
+                                            <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id), dogId: activeDogId || undefined })}>Guthaben verwalten</button>
                                         </>
                                     )}
                                     {String(currentUser.id) === String(customer.id) && (currentUser.role === 'customer' || currentUser.role === 'kunde') && (
-                                        <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id) })}>Guthaben aufladen</button>
+                                        <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id), dogId: activeDogId || undefined })}>Guthaben aufladen</button>
                                     )}
                                 </>
                             )}
@@ -236,7 +275,44 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
             <div className="detail-grid">
                 <div className="main-col">
                     <div className="content-box">
-                        <h2 style={{ paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>Persönliche Daten</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
+                            <h2>Persönliche Daten</h2>
+                            <div className="dog-tabs" style={{ display: 'flex', gap: '0.25rem' }}>
+                                {dogs.map((d: any) => (
+                                    <button
+                                        key={d.id}
+                                        className={`tab-button ${activeDogId === d.id ? 'active' : ''}`}
+                                        onClick={() => setActiveDogId(d.id)}
+                                        style={{
+                                            padding: '0.4rem 0.8rem',
+                                            fontSize: '0.8rem',
+                                            borderRadius: '0.5rem',
+                                            border: '1px solid var(--border-color)',
+                                            background: activeDogId === d.id ? 'var(--primary-color)' : 'transparent',
+                                            color: activeDogId === d.id ? 'white' : 'var(--text-primary)',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        {d.name}
+                                    </button>
+                                ))}
+                                <button
+                                    className="tab-button"
+                                    onClick={() => setDogFormModal({ isOpen: true, dog: null })}
+                                    style={{
+                                        padding: '0.4rem 0.8rem',
+                                        fontSize: '0.8rem',
+                                        borderRadius: '0.5rem',
+                                        border: '1px dashed var(--border-color)',
+                                        background: 'transparent',
+                                        color: 'var(--text-secondary)',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
                         <div className="personal-data-container">
                             <div className={`personal-data-avatar ${getAvatarColorClass(firstName)}`}>
                                 {getInitials(firstName, lastName)}
@@ -281,21 +357,21 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <Icon name="paw" />
                                     <div className="field-content">
                                         <label>Rasse</label>
-                                        {editingSection === 'personal' ? <input type="text" name="breed" value={editedData.breed} onChange={handleInputChange} /> : <p>{dog?.breed || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="text" name="breed" value={editedData.breed} onChange={handleInputChange} /> : <p>{activeDog?.breed || '-'}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
                                     <Icon name="calendar" />
                                     <div className="field-content">
                                         <label>Geburtstag</label>
-                                        {editingSection === 'personal' ? <input type="date" name="birth_date" value={editedData.birth_date} onChange={handleInputChange} /> : <p>{dog?.birth_date || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="date" name="birth_date" value={editedData.birth_date} onChange={handleInputChange} /> : <p>{activeDog?.birth_date || '-'}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
                                     <Icon name="calendar" />
                                     <div className="field-content">
                                         <label>Chipnummer</label>
-                                        {editingSection === 'personal' ? <input type="text" name="chip" value={editedData.chip} onChange={handleInputChange} /> : <p>{dog?.chip || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="text" name="chip" value={editedData.chip} onChange={handleInputChange} /> : <p>{activeDog?.chip || '-'}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -376,7 +452,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             ))}
                                         </select>
                                     ) : (
-                                        <span className="value">{`${levelTerm} ${(customer.level_id || customer.current_level_id) ? levelsToUse.findIndex((l: any) => l.id === (customer.level_id || customer.current_level_id)) + 1 : 1}`}</span>
+                                        <span className="value">{`${levelTerm} ${currentLevelId ? levelsToUse.findIndex((l: any) => l.id === currentLevelId) + 1 : 1}`}</span>
                                     )}
                                 </div>
                             </div>
@@ -420,11 +496,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 const mainRequirements = requirements.filter((r: any) => !r.is_additional);
 
                                 // Prüfen ob Anforderungen erfüllt für Aufstieg
+                                const currentProgress = getProgressForLevel(customer, level.id, levelsToUse, activeDogId || undefined);
                                 const requirementsMet = requirements.every((r: any) => {
-                                    const progress = getProgressForLevel(customer, level.id, levelsToUse);
                                     // Wir prüfen sowohl die ID als String als auch als Zahl
                                     const reqKey = r.training_type_id ? String(r.training_type_id) : String(r.id);
-                                    const count = progress[reqKey] || 0;
+                                    const count = currentProgress[reqKey] || 0;
                                     return count >= (r.required || r.required_count);
                                 });
 
@@ -449,7 +525,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                                 const requiredCount = r.required_count || r.required;
                                                                 const renderObj = { id: reqId, name: reqName, required: requiredCount };
 
-                                                                return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
+                                                                return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse, activeDogId || undefined));
                                                             })}
                                                         </ul>
                                                     ) : (
@@ -459,7 +535,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                     {canDoLevelUp && !isLast && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
                                                         <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
                                                             {/* Nimm die ID des nächsten Levels aus dem Array */}
-                                                            <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), levelsToUse[index + 1].id)}>
+                                                            <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), levelsToUse[index + 1].id, activeDogId || undefined)}>
                                                                 {levelTerm} Aufsteigen!
                                                             </button>
                                                         </div>
@@ -476,7 +552,19 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     {/* ZUSATZLEISTUNGEN SEKTION MIT HINWEIS */}
                     {levelsToUse.some((l: any) => l.has_additional_requirements) && (
                         <div className="level-progress-container" style={{ marginTop: '1.5rem' }}>
-                            <h2 style={{ marginBottom: '0.5rem' }}>Zusatz-Veranstaltungen</h2>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                <h2>Zusatz-Veranstaltungen</h2>
+                                {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                    <button className="button-as-link" onClick={() => handleStartEditing('additional')} style={{ padding: 0, height: 'auto' }}>
+                                        <Icon name="edit" width={14} height={14} />
+                                    </button>
+                                )}
+                                {editingSection === 'additional' && (
+                                    <button className="button-as-link" onClick={handleCancelEdit} style={{ padding: 0, height: 'auto', color: 'var(--success-color)' }}>
+                                        <Icon name="check" width={16} height={16} />
+                                    </button>
+                                )}
+                            </div>
                             {levelsToUse.filter((l: any) => l.has_additional_requirements).map((level: any) => (
                                 <div key={`additional-${level.id}`} style={{ marginBottom: '1.5rem' }}>
                                     <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
@@ -491,6 +579,22 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                     const reqName = r.name || (r.training_type ? r.training_type.name : 'Zusatzleistung');
                                                     const requiredCount = r.required_count || r.required;
                                                     const renderObj = { id: reqId, name: reqName, required: requiredCount };
+
+                                                    if (editingSection === 'additional' && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter')) {
+                                                        const progress = getProgressForLevel(customer, level.id, levelsToUse);
+                                                        const currentCount = Math.min(progress[String(reqId)] || 0, requiredCount);
+                                                        const isCompleted = currentCount >= requiredCount;
+
+                                                        return (
+                                                            <li key={reqId} style={{ cursor: 'pointer' }} onClick={() => handleToggleAdditionalService(r, level.id)}>
+                                                                <div className={`req-icon ${isCompleted ? 'completed' : 'incomplete'}`}>
+                                                                    {isCompleted ? <Icon name="check" /> : <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid var(--text-secondary)' }}></div>}
+                                                                </div>
+                                                                <span className="req-text">{reqName}</span>
+                                                            </li>
+                                                        );
+                                                    }
+
                                                     return renderRequirement(renderObj, () => getProgressForLevel(customer, level.id, levelsToUse));
                                                 })
                                             }

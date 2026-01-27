@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { apiClient } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { NewsPost, User } from '../types';
+import { hasPermission } from '../lib/permissions';
 import { MOCK_NEWS } from '../lib/mockData';
 import Icon from '../components/ui/Icon';
 
@@ -203,7 +204,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                     <h1>Neuigkeiten</h1>
                     <p>Aktuelle Informationen und Updates</p>
                 </div>
-                {isAdminOrStaff && (
+                {isAdminOrStaff && hasPermission(user, 'can_create_messages') && (
                     <button
                         onClick={() => setIsCreating(true)}
                         className="button button-primary"
@@ -250,7 +251,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                                     <div className="news-item-header">
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                                             <h2 className="news-item-title">{post.title}</h2>
-                                            {isAdminOrStaff && (
+                                            {isAdminOrStaff && hasPermission(user, 'can_create_messages') && (
                                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                     <button
                                                         onClick={() => handleEditClick(post)}

@@ -17,7 +17,7 @@ export const getAvatarColorClass = (name: string) => {
 
 // --- Level Logic (Dynamisch & Statisch) ---
 
-export const getProgressForLevel = (customer: any, levelId: number, dynamicLevels?: any[]) => {
+export const getProgressForLevel = (customer: any, levelId: number, dynamicLevels?: any[], dogId?: number) => {
     const progress: { [key: string]: number } = {};
     let requirements: any[] = [];
 
@@ -38,7 +38,12 @@ export const getProgressForLevel = (customer: any, levelId: number, dynamicLevel
     if (requirements.length === 0) return progress;
 
     // Nur ungenutzte Achievements zählen für den Fortschritt
-    const unconsumedAchievements = (customer.achievements || []).filter((ach: any) => !ach.is_consumed);
+    let unconsumedAchievements = (customer.achievements || []).filter((ach: any) => !ach.is_consumed);
+
+    // NEU: Wenn ein Hund angegeben ist, filter nach Achievements für diesen Hund
+    if (dogId) {
+        unconsumedAchievements = unconsumedAchievements.filter((ach: any) => ach.dog_id === dogId);
+    }
 
     const fullAchievementCounts: { [key: string]: number } = {};
     unconsumedAchievements.forEach((ach: any) => {
@@ -78,8 +83,15 @@ export const getProgressForLevel = (customer: any, levelId: number, dynamicLevel
     return progress;
 };
 
-export const areLevelRequirementsMet = (customer: any, dynamicLevels?: any[]): boolean => {
-    const currentLevelId = customer.level_id || customer.current_level_id || 1;
+export const areLevelRequirementsMet = (customer: any, dynamicLevels?: any[], dogId?: number): boolean => {
+    // Welches Level hat der Kunde oder der angegebene Hund?
+    let currentLevelId = 1;
+    if (dogId && customer.dogs) {
+        const dog = customer.dogs.find((d: any) => d.id === dogId);
+        currentLevelId = dog?.current_level_id || 1;
+    } else {
+        currentLevelId = customer.level_id || customer.current_level_id || 1;
+    }
 
     if (dynamicLevels && dynamicLevels.length > 0) {
         const currentLevel = dynamicLevels.find(l => l.id === currentLevelId);
@@ -91,7 +103,7 @@ export const areLevelRequirementsMet = (customer: any, dynamicLevels?: any[]): b
 
         if (requirements.length === 0) return true;
 
-        const progress = getProgressForLevel(customer, currentLevelId, dynamicLevels);
+        const progress = getProgressForLevel(customer, currentLevelId, dynamicLevels, dogId);
 
         return requirements.every((req: any) => {
             const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);

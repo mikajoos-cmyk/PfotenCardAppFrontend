@@ -3,15 +3,17 @@ import React, { FC } from 'react';
 import { User } from '../../types';
 import Icon from '../../components/ui/Icon';
 import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import { hasPermission } from '../../lib/permissions';
 
 interface UsersPageProps {
     users: User[];
     onAddUserClick: () => void;
     onEditUserClick: (user: User) => void;
     onDeleteUserClick: (user: User) => void;
+    currentUser: User | any;
 }
 
-const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick, onDeleteUserClick }) => {
+const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick, onDeleteUserClick, currentUser }) => {
     const systemUsers = users.filter(u => u.role === 'admin' || u.role === 'mitarbeiter');
 
     return (
@@ -21,9 +23,11 @@ const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick,
                     <h1>Benutzerverwaltung</h1>
                     <p>Verwalten Sie alle Systembenutzer an einem Ort</p>
                 </div>
-                <div className="header-actions">
-                    <button className="button button-primary" onClick={onAddUserClick}>+ Neuer Benutzer</button>
-                </div>
+                {currentUser.role === 'admin' && (
+                    <div className="header-actions">
+                        <button className="button button-primary" onClick={onAddUserClick}>+ Neuer Benutzer</button>
+                    </div>
+                )}
             </header>
             <div className="content-box user-list">
                 <h2>Systembenutzer ({systemUsers.length})</h2>
@@ -57,7 +61,9 @@ const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick,
                                         <td data-label="Aktionen">
                                             <div className="actions-cell-wrapper">
                                                 <button className="action-icon-btn" onClick={() => onEditUserClick(user)} aria-label="Bearbeiten"><Icon name="edit" /></button>
-                                                <button className="action-icon-btn delete" onClick={() => onDeleteUserClick(user)} aria-label="Löschen"><Icon name="trash" /></button>
+                                                {((user.role === 'customer' || user.role === 'kunde') ? hasPermission(currentUser, 'can_delete_customers') : currentUser.role === 'admin') && (
+                                                    <button className="action-icon-btn delete" onClick={() => onDeleteUserClick(user)} aria-label="Löschen"><Icon name="trash" /></button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

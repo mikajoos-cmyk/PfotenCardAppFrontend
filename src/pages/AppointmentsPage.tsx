@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiClient, Appointment, Booking } from '../lib/api';
 import { User, View, AppStatus } from '../types';
+import { hasPermission } from '../lib/permissions';
 import LiveStatusBanner from '../components/ui/LiveStatusBanner';
 import LiveStatusModal from '../components/modals/LiveStatusModal';
 import Icon from '../components/ui/Icon';
@@ -54,7 +55,11 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
         trainer_id: '',
         training_type_id: '',
         target_level_ids: [] as number[],
-        is_open_for_all: false
+        is_open_for_all: false,
+        is_recurring: false,
+        recurrence_pattern: 'weekly',
+        end_after_count: 4,
+        end_at_date: ''
     });
 
     // Helper to calc end time
@@ -88,7 +93,11 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 target_level_ids: (initialData.target_levels && initialData.target_levels.length > 0)
                     ? initialData.target_levels.map((l: any) => l.id)
                     : (initialData.target_level_ids || []),
-                is_open_for_all: initialData.is_open_for_all || false
+                is_open_for_all: initialData.is_open_for_all || false,
+                is_recurring: false,
+                recurrence_pattern: 'weekly',
+                end_after_count: 4,
+                end_at_date: ''
             });
         } else {
             setFormData({
@@ -103,7 +112,11 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 trainer_id: '',
                 training_type_id: '',
                 target_level_ids: [],
-                is_open_for_all: false
+                is_open_for_all: false,
+                is_recurring: false,
+                recurrence_pattern: 'weekly',
+                end_after_count: 4,
+                end_at_date: ''
             });
         }
     }, [initialData, isOpen]);
@@ -131,7 +144,12 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
             max_participants: Number(formData.max_participants),
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
             training_type_id: formData.training_type_id ? Number(formData.training_type_id) : null,
-            target_level_ids: formData.target_level_ids
+            target_level_ids: formData.target_level_ids,
+            ...(formData.is_recurring && !initialData ? {
+                recurrence_pattern: formData.recurrence_pattern,
+                end_after_count: formData.end_after_count,
+                end_at_date: formData.end_at_date ? new Date(formData.end_at_date).toISOString() : null
+            } : {})
         });
     };
 
@@ -253,6 +271,46 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                         <div className="form-group"><label>Ort</label><input className="form-input" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Hundeplatz / Online" /></div>
                         <div className="form-group"><label>Beschreibung</label><textarea className="form-input" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." /></div>
 
+                        {!initialData && (
+                            <>
+                                <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                                    <label style={{ margin: 0 }}>Wiederkehrender Termin</label>
+                                    <label className="switch">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.is_recurring}
+                                            onChange={e => setFormData({ ...formData, is_recurring: e.target.checked })}
+                                        />
+                                        <span className="slider round"></span>
+                                    </label>
+                                </div>
+
+                                {formData.is_recurring && (
+                                    <div style={{ padding: '1rem', background: 'var(--bg-accent)', borderRadius: '8px', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div className="form-group">
+                                            <label>Rhythmus</label>
+                                            <select className="form-input" value={formData.recurrence_pattern} onChange={e => setFormData({ ...formData, recurrence_pattern: e.target.value })}>
+                                                <option value="daily">Täglich</option>
+                                                <option value="weekly">Wöchentlich</option>
+                                                <option value="biweekly">Alle 2 Wochen</option>
+                                                <option value="weekdays">Wochentage (Mo-Fr)</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label>Anzahl Termine</label>
+                                                <input type="number" className="form-input" value={formData.end_after_count} onChange={e => setFormData({ ...formData, end_after_count: parseInt(e.target.value) || 0, end_at_date: '' })} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <label>Oder bis Datum</label>
+                                                <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={formData.end_at_date} onChange={e => setFormData({ ...formData, end_at_date: e.target.value, end_after_count: 0 })} />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
                         <div className="modal-footer">
                             <button type="button" onClick={onClose} className="button button-outline">Abbrechen</button>
                             <button type="submit" className="button button-primary">{initialData ? 'Speichern' : 'Erstellen'}</button>
@@ -265,7 +323,19 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, bookingStatus, onNotify }: { event: Appointment, onClose: () => void, onAction: (type: 'book' | 'cancel' | 'participants') => void, userRole: string, isBooked: boolean, bookingStatus?: string, onNotify: () => void }) => {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange }: {
+    event: Appointment,
+    onClose: () => void,
+    onAction: (type: 'book' | 'cancel' | 'participants') => void,
+    user: any,
+    userRole: string,
+    isBooked: boolean,
+    bookingStatus?: string,
+    onNotify: () => void,
+    dogs: any[],
+    selectedDogId: number | null,
+    onDogChange: (id: number | null) => void
+}) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
     const isPast = new Date(event.start_time) < new Date();
@@ -320,6 +390,26 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
                         {event.description || 'Keine weitere Beschreibung verfügbar.'}
                     </p>
 
+                    {/* Hund-Auswahl für Kunden vor der Buchung */}
+                    {!isBooked && !isPast && (userRole === 'customer' || userRole === 'kunde') && dogs.length > 0 && (
+                        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-accent)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                                Für welchen Hund möchtest du buchen?
+                            </label>
+                            <select
+                                className="form-input"
+                                value={selectedDogId || ''}
+                                onChange={(e) => onDogChange(e.target.value ? Number(e.target.value) : null)}
+                                style={{ width: '100%', background: 'var(--card-background)' }}
+                            >
+                                <option value="">-- Bitte Hund auswählen --</option>
+                                {dogs.map(dog => (
+                                    <option key={dog.id} value={dog.id}>{dog.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
                         <div>
                             <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.25rem' }}>Trainer</h4>
@@ -357,9 +447,11 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
 
                     {userRole === 'admin' || userRole === 'mitarbeiter' ? (
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="button button-outline" onClick={onNotify} title="Teilnehmer benachrichtigen">
-                                <Icon name="bell" />
-                            </button>
+                            {hasPermission(user, 'can_create_messages') && (
+                                <button className="button button-outline" onClick={onNotify} title="Teilnehmer benachrichtigen">
+                                    <Icon name="bell" />
+                                </button>
+                            )}
                             <button className="button button-primary" onClick={() => onAction('participants')}>
                                 <Icon name="users" /> Teilnehmerliste
                             </button>
@@ -380,7 +472,7 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
                             <button
                                 className="button button-primary"
                                 onClick={() => onAction('book')}
-                                disabled={isPast}
+                                disabled={isPast || (!isBooked && (userRole === 'customer' || userRole === 'kunde') && dogs.length > 0 && !selectedDogId)}
                             >
                                 {isFull ? 'Auf die Warteliste' : 'Jetzt anmelden'}
                             </button>
@@ -392,7 +484,7 @@ const EventDetailsModal = ({ event, onClose, onAction, userRole, isBooked, booki
     );
 };
 
-const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress }: {
+const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser }: {
     isOpen: boolean,
     onClose: () => void,
     bookings: Booking[],
@@ -401,7 +493,8 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
     onBillParticipant?: (id: number) => void,
     onBillAll?: () => void,
     showBilling?: boolean,
-    showProgress?: boolean
+    showProgress?: boolean,
+    loggedInUser: any
 }) => {
     const [activeTab, setActiveTab] = useState<'confirmed' | 'waitlist'>('confirmed');
 
@@ -437,10 +530,20 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
                 {activeTab === 'confirmed' && confirmedList.length > 0 && (showBilling || showProgress) && onBillAll && (
                     <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                        <button onClick={onBillAll} className="button button-primary button-small">
-                            <Icon name={showBilling ? "dollar" : "check-circle"} />
-                            {showBilling && showProgress ? " Alle Abrechnen & Fortschritt" : showBilling ? " Alle Abrechnen" : " Alle Fortschritte erteilen"}
-                        </button>
+                        {confirmedList.some(b => !b.is_billed) ? (
+                            <button onClick={onBillAll} className="button button-primary button-small">
+                                <Icon name={showBilling ? "dollar" : "check-circle"} />
+                                {showBilling && showProgress
+                                    ? ` ${confirmedList.filter(b => !b.is_billed).length} Abrechnen & Fortschritt`
+                                    : showBilling
+                                        ? ` ${confirmedList.filter(b => !b.is_billed).length} Abrechnen`
+                                        : ` ${confirmedList.filter(b => !b.is_billed).length} Fortschritte erteilen`}
+                            </button>
+                        ) : (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--brand-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Icon name="check-circle" /> Alle abgerechnet
+                            </span>
+                        )}
                     </div>
                 )}
 
@@ -465,17 +568,32 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                         <div className={`initials-avatar small ${b.attended ? 'avatar-green' : 'avatar-gray'}`}>
                                             {b.user?.name?.charAt(0) || '?'}
                                         </div>
-                                        <div>
-                                            <div style={{ fontWeight: 600 }}>{b.user?.name || 'Unbekannt'}</div>
-                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                {activeTab === 'waitlist'
-                                                    ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString()}`
-                                                    : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.5rem' }}>
+                                                <div style={{ fontWeight: 600 }}>{b.user?.name || 'Unbekannt'}</div>
+                                                {b.dog && (
+                                                    <div className="participant-dog-name" style={{ fontSize: '0.85rem', color: 'var(--brand-blue)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 500 }}>
+                                                        <Icon name="paw" width={12} height={12} />
+                                                        {b.dog.name}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span>
+                                                    {activeTab === 'waitlist'
+                                                        ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString()}`
+                                                        : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
+                                                </span>
+                                                {b.is_billed && (
+                                                    <span style={{ color: 'var(--brand-green)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                        &bull; Abgerechnet
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        {activeTab === 'confirmed' && b.status === 'confirmed' && showBilling && onBillParticipant && (
+                                        {activeTab === 'confirmed' && b.status === 'confirmed' && showBilling && onBillParticipant && !b.is_billed && hasPermission(loggedInUser, 'can_edit_status') && (
                                             <button
                                                 onClick={() => onBillParticipant(b.id)}
                                                 className="button button-outline button-small"
@@ -488,6 +606,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                             <button
                                                 onClick={() => onToggleAttendance(b.id)}
                                                 className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
+                                                disabled={!hasPermission(loggedInUser, 'can_edit_status')}
                                             >
                                                 {b.attended ? <><Icon name="check" /> Anwesend</> : 'Abstempeln'}
                                             </button>
@@ -532,6 +651,16 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
     // Detail Modal State
     const [selectedEvent, setSelectedEvent] = useState<Appointment | null>(null);
+    const [userDogs, setUserDogs] = useState<any[]>([]);
+    const [selectedDogId, setSelectedDogId] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (user && user.dogs) {
+            setUserDogs(user.dogs);
+            // FIX: Nicht mehr automatisch den ersten Hund wählen, Auswahl soll erzwungen werden
+            setSelectedDogId(null);
+        }
+    }, [user]);
 
     const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
@@ -616,6 +745,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             console.log("Saving Appointment Data:", data);
             if (editingEvent) {
                 await apiClient.updateAppointment(editingEvent.id, data, token);
+            } else if (data.recurrence_pattern) {
+                await apiClient.createRecurringAppointments(data, token);
             } else {
                 await apiClient.createAppointment(data, token);
             }
@@ -656,7 +787,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
         try {
             if (type === 'book') {
-                const response = await apiClient.bookAppointment(event.id, token);
+                const response = await apiClient.bookAppointment(event.id, token, selectedDogId || undefined);
                 // API sollte das Booking-Objekt zurückgeben
                 if (response.status === 'waitlist') {
                     alert("Du wurdest auf die Warteliste gesetzt! Wir informieren dich, sobald ein Platz frei wird.");
@@ -895,15 +1026,19 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     <p>Finde den passenden Kurs für dich und deinen Hund.</p>
                 </div>
 
-                {user?.role === 'admin' && (
+                {(user?.role === 'admin' || user?.role === 'mitarbeiter') && (
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button className="button button-outline" onClick={() => setIsStatusModalOpen(true)}>
-                            <Icon name="activity" style={{ marginRight: '0.5rem' }} /> Globalen Status
-                        </button>
+                        {(user?.role === 'admin' || hasPermission(user, 'can_edit_status')) && (
+                            <button className="button button-outline" onClick={() => setIsStatusModalOpen(true)}>
+                                <Icon name="activity" style={{ marginRight: '0.5rem' }} /> Globalen Status
+                            </button>
+                        )}
 
-                        <button className="button button-primary" onClick={() => setIsCreateOpen(true)}>
-                            <Icon name="plus" /> <span className="hidden-mobile">Termin erstellen</span>
-                        </button>
+                        {hasPermission(user, 'can_create_courses') && (
+                            <button className="button button-primary" onClick={() => setIsCreateOpen(true)}>
+                                <Icon name="plus" /> <span className="hidden-mobile">Termin erstellen</span>
+                            </button>
+                        )}
                     </div>
                 )}
             </header>
@@ -989,13 +1124,15 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                             barColors.push('gold');
                                         }
 
+                                        const levelColor = targetLevels.length > 0 ? targetLevels[0].color : 'gold';
+
                                         return (
                                             <li
                                                 key={event.id}
                                                 className="event-item-styled"
+                                                onClick={() => { setSelectedEvent(event); setSelectedDogId(null); }}
                                                 style={{ position: 'relative', overflow: 'hidden' }}
                                             >
-                                                {/* Neuer Farbbalken links */}
                                                 <div style={{
                                                     position: 'absolute',
                                                     left: 0,
@@ -1010,7 +1147,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                     ))}
                                                 </div>
                                                 {/* Klickbarer Bereich für Details */}
-                                                <div className="event-details" style={{ paddingLeft: '1.25rem' }} onClick={() => setSelectedEvent(event)}>
+                                                <div className="event-details" style={{ paddingLeft: '1.25rem' }}>
                                                     <span className="event-title">{event.title}</span>
                                                     <div className="event-line-2">
                                                         <span>{formatDate(date)} &bull; {formatTime(date)}</span>
@@ -1040,35 +1177,41 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                 {/* Aktions-Bereich rechts */}
                                                 {(user.role === 'admin' || user.role === 'mitarbeiter') && (
                                                     <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                                        <button
-                                                            className="button button-outline button-small notify-bell-btn"
-                                                            onClick={(e) => { e.stopPropagation(); handleNotifyParticipants(event); }}
-                                                            title="Teilnehmer benachrichtigen"
-                                                        >
-                                                            <Icon name="bell" />
-                                                        </button>
-                                                        <button
-                                                            className="button button-outline button-small"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setEditingEvent(event);
-                                                                setIsCreateOpen(true);
-                                                            }}
-                                                            title="Bearbeiten"
-                                                        >
-                                                            <Icon name="edit" />
-                                                        </button>
-                                                        <button
-                                                            className="button button-outline button-small"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDelete(event.id);
-                                                            }}
-                                                            style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
-                                                            title="Löschen"
-                                                        >
-                                                            <Icon name="trash" />
-                                                        </button>
+                                                        {hasPermission(user, 'can_create_messages') && (
+                                                            <button
+                                                                className="button button-outline button-small notify-bell-btn"
+                                                                onClick={(e) => { e.stopPropagation(); handleNotifyParticipants(event); }}
+                                                                title="Teilnehmer benachrichtigen"
+                                                            >
+                                                                <Icon name="bell" />
+                                                            </button>
+                                                        )}
+                                                        {hasPermission(user, 'can_create_courses') && (
+                                                            <>
+                                                                <button
+                                                                    className="button button-outline button-small"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setEditingEvent(event);
+                                                                        setIsCreateOpen(true);
+                                                                    }}
+                                                                    title="Bearbeiten"
+                                                                >
+                                                                    <Icon name="edit" />
+                                                                </button>
+                                                                <button
+                                                                    className="button button-outline button-small"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDelete(event.id);
+                                                                    }}
+                                                                    style={{ color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }}
+                                                                    title="Löschen"
+                                                                >
+                                                                    <Icon name="trash" />
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -1105,14 +1248,14 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                                 isFull ? (
                                                                     <button
                                                                         className="button button-primary button-small"
-                                                                        onClick={(e) => { e.stopPropagation(); handleAction('book', event); }}
+                                                                        onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); setSelectedDogId(null); }}
                                                                     >
                                                                         Auf die Warteliste
                                                                     </button>
                                                                 ) : (
                                                                     <button
                                                                         className="button button-primary button-small"
-                                                                        onClick={(e) => { e.stopPropagation(); handleAction('book', event); }}
+                                                                        onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); setSelectedDogId(null); }}
                                                                     >
                                                                         Anmelden
                                                                     </button>
@@ -1163,6 +1306,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 onBillAll={handleBillAllParticipants}
                 showBilling={autoBillingEnabled || autoProgressEnabled}
                 showProgress={autoProgressEnabled}
+                loggedInUser={user}
             />
 
             {selectedEvent && (
@@ -1170,10 +1314,14 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     event={selectedEvent}
                     onClose={() => setSelectedEvent(null)}
                     onAction={(type) => handleAction(type, selectedEvent)}
-                    userRole={user?.role}
+                    user={user}
+                    userRole={user.role}
                     isBooked={myBookings.has(selectedEvent.id)}
                     bookingStatus={myBookings.get(selectedEvent.id)}
                     onNotify={() => handleNotifyParticipants(selectedEvent)}
+                    dogs={userDogs}
+                    selectedDogId={selectedDogId}
+                    onDogChange={setSelectedDogId}
                 />
             )}
         </div>

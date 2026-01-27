@@ -12,6 +12,8 @@ interface TransactionConfirmationModalProps {
         baseAmount?: number;
         bonus?: number;
         meta?: { requirementId?: string };
+        dogId?: number | null;
+        dogName?: string;
     };
     onClose: () => void;
     onConfirm: () => void;
@@ -68,6 +70,13 @@ const TransactionConfirmationModal: FC<TransactionConfirmationModalProps> = ({ c
                                 <span className="amount">{transaction.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
                             </div>
                             <p className="description">Beschreibung: {transaction.title}</p>
+                        </div>
+                    )}
+
+                    {transaction.dogName && (
+                        <div className="confirmation-box dog-box" style={{ background: 'var(--bg-accent-blue)', color: 'var(--brand-blue)', border: '1px solid var(--primary-color-light)', padding: '0.5rem 1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <Icon name="paw" />
+                            <span>Hund: <strong>{transaction.dogName}</strong></span>
                         </div>
                     )}
 

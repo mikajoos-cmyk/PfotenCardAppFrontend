@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
 export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions' | 'impressum' | 'datenschutz' | 'agb';
-export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions', targetAppointmentId?: number };
+export type View = { page: Page; customerId?: string, subPage?: 'detail' | 'transactions', targetAppointmentId?: number, dogId?: number };
 
 
 export interface User {
@@ -30,6 +30,12 @@ export interface User {
     notif_push_system?: boolean;     // (Optional beibehalten falls noch genutzt)
 
     reminder_offset_minutes?: number; // <--- Neu
+    permissions?: {
+        can_create_courses: boolean;
+        can_edit_status: boolean;
+        can_delete_customers: boolean;
+        can_create_messages: boolean;
+    };
 }
 
 export interface Appointment {
@@ -62,7 +68,7 @@ export interface Customer {
 
     // Dog info
     dogName?: string; // Deprecated/Mock
-    dogs: { name: string; breed?: string; birth_date?: string; chip?: string; id?: string }[];
+    dogs: { name: string; breed?: string; birth_date?: string; chip?: string; id?: number }[];
 
     // Level info
     levelId?: number; // Mock
@@ -109,6 +115,12 @@ export interface Customer {
     notif_push_system?: boolean;
 
     reminder_offset_minutes?: number; // <--- Neu
+    permissions?: {
+        can_create_courses: boolean;
+        can_edit_status: boolean;
+        can_delete_customers: boolean;
+        can_create_messages: boolean;
+    };
 }
 
 export interface Transaction {
@@ -127,6 +139,7 @@ export interface Transaction {
     description?: string;
     date?: string | Date;
     bonus?: number; // NEU
+    dog_id?: number; // NEU
 }
 
 export interface DocumentFile {

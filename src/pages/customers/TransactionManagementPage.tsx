@@ -18,10 +18,11 @@ interface TransactionManagementPageProps {
     };
     authToken: string | null;
     fetchAppData: () => Promise<void>;
+    initialDogId?: number; // NEU
 }
 
 const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
-    customer, setView, onConfirmTransaction, currentUser, services, balanceConfig, authToken, fetchAppData
+    customer, setView, onConfirmTransaction, currentUser, services, balanceConfig, authToken, fetchAppData, initialDogId
 }) => {
     const [modalData, setModalData] = useState<any>(null);
     const [customTopup, setCustomTopup] = useState('');
@@ -29,6 +30,16 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
     const [customDebitDesc, setCustomDebitDesc] = useState('');
     const [stripeModalData, setStripeModalData] = useState<{ clientSecret: string; amount: number; bonus: number } | null>(null);
     const [isCreatingIntent, setIsCreatingIntent] = useState(false);
+
+    // NEU: Aktiver Hund aus der Detailseite bestimmen
+    const dogs = customer.dogs || [];
+    // Wir nehmen an App.tsx kann uns den activeDogId übergeben oder wir finden ihn über die URL/State
+    // Da wir aber in TransactionManagementPage oft direkt kommen, nehmen wir den ersten Hund als Default oder erlauben Auswahl
+    const [activeDogId, setActiveDogId] = useState<number | null>(() => {
+        if (initialDogId) return initialDogId;
+        return dogs.length > 0 ? dogs[0].id : null;
+    });
+    const activeDog = dogs.find(d => d.id === activeDogId);
 
     const isCustomer = currentUser.role === 'customer' || currentUser.role === 'kunde';
 
@@ -97,7 +108,9 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
                 title: data.title,
                 amount: data.amount,
                 type: 'debit',
-                meta: { requirementId: data.reqId }
+                meta: { requirementId: data.reqId },
+                dogId: activeDogId, // NEU
+                dogName: activeDog?.name // NEU
             });
         }
     };
@@ -138,8 +151,27 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
                 </div>
             </header>
             <div className="tx-header-card">
-                <p>Aktuelles Guthaben</p>
-                <h2>{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                        <p>Aktuelles Guthaben</p>
+                        <h2>{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</h2>
+                    </div>
+                    {dogs.length > 0 && (
+                        <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Ausgewählter Hund</p>
+                            <select
+                                className="form-input"
+                                value={activeDogId || ''}
+                                onChange={(e) => setActiveDogId(Number(e.target.value))}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.9rem', width: 'auto' }}
+                            >
+                                {dogs.map(d => (
+                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="tx-section">

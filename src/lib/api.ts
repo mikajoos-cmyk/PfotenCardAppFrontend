@@ -208,13 +208,18 @@ export const apiClient = {
     createAppointment: async (data: any, token: string | null) => {
         return apiClient.post('/api/appointments', data, token);
     },
-
-    bookAppointment: async (appointmentId: number, token: string | null) => {
-        return apiClient.post(`/api/appointments/${appointmentId}/book`, {}, token);
+    createRecurringAppointments: async (data: any, token: string | null) => {
+        return apiClient.post('/api/appointments/recurring', data, token);
     },
 
-    cancelAppointment: async (appointmentId: number, token: string | null) => {
-        return apiClient.delete(`/api/appointments/${appointmentId}/book`, token);
+    bookAppointment: async (appointmentId: number, token: string | null, dogId?: number) => {
+        const query = dogId ? `?dog_id=${dogId}` : '';
+        return apiClient.post(`/api/appointments/${appointmentId}/book${query}`, {}, token);
+    },
+
+    cancelAppointment: async (appointmentId: number, token: string | null, dogId?: number) => {
+        const query = dogId ? `?dog_id=${dogId}` : '';
+        return apiClient.delete(`/api/appointments/${appointmentId}/book${query}`, token);
     },
 
     getParticipants: async (appointmentId: number, token: string | null) => {
@@ -328,6 +333,8 @@ export interface Booking {
     status: string;
     attended: boolean;
     user?: any; // User object embedded
+    dog?: any; // Dog object embedded
+    is_billed: boolean; // NEU
     created_at: string;
 }
 

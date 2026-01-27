@@ -38,6 +38,7 @@ import { ChatPage } from './pages/ChatPage';
 
 // NEU: Hook importieren
 import { useVisualViewport } from './hooks/useVisualViewport';
+import { hasPermission } from './lib/permissions';
 
 // Legal Pages
 import { ImpressumPage } from './pages/legal/ImpressumPage';
@@ -117,6 +118,20 @@ export default function App() {
         return { page: 'dashboard' };
 
     });
+
+    // --- ÄNDERUNG: Initialer Check beim App-Start ---
+    // Dies stellt sicher, dass beim Neuladen der Seite ein evtl. erneuertes Token von Supabase übernommen wird
+    useEffect(() => {
+        const initSession = async () => {
+            const { data } = await supabase.auth.getSession();
+            if (data.session && data.session.access_token !== authToken) {
+                console.log("Sitzung beim Start wiederhergestellt");
+                localStorage.setItem('authToken', data.session.access_token);
+                setAuthToken(data.session.access_token);
+            }
+        };
+        initSession();
+    }, []);
 
     // ... (Hier der ganze restliche State & Effects Code - UNVERÄNDERT) ...
     const [customers, setCustomers] = useState<any[]>([]);
@@ -695,8 +710,31 @@ export default function App() {
                 setUsers(usersResponse);
                 setTransactions(transactionsResponse);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Fehler beim Laden:", error);
+
+            // --- WICHTIGE ÄNDERUNG HIER ---
+            // Prüfen, ob der Fehler ein Authentifizierungsfehler ist (401 oder Session expired)
+            const isAuthError = error.message?.includes('401') || error.message?.includes('Session expired') || error.message?.includes('Unauthorized');
+
+            if (isAuthError) {
+                console.log("Token abgelaufen, versuche Refresh via Supabase...");
+                // Versuche, die Session über Supabase zu retten
+                const { data, error: sessionError } = await supabase.auth.getSession();
+
+                if (data.session && !sessionError) {
+                    console.log("Refresh erfolgreich! Neues Token setzen.");
+                    // Wenn Supabase noch eine gültige Session hat (Refresh Token noch gültig),
+                    // aktualisieren wir das Token und brechen den Logout ab.
+                    // Das Setzen von setAuthToken triggert automatisch den useEffect, der fetchAppData erneut aufruft.
+                    const newToken = data.session.access_token;
+                    localStorage.setItem('authToken', newToken);
+                    setAuthToken(newToken);
+                    return; // KEIN LOGOUT!
+                }
+            }
+
+            // Nur wenn Supabase auch keine Session mehr hat, loggen wir aus
             if (shouldShowFullLoader) handleLogout();
         } finally {
             setIsLoading(false);
@@ -831,6 +869,8 @@ export default function App() {
         type: 'topup' | 'debit';
         meta?: { requirementId?: string };
         baseAmount?: number;
+        dogId?: number | null;
+        dogName?: string;
     }) => {
         if (isPreviewMode) {
             const newTx = {
@@ -902,7 +942,8 @@ export default function App() {
             type: optimisticTx.type,
             description: optimisticTx.description,
             amount: (txData.type === 'topup' && txData.baseAmount !== undefined) ? txData.baseAmount : optimisticTx.amount,
-            training_type_id: txData.meta?.requirementId ? parseInt(txData.meta.requirementId) : null
+            training_type_id: txData.meta?.requirementId ? parseInt(txData.meta.requirementId) : null,
+            dog_id: txData.dogId || null // NEU
         };
 
         try {
@@ -948,9 +989,10 @@ export default function App() {
         }
     };
 
-    const handleLevelUp = async (customerId: string, newLevelId: number) => {
+    const handleLevelUp = async (customerId: string, newLevelId: number, dogId?: number) => {
         try {
-            await apiClient.post(`/api/users/${customerId}/level-up`, {}, authToken);
+            const url = dogId ? `/api/users/${customerId}/level-up?dog_id=${dogId}` : `/api/users/${customerId}/level-up`;
+            await apiClient.post(url, {}, authToken);
             console.log(`Kunde erfolgreich hochgestuft!`);
             await fetchAppData();
         } catch (error) {
@@ -1095,6 +1137,7 @@ export default function App() {
                     chip: dogToUpdate.chip || null,
                     breed: dogToUpdate.breed || null,
                     birth_date: dogToUpdate.birth_date || null,
+                    current_level_id: dogToUpdate.current_level_id, // FIX: Level mit übergeben
                 };
 
                 if (dogToUpdate.id) {
@@ -1241,6 +1284,7 @@ export default function App() {
                         wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                         isDarkMode={isDarkMode}
                         isPreviewMode={isPreviewMode}
+                        onConfirmTransaction={handleConfirmTransaction}
                     />
                 );
             }
@@ -1296,6 +1340,7 @@ export default function App() {
                         wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                         isDarkMode={isDarkMode}
                         isPreviewMode={isPreviewMode}
+                        onConfirmTransaction={handleConfirmTransaction}
                     />
                 );
             }
@@ -1314,6 +1359,7 @@ export default function App() {
                         balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
                         authToken={authToken}
                         fetchAppData={fetchAppData}
+                        initialDogId={view.dogId}
                     />
                 );
             }
@@ -1323,8 +1369,14 @@ export default function App() {
                     customers={customers}
                     transactions={transactions}
                     setView={handleSetView}
-                    onKpiClick={(kpi) => { }}
-                    onAddCustomerClick={() => setAddCustomerModalOpen(true)}
+                    onKpiClick={(kpi: any) => { }}
+                    onAddCustomerClick={() => {
+                        if (hasPermission(loggedInUser, 'can_delete_customers')) {
+                            setAddCustomerModalOpen(true);
+                        } else {
+                            alert('Sie haben keine Berechtigung, Kunden hinzuzufügen.');
+                        }
+                    }}
                     currentUser={loggedInUser}
                     levels={appConfigData?.levels || previewConfig.levels}
                     wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
@@ -1361,6 +1413,7 @@ export default function App() {
                     onAddUserClick={() => setUserModal({ isOpen: true, user: null })}
                     onEditUserClick={(user) => setUserModal({ isOpen: true, user })}
                     onDeleteUserClick={(user) => setDeleteUserModal(user)}
+                    currentUser={loggedInUser}
                 />
             );
         }
@@ -1410,6 +1463,7 @@ export default function App() {
                                 wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                                 isDarkMode={isDarkMode}
                                 isPreviewMode={isPreviewMode}
+                                onConfirmTransaction={handleConfirmTransaction} // NEU
                             />
                         )}
                     </div>
