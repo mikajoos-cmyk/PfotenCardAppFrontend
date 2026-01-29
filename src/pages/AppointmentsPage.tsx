@@ -21,11 +21,18 @@ const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-d
 
 // Farben basierend auf Keywords
 // Farben basierend auf Level oder Keywords
-const getCategoryColor = (event: Appointment): string => {
+const getCategoryColor = (event: Appointment, workshopLectureColor?: string): string => {
     // 1. Wenn Level-Farbe vorhanden ist, nimm die erste
     if (event.target_levels && event.target_levels.length > 0) {
         const firstLevelWithColor = event.target_levels.find(l => l.color);
         if (firstLevelWithColor) return firstLevelWithColor.color;
+    }
+
+    // 1.5 NEU: Kategorie-basierte Farben (Workshop/Vortrag)
+    if (event.training_type) {
+        if (event.training_type.category === 'workshop' || event.training_type.category === 'lecture') {
+            return workshopLectureColor || '#F97316';
+        }
     }
 
     // 2. Fallback auf Keywords
@@ -42,19 +49,20 @@ const getCategoryColor = (event: Appointment): string => {
 
 // --- MODALS ---
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
         date: '',
         start_time: '',
         end_time: '',
-        duration: 60,
+        duration: defaultDuration,
         location: '',
-        max_participants: 10,
+        max_participants: defaultMaxParticipants,
         trainer_id: '',
         training_type_id: '',
         target_level_ids: [] as number[],
+        price: null as number | null, // NEU
         is_open_for_all: false,
         is_recurring: false,
         recurrence_pattern: 'weekly',
@@ -93,6 +101,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 target_level_ids: (initialData.target_levels && initialData.target_levels.length > 0)
                     ? initialData.target_levels.map((l: any) => l.id)
                     : (initialData.target_level_ids || []),
+                price: initialData.price || null, // NEU
                 is_open_for_all: initialData.is_open_for_all || false,
                 is_recurring: false,
                 recurrence_pattern: 'weekly',
@@ -106,12 +115,13 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 date: '',
                 start_time: '',
                 end_time: '',
-                duration: 60,
+                duration: defaultDuration,
                 location: '',
-                max_participants: 10,
+                max_participants: defaultMaxParticipants,
                 trainer_id: '',
                 training_type_id: '',
                 target_level_ids: [],
+                price: null, // NEU
                 is_open_for_all: false,
                 is_recurring: false,
                 recurrence_pattern: 'weekly',
@@ -119,7 +129,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 end_at_date: ''
             });
         }
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, defaultDuration, defaultMaxParticipants]);
 
     if (!isOpen) return null;
 
@@ -144,6 +154,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
             max_participants: Number(formData.max_participants),
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
             training_type_id: formData.training_type_id ? Number(formData.training_type_id) : null,
+            price: formData.price ? Number(formData.price) : null, // NEU
             target_level_ids: formData.target_level_ids,
             ...(formData.is_recurring && !initialData ? {
                 recurrence_pattern: formData.recurrence_pattern,
@@ -213,17 +224,27 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 
 
                         {showLeistung && (
-                            <div className="form-group">
-                                <label>Leistung (für Abrechnung & Fortschritt)</label>
-                                <select className="form-input" value={formData.training_type_id} onChange={e => setFormData({ ...formData, training_type_id: e.target.value })}>
-                                    <option value="">Leistung wählen...</option>
-                                    {allServices.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name} ({s.default_price}€)</option>
-                                    ))}
-                                </select>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', marginTop: '0.25rem' }}>
-                                    Wird benötigt, da Automatisierungen aktiv sind.
-                                </p>
+                            <div className="form-group-row" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 3 }}>
+                                    <label>Leistung (für Abrechnung & Fortschritt)</label>
+                                    <select className="form-input" value={formData.training_type_id} onChange={e => setFormData({ ...formData, training_type_id: e.target.value })}>
+                                        <option value="">Leistung wählen...</option>
+                                        {allServices.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name} ({s.default_price}€)</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div style={{ flex: 2 }}>
+                                    <label>Indiv. Preis (€)</label>
+                                    <input
+                                        type="number"
+                                        step="0.50"
+                                        className="form-input"
+                                        placeholder="Standard"
+                                        value={formData.price || ''}
+                                        onChange={e => setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : null })}
+                                    />
+                                </div>
                             </div>
                         )}
 
@@ -323,7 +344,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange }: {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, workshopLectureColor }: {
     event: Appointment,
     onClose: () => void,
     onAction: (type: 'book' | 'cancel' | 'participants') => void,
@@ -334,7 +355,8 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     onNotify: () => void,
     dogs: any[],
     selectedDogId: number | null,
-    onDogChange: (id: number | null) => void
+    onDogChange: (id: number | null) => void,
+    workshopLectureColor: string
 }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
@@ -342,7 +364,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     const date = new Date(event.start_time);
 
     // Header Farbe basierend auf Event-Titel oder Level-Farbe
-    const levelColor = getCategoryColor(event);
+    const levelColor = getCategoryColor(event, workshopLectureColor);
     const headerColorClass = levelColor === 'orchid' ? 'purple'
         : levelColor === 'tomato' ? 'red'
             : 'blue';
@@ -373,9 +395,17 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                         </div>
                     </div>
                     {event.training_type && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                            <Icon name="activity" style={{ color: 'var(--brand-orange)' }} />
-                            <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                                <Icon name="activity" style={{ color: 'var(--brand-orange)' }} />
+                                <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-accent-success)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}>
+                                <Icon name="dollar" width={16} height={16} style={{ color: 'var(--brand-green)' }} />
+                                <span style={{ fontWeight: 700, color: 'var(--brand-green)', fontSize: '1rem' }}>
+                                    {event.price ?? event.training_type.default_price}€
+                                </span>
+                            </div>
                         </div>
                     )}
                     {event.location && (
@@ -666,8 +696,11 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
     const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
     const [openForAllColor, setOpenForAllColor] = useState('#10b981');
+    const [workshopLectureColor, setWorkshopLectureColor] = useState('#F97316');
     const [autoBillingEnabled, setAutoBillingEnabled] = useState(false);
     const [autoProgressEnabled, setAutoProgressEnabled] = useState(false);
+    const [defaultDuration, setDefaultDuration] = useState(60);
+    const [defaultMaxParticipants, setDefaultMaxParticipants] = useState(10);
 
 
     useEffect(() => {
@@ -707,11 +740,18 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             }
             if (config && config.tenant && config.tenant.config) {
                 const tc = config.tenant.config;
+                console.log("Tenant Config:", tc);
                 setAutoBillingEnabled(!!tc.auto_billing_enabled);
                 setAutoProgressEnabled(!!tc.auto_progress_enabled);
 
                 if (tc.branding) {
                     setOpenForAllColor(tc.branding.open_for_all_color || '#10b981');
+                    setWorkshopLectureColor(tc.branding.workshop_lecture_color || '#F97316');
+                }
+                if (tc.appointments) {
+                    console.log("Loading default appointment values:", tc.appointments);
+                    setDefaultDuration(tc.appointments.default_duration || 60);
+                    setDefaultMaxParticipants(tc.appointments.max_participants || 10);
                 }
             }
             if (Array.isArray(bookings)) {
@@ -1051,6 +1091,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: openForAllColor }}></span>
                     <span>Alle Level</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: workshopLectureColor }}></span>
+                    <span>Workshops & Vorträge</span>
+                </div>
                 {allLevels.map(lvl => (
                     <div key={lvl.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                         <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: lvl.color || 'gold' }}></span>
@@ -1120,6 +1164,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                         let barColors = targetLevels.map((l: any) => l.color || 'gold');
                                         if (event.is_open_for_all) {
                                             barColors = [openForAllColor];
+                                        } else if (event.training_type && (event.training_type.category === 'workshop' || event.training_type.category === 'lecture')) {
+                                            barColors = [workshopLectureColor];
                                         } else if (barColors.length === 0) {
                                             barColors.push('gold');
                                         }
@@ -1282,20 +1328,20 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 />
             )}
 
-            <AppointmentModal
-                isOpen={isCreateOpen}
-                onClose={() => {
-                    setIsCreateOpen(false);
-                    setEditingEvent(null);
-                }}
-                onSave={handleSave}
-                allLevels={allLevels}
-                staffUsers={staffUsers}
-                allServices={allServices}
-                initialData={editingEvent}
-                showLeistung={autoBillingEnabled || autoProgressEnabled}
-            />
-
+            {isCreateOpen && (
+                <AppointmentModal
+                    isOpen={isCreateOpen}
+                    onClose={() => { setIsCreateOpen(false); setEditingEvent(null); }}
+                    onSave={handleSave}
+                    allLevels={allLevels}
+                    staffUsers={staffUsers}
+                    allServices={allServices}
+                    initialData={editingEvent}
+                    showLeistung={autoBillingEnabled || autoProgressEnabled} // Nur anzeigen wenn einer der beiden an ist
+                    defaultDuration={defaultDuration}
+                    defaultMaxParticipants={defaultMaxParticipants}
+                />
+            )}
             <ParticipantsModal
                 isOpen={participantsOpen}
                 onClose={() => setParticipantsOpen(false)}
@@ -1322,6 +1368,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     dogs={userDogs}
                     selectedDogId={selectedDogId}
                     onDogChange={setSelectedDogId}
+                    workshopLectureColor={workshopLectureColor}
                 />
             )}
         </div>

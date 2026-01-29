@@ -8,7 +8,8 @@ const getSubdomain = () => {
 
     // Für lokale Tests (localhost):
     if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-        return null; // Oder 'bello' zum Testen
+        // Fallback auf LocalStorage, falls vorhanden (wird beim Login gesetzt)
+        return localStorage.getItem('pfotencard_subdomain') || null;
     }
 
     // Für Produktion (z.B. bello.pfotencard.de)
@@ -22,7 +23,7 @@ const getSubdomain = () => {
     if (parts.length >= 3) {
         return parts[0];
     }
-    return null;
+    return localStorage.getItem('pfotencard_subdomain') || null;
 };
 
 // Generiert die Header für jede Anfrage
@@ -319,6 +320,7 @@ export interface Appointment {
     trainer_id?: number;
     target_level_ids?: number[];
     training_type_id?: number;
+    price?: number; // NEU
     is_open_for_all?: boolean;
     trainer?: any;
     training_type?: any;

@@ -233,16 +233,24 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                                 flexDirection: 'column'
                             }}>
                                 {post.image_url && (
-                                    /* HIER WURDE GEÄNDERT: Feste Höhe entfernt, Bild responsive gemacht */
-                                    <div style={{ width: '100%', overflow: 'hidden' }}>
+                                    <div style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        background: 'rgba(0,0,0,0.02)',
+                                        borderBottom: '1px solid var(--border-color)'
+                                    }}>
                                         <img
                                             src={post.image_url}
                                             alt={post.title}
                                             style={{
-                                                width: '100%',
-                                                height: 'auto', // Höhe automatisch anpassen
-                                                display: 'block', // Verhindert Abstände unten
-                                                objectFit: 'contain' // Stellt sicher, dass alles sichtbar ist (optional, da height:auto das meist regelt)
+                                                maxWidth: '100%',
+                                                maxHeight: '450px', // Begrenzt die Höhe
+                                                width: 'auto',      // Verhindert das Strecken kleiner Bilder
+                                                height: 'auto',
+                                                display: 'block',
+                                                objectFit: 'contain'
                                             }}
                                         />
                                     </div>
