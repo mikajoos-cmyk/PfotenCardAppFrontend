@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiClient, Appointment, Booking } from '../lib/api';
-import { User, View, AppStatus } from '../types';
+import { User, View, AppStatus, ColorRule } from '../types';
 import { hasPermission } from '../lib/permissions';
 import LiveStatusBanner from '../components/ui/LiveStatusBanner';
 import LiveStatusModal from '../components/modals/LiveStatusModal';
@@ -21,15 +21,29 @@ const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-d
 
 // Farben basierend auf Keywords
 // Farben basierend auf Level oder Keywords
-const getCategoryColor = (event: Appointment, workshopLectureColor?: string): string => {
-    // 1.5 NEU: Kategorie-basierte Farben (Workshop/Vortrag)
+const getCategoryColor = (event: Appointment, workshopLectureColor?: string, colorRules?: ColorRule[]): string => {
+    // 1. NEU: Dynamische Farbregeln (Höchste Priorität)
+    if (colorRules && colorRules.length > 0) {
+        // Erst nach spezifischen Leistungs-Regeln suchen
+        const serviceRule = colorRules.find(r => r.type === 'service' && r.target_ids.includes(event.training_type_id || -1));
+        if (serviceRule) return serviceRule.color;
+
+        // Dann nach Level-Regeln suchen
+        if (event.target_levels && event.target_levels.length > 0) {
+            const levelIds = event.target_levels.map((l: any) => l.id);
+            const levelRule = colorRules.find(r => r.type === 'level' && r.target_ids.some(id => levelIds.includes(id)));
+            if (levelRule) return levelRule.color;
+        }
+    }
+
+    // 2. Kategorie-basierte Farben (Workshop/Vortrag)
     if (event.training_type) {
         if (event.training_type.category === 'workshop' || event.training_type.category === 'lecture') {
             return workshopLectureColor || '#F97316';
         }
     }
 
-    // 2. Fallback auf Keywords
+    // 3. Fallback auf Keywords
     const t = (event.title || "").toLowerCase();
     if (t.includes('welpe')) return 'orchid';
     if (t.includes('grund') || t.includes('basis') || t.includes('level 2')) return 'limegreen';
@@ -338,7 +352,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, workshopLectureColor }: {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, workshopLectureColor, colorRules }: {
     event: Appointment,
     onClose: () => void,
     onAction: (type: 'book' | 'cancel' | 'participants') => void,
@@ -350,7 +364,8 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     dogs: any[],
     selectedDogId: number | null,
     onDogChange: (id: number | null) => void,
-    workshopLectureColor: string
+    workshopLectureColor: string,
+    colorRules?: ColorRule[]
 }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
@@ -358,7 +373,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     const date = new Date(event.start_time);
 
     // Header Farbe basierend auf Event-Titel oder Level-Farbe
-    const levelColor = getCategoryColor(event, workshopLectureColor);
+    const levelColor = getCategoryColor(event, workshopLectureColor, colorRules);
     const headerColorClass = levelColor === 'orchid' ? 'purple'
         : levelColor === 'tomato' ? 'red'
             : 'blue';
@@ -696,6 +711,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [autoProgressEnabled, setAutoProgressEnabled] = useState(false);
     const [defaultDuration, setDefaultDuration] = useState(60);
     const [defaultMaxParticipants, setDefaultMaxParticipants] = useState(10);
+    const [colorRules, setColorRules] = useState<ColorRule[]>([]);
 
 
     useEffect(() => {
@@ -747,6 +763,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     console.log("Loading default appointment values:", tc.appointments);
                     setDefaultDuration(tc.appointments.default_duration || 60);
                     setDefaultMaxParticipants(tc.appointments.max_participants || 10);
+                    setColorRules(tc.appointments.color_rules || []);
                 }
             }
             if (Array.isArray(bookings)) {
@@ -1158,13 +1175,14 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                         const bookingStatus = myBookings.get(event.id); // 'confirmed' oder 'waitlist'
 
                                         const targetLevels = event.target_levels || [];
-                                        let barColors = targetLevels.map((l: any) => l.color || 'gold');
+                                        const eventColor = getCategoryColor(event, workshopLectureColor, colorRules);
+                                        let barColors = [eventColor];
+
                                         if (event.is_open_for_all) {
                                             barColors = [openForAllColor];
-                                        } else if (event.training_type && (event.training_type.category === 'workshop' || event.training_type.category === 'lecture')) {
-                                            barColors = [workshopLectureColor];
-                                        } else if (barColors.length === 0) {
-                                            barColors.push('gold');
+                                        } else if (eventColor === 'gold' && targetLevels.length > 0) {
+                                            // Fallback auf Level-Farben falls keine spezifische Regel greift
+                                            barColors = targetLevels.map((l: any) => l.color || 'gold');
                                         }
 
                                         const levelColor = targetLevels.length > 0 ? targetLevels[0].color : 'gold';
@@ -1366,6 +1384,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     selectedDogId={selectedDogId}
                     onDogChange={setSelectedDogId}
                     workshopLectureColor={workshopLectureColor}
+                    colorRules={colorRules}
                 />
             )}
         </div>
