@@ -209,7 +209,7 @@ export default function App() {
     };
 
     // --- ZENTRALE THEME ENGINE ---
-    const applyTheme = (config: any) => {
+    const applyTheme = (config: any, levels?: any[]) => {
         const root = document.documentElement;
         // Fallback-Logik: Nutze 'branding' aus dem Config-Objekt ODER direkte Properties (für Preview)
         const primary = config.branding?.primary_color || config.primary_color || '#22C55E';
@@ -296,20 +296,33 @@ export default function App() {
             }
 
             // 4. Level Colors
-            root.style.setProperty('--level-1-color-bg', 'var(--bg-accent-purple)');
-            root.style.setProperty('--level-1-color', isBgDark ? '#A855F7' : '#9333EA');
+            const levelsToUse = levels || config.levels || [];
+            if (levelsToUse && levelsToUse.length > 0) {
+                levelsToUse.forEach((l: any, idx: number) => {
+                    const levelIndex = idx + 1;
+                    const color = l.color || (levelIndex === 1 ? '#A855F7' : levelIndex === 2 ? '#22C55E' : levelIndex === 3 ? '#3B82F6' : levelIndex === 4 ? '#F97316' : '#D97706');
 
-            root.style.setProperty('--level-2-color-bg', 'var(--bg-accent-green)');
-            root.style.setProperty('--level-2-color', isBgDark ? '#22C55E' : '#16A34A');
+                    root.style.setProperty(`--level-${levelIndex}-color`, color);
+                    // Generiere eine hellere Hintergrundfarbe (Alpha 0.15 = hex 26)
+                    root.style.setProperty(`--level-${levelIndex}-color-bg`, color.length === 7 ? `${color}26` : `${color}2`);
+                });
+            } else {
+                // Fallback zu den Standardwerten (Legacy)
+                root.style.setProperty('--level-1-color-bg', 'var(--bg-accent-purple)');
+                root.style.setProperty('--level-1-color', isBgDark ? '#A855F7' : '#9333EA');
 
-            root.style.setProperty('--level-3-color-bg', 'var(--bg-accent-blue)');
-            root.style.setProperty('--level-3-color', isBgDark ? '#3B82F6' : '#0284C7');
+                root.style.setProperty('--level-2-color-bg', 'var(--bg-accent-green)');
+                root.style.setProperty('--level-2-color', isBgDark ? '#22C55E' : '#16A34A');
 
-            root.style.setProperty('--level-4-color-bg', 'var(--bg-accent-orange)');
-            root.style.setProperty('--level-4-color', isBgDark ? '#F97316' : '#D97706');
+                root.style.setProperty('--level-3-color-bg', 'var(--bg-accent-blue)');
+                root.style.setProperty('--level-3-color', isBgDark ? '#3B82F6' : '#0284C7');
 
-            root.style.setProperty('--level-5-color-bg', 'var(--bg-accent-yellow)');
-            root.style.setProperty('--level-5-color', isBgDark ? '#D97706' : '#A16207');
+                root.style.setProperty('--level-4-color-bg', 'var(--bg-accent-orange)');
+                root.style.setProperty('--level-4-color', isBgDark ? '#F97316' : '#D97706');
+
+                root.style.setProperty('--level-5-color-bg', 'var(--bg-accent-yellow)');
+                root.style.setProperty('--level-5-color', isBgDark ? '#D97706' : '#A16207');
+            }
 
             // Generic Level States
             if (isBgDark) {
@@ -342,7 +355,7 @@ export default function App() {
                         const encoded = hash.substring(8);
                         const decoded = JSON.parse(decodeURIComponent(escape(atob(encoded))));
 
-                        applyTheme(decoded); // Hier werden auch die Farben gesetzt
+                        applyTheme(decoded, decoded.levels); // Hier werden auch die Farben gesetzt
                         setSchoolName(decoded.school_name || 'PfotenCard');
                         setPreviewConfig(prev => ({
                             ...prev,
@@ -366,7 +379,7 @@ export default function App() {
                 const config = await apiClient.getConfig();
                 setAppConfigData(config);
                 if (config.tenant?.name) setSchoolName(config.tenant.name);
-                applyTheme({ branding: config.tenant?.config?.branding || {} });
+                applyTheme({ branding: config.tenant?.config?.branding || {} }, config.levels);
             } catch (error) {
                 console.error("Config Load Error", error);
             }
@@ -378,7 +391,7 @@ export default function App() {
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'UPDATE_CONFIG') {
                 const payload = event.data.payload;
-                applyTheme(payload); // WICHTIG: Dies setzt setIsDarkMode basierend auf der Payload
+                applyTheme(payload, payload.levels); // WICHTIG: Dies setzt setIsDarkMode basierend auf der Payload
                 setSchoolName(payload.school_name || 'PfotenCard');
 
                 setPreviewConfig(prev => ({
@@ -1402,6 +1415,7 @@ export default function App() {
                     setView={handleSetView}
                     appStatus={appStatus}
                     onUpdateStatus={handleUpdateAppStatus}
+                    activeModules={activeModules}
                 />
             );
         }

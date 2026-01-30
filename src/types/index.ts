@@ -38,6 +38,14 @@ export interface User {
     };
 }
 
+export interface ColorRule {
+    id: string;
+    name: string;
+    type: 'level' | 'service';
+    target_ids: number[];
+    color: string;
+}
+
 export interface Appointment {
     id: number;
     title: string;

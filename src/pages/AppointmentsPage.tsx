@@ -22,12 +22,6 @@ const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-d
 // Farben basierend auf Keywords
 // Farben basierend auf Level oder Keywords
 const getCategoryColor = (event: Appointment, workshopLectureColor?: string): string => {
-    // 1. Wenn Level-Farbe vorhanden ist, nimm die erste
-    if (event.target_levels && event.target_levels.length > 0) {
-        const firstLevelWithColor = event.target_levels.find(l => l.color);
-        if (firstLevelWithColor) return firstLevelWithColor.color;
-    }
-
     // 1.5 NEU: Kategorie-basierte Farben (Workshop/Vortrag)
     if (event.training_type) {
         if (event.training_type.category === 'workshop' || event.training_type.category === 'lecture') {
@@ -654,12 +648,13 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
 // --- MAIN PAGE ---
 
-export default function AppointmentsPage({ user, token, setView, appStatus, onUpdateStatus }: {
+export default function AppointmentsPage({ user, token, setView, appStatus, onUpdateStatus, activeModules }: {
     user: User | any,
     token: string | null,
     setView?: (view: View) => void,
     appStatus?: AppStatus | null,
-    onUpdateStatus?: (status: any, message: string) => void
+    onUpdateStatus?: (status: any, message: string) => void,
+    activeModules?: string[]
 }) {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -1068,7 +1063,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
                 {(user?.role === 'admin' || user?.role === 'mitarbeiter') && (
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        {(user?.role === 'admin' || hasPermission(user, 'can_edit_status')) && (
+                        {(user?.role === 'admin' || hasPermission(user, 'can_edit_status')) && activeModules?.includes('status_display') && (
                             <button className="button button-outline" onClick={() => setIsStatusModalOpen(true)}>
                                 <Icon name="activity" style={{ marginRight: '0.5rem' }} /> Globalen Status
                             </button>
@@ -1083,7 +1078,9 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 )}
             </header>
 
-            <LiveStatusBanner statusData={appStatus || null} />
+            {activeModules?.includes('status_display') && (
+                <LiveStatusBanner statusData={appStatus || null} />
+            )}
 
             {/* Color Legend */}
             <div className="color-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>

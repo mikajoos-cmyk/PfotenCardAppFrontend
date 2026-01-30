@@ -114,7 +114,9 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                 )}
             </header>
 
-            <LiveStatusBanner statusData={appStatus || null} />
+            {activeModules?.includes('status_display') && (
+                <LiveStatusBanner statusData={appStatus || null} />
+            )}
             <div className="kpi-grid">
                 <KpiCard
                     title="Kunden gesamt"
