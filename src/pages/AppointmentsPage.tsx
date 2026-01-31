@@ -761,9 +761,16 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 }
                 if (tc.appointments) {
                     console.log("Loading default appointment values:", tc.appointments);
+                    if (tc.appointments.color_rules) {
+                        console.log("Found color rules in config:", tc.appointments.color_rules);
+                    } else {
+                        console.warn("No color_rules found in tc.appointments");
+                    }
                     setDefaultDuration(tc.appointments.default_duration || 60);
                     setDefaultMaxParticipants(tc.appointments.max_participants || 10);
                     setColorRules(tc.appointments.color_rules || []);
+                } else {
+                    console.warn("No appointments config found in tc");
                 }
             }
             if (Array.isArray(bookings)) {
