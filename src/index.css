@@ -3146,10 +3146,9 @@ input:checked+.slider:before {
     align-items: center;
     background: var(--card-background);
     border: 1px solid var(--border-color);
-    border-left-width: 6px;
-    /* Farb-Balken links */
     border-radius: 8px;
-    padding: 1.25rem;
+    padding: 1.25rem 1.25rem 1.25rem 2.5rem;
+    /* Mehr Platz links für den 24px Balken */
     margin-bottom: 1rem;
     cursor: pointer;
     transition: all 0.2s ease;

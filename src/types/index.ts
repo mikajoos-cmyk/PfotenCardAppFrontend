@@ -44,6 +44,7 @@ export interface ColorRule {
     type: 'level' | 'service';
     target_ids: number[];
     color: string;
+    match_all?: boolean; // New logic: true = AND (all must match), false/undef = OR (any one is enough)
 }
 
 export interface Appointment {

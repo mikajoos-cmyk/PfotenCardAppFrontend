@@ -198,8 +198,16 @@ export const apiClient = {
     },
 
     // --- APPOINTMENTS ---
-    getAppointments: async (token: string | null) => {
-        return apiClient.get('/api/appointments', token);
+    getAppointments: async (token: string | null, startDate?: string, endDate?: string) => {
+        let path = '/api/appointments';
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+
+        const queryString = params.toString();
+        if (queryString) path += `?${queryString}`;
+
+        return apiClient.get(path, token);
     },
 
     getMyBookings: async (token: string | null) => {
@@ -322,6 +330,7 @@ export interface Appointment {
     training_type_id?: number;
     price?: number; // NEU
     is_open_for_all?: boolean;
+    block_id?: string; // NEU
     trainer?: any;
     training_type?: any;
     target_levels?: any[];

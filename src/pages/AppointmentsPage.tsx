@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { apiClient, Appointment, Booking } from '../lib/api';
+// NEU: Hilfsfunktion für Block-Kurse
+const isBlockEnrolled = (blockId: string, myBookings: Map<number, string>, events: Appointment[]) => {
+    // Prüfe, ob IRGENDEIN Event dieses Blocks gebucht ist
+    return events.filter(e => e.block_id === blockId).some(e => myBookings.has(e.id) && myBookings.get(e.id) === 'confirmed');
+};
 import { User, View, AppStatus, ColorRule } from '../types';
 import { hasPermission } from '../lib/permissions';
 import LiveStatusBanner from '../components/ui/LiveStatusBanner';
@@ -21,7 +26,7 @@ const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-d
 
 // Farben basierend auf Keywords
 // Farben basierend auf Level oder Keywords
-const getCategoryColor = (event: Appointment, workshopLectureColor?: string, colorRules?: ColorRule[]): string => {
+const getCategoryColor = (event: Appointment, colorRules?: ColorRule[]): string => {
     // 1. NEU: Dynamische Farbregeln (Höchste Priorität)
     if (colorRules && colorRules.length > 0) {
         // Erst nach spezifischen Leistungs-Regeln suchen
@@ -31,19 +36,23 @@ const getCategoryColor = (event: Appointment, workshopLectureColor?: string, col
         // Dann nach Level-Regeln suchen
         if (event.target_levels && event.target_levels.length > 0) {
             const levelIds = event.target_levels.map((l: any) => l.id);
-            const levelRule = colorRules.find(r => r.type === 'level' && r.target_ids.some(id => levelIds.includes(id)));
+            const levelRule = colorRules.find(r => {
+                if (r.type !== 'level') return false;
+
+                if (r.match_all) {
+                    // AND-Logik: Alle IDs der Regel müssen im Event enthalten sein
+                    if (r.target_ids.length === 0) return false;
+                    return r.target_ids.every(id => levelIds.includes(id));
+                } else {
+                    // OR-Logik: Eine der IDs reicht
+                    return r.target_ids.some(id => levelIds.includes(id));
+                }
+            });
             if (levelRule) return levelRule.color;
         }
     }
 
-    // 2. Kategorie-basierte Farben (Workshop/Vortrag)
-    if (event.training_type) {
-        if (event.training_type.category === 'workshop' || event.training_type.category === 'lecture') {
-            return workshopLectureColor || '#F97316';
-        }
-    }
-
-    // 3. Fallback auf Keywords
+    // 2. Fallback auf Keywords
     const t = (event.title || "").toLowerCase();
     if (t.includes('welpe')) return 'orchid';
     if (t.includes('grund') || t.includes('basis') || t.includes('level 2')) return 'limegreen';
@@ -57,7 +66,7 @@ const getCategoryColor = (event: Appointment, workshopLectureColor?: string, col
 
 // --- MODALS ---
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[] }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -75,7 +84,8 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
         is_recurring: false,
         recurrence_pattern: 'weekly',
         end_after_count: 4,
-        end_at_date: ''
+        end_at_date: '',
+        is_block: false // NEU: Option für geschlossenen Kurs
     });
 
     // Helper to calc end time
@@ -111,10 +121,11 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                     : (initialData.target_level_ids || []),
                 price: initialData.price || null, // NEU
                 is_open_for_all: initialData.is_open_for_all || false,
-                is_recurring: false,
-                recurrence_pattern: 'weekly',
-                end_after_count: 4,
-                end_at_date: ''
+                is_recurring: !!initialData.block_id, // NEU: Wenn Block, dann als wiederkehrend anzeigen
+                recurrence_pattern: 'weekly', // Standard, da wir das Pattern nicht im Model speichern (nur als Gruppe)
+                end_after_count: allAppointments.filter(a => a.block_id === initialData.block_id).length,
+                end_at_date: '',
+                is_block: !!initialData.block_id
             });
         } else {
             setFormData({
@@ -134,7 +145,8 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 is_recurring: false,
                 recurrence_pattern: 'weekly',
                 end_after_count: 4,
-                end_at_date: ''
+                end_at_date: '',
+                is_block: false // NEU: Reset
             });
         }
     }, [initialData, isOpen, defaultDuration, defaultMaxParticipants]);
@@ -163,11 +175,12 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
             training_type_id: formData.training_type_id ? Number(formData.training_type_id) : null,
             price: formData.price ? Number(formData.price) : null, // NEU
-            target_level_ids: formData.target_level_ids,
+            target_level_ids: formData.is_open_for_all ? allLevels.map(l => l.id) : formData.target_level_ids,
             ...(formData.is_recurring && !initialData ? {
                 recurrence_pattern: formData.recurrence_pattern,
                 end_after_count: formData.end_after_count,
-                end_at_date: formData.end_at_date ? new Date(formData.end_at_date).toISOString() : null
+                end_at_date: formData.end_at_date ? new Date(formData.end_at_date).toISOString() : null,
+                is_block: formData.is_block // NEU übertragen
             } : {})
         });
     };
@@ -300,13 +313,17 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                         <div className="form-group"><label>Ort</label><input className="form-input" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Hundeplatz / Online" /></div>
                         <div className="form-group"><label>Beschreibung</label><textarea className="form-input" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." /></div>
 
-                        {!initialData && (
+                        {/* NEU: Wiederkehrer-Logik auch beim Editieren anzeigen, wenn es ein Block-Kurs ist */}
+                        {(!initialData || formData.is_block) && (
                             <>
                                 <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
-                                    <label style={{ margin: 0 }}>Wiederkehrender Termin</label>
+                                    <label style={{ margin: 0 }}>
+                                        {initialData ? 'Teil eines Pakets / Kurses' : 'Wiederkehrender Termin'}
+                                    </label>
                                     <label className="switch">
                                         <input
                                             type="checkbox"
+                                            disabled={!!initialData} // Beim Editieren nicht mehr ausschaltbar, wenn es einmal ein Block ist
                                             checked={formData.is_recurring}
                                             onChange={e => setFormData({ ...formData, is_recurring: e.target.checked })}
                                         />
@@ -316,28 +333,80 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 
                                 {formData.is_recurring && (
                                     <div style={{ padding: '1rem', background: 'var(--bg-accent)', borderRadius: '8px', marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                        <div className="form-group">
-                                            <label>Rhythmus</label>
-                                            <select className="form-input" value={formData.recurrence_pattern} onChange={e => setFormData({ ...formData, recurrence_pattern: e.target.value })}>
-                                                <option value="daily">Täglich</option>
-                                                <option value="weekly">Wöchentlich</option>
-                                                <option value="biweekly">Alle 2 Wochen</option>
-                                                <option value="weekdays">Wochentage (Mo-Fr)</option>
-                                            </select>
-                                        </div>
+                                        {initialData && (
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--brand-orange)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                                                ⚠️ Achtung: Änderungen an Datum oder Uhrzeit verschieben das GESAMTE Paket proportional.
+                                            </div>
+                                        )}
+                                        {!initialData && (
+                                            <div className="form-group">
+                                                <label>Rhythmus</label>
+                                                <select className="form-input" value={formData.recurrence_pattern} onChange={e => setFormData({ ...formData, recurrence_pattern: e.target.value })}>
+                                                    <option value="daily">Täglich</option>
+                                                    <option value="weekly">Wöchentlich</option>
+                                                    <option value="biweekly">Alle 2 Wochen</option>
+                                                    <option value="weekdays">Wochentage (Mo-Fr)</option>
+                                                </select>
+                                            </div>
+                                        )}
                                         <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
                                             <div style={{ flex: 1 }}>
                                                 <label>Anzahl Termine</label>
-                                                <input type="number" className="form-input" value={formData.end_after_count} onChange={e => setFormData({ ...formData, end_after_count: parseInt(e.target.value) || 0, end_at_date: '' })} />
+                                                <input
+                                                    type="number"
+                                                    disabled={!!initialData}
+                                                    className="form-input"
+                                                    value={formData.end_after_count}
+                                                    onChange={e => setFormData({ ...formData, end_after_count: parseInt(e.target.value) || 0, end_at_date: '' })}
+                                                />
                                             </div>
                                             <div style={{ flex: 1 }}>
                                                 <label>Oder bis Datum</label>
-                                                <input type="date" className="form-input" style={{ colorScheme: 'dark' }} value={formData.end_at_date} onChange={e => setFormData({ ...formData, end_at_date: e.target.value, end_after_count: 0 })} />
+                                                <input
+                                                    type="date"
+                                                    disabled={!!initialData}
+                                                    className="form-input"
+                                                    style={{ colorScheme: 'dark' }}
+                                                    value={formData.end_at_date}
+                                                    onChange={e => setFormData({ ...formData, end_at_date: e.target.value, end_after_count: 0 })}
+                                                />
                                             </div>
+                                        </div>
+                                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                                            <label style={{ margin: 0 }}>Als geschlossenen Kurs anlegen?<br /><span style={{ fontSize: '0.8rem', color: '#999' }}>Benutzer buchen alle Termine auf einmal.</span></label>
+                                            <label className="switch">
+                                                <input
+                                                    type="checkbox"
+                                                    disabled={!!initialData}
+                                                    checked={formData.is_block}
+                                                    onChange={e => setFormData({ ...formData, is_block: e.target.checked })}
+                                                />
+                                                <span className="slider round"></span>
+                                            </label>
                                         </div>
                                     </div>
                                 )}
                             </>
+                        )}
+
+                        {/* NEU: Anzeige der Termine für Block-Kurse im Editier-Modus */}
+                        {initialData && initialData.block_id && allAppointments && (
+                            <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-accent)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>Termine in diesem Block:</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '150px', overflowY: 'auto' }}>
+                                    {allAppointments
+                                        .filter(a => a.block_id === initialData.block_id)
+                                        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                                        .map((a, idx) => (
+                                            <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: a.id === initialData.id ? 'var(--primary-color)' : 'var(--text-secondary)' }}>
+                                                <span style={{ fontWeight: a.id === initialData.id ? 'bold' : 'normal' }}>
+                                                    {idx + 1}. {new Date(a.start_time).toLocaleDateString()}
+                                                </span>
+                                                <span>{new Date(a.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(a.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        ))}
+                                </div>
+                            </div>
                         )}
 
                         <div className="modal-footer">
@@ -345,14 +414,14 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                             <button type="submit" className="button button-primary">{initialData ? 'Speichern' : 'Erstellen'}</button>
                         </div>
                     </form>
-                </div>
-            </div>
-        </div>
+                </div >
+            </div >
+        </div >
     );
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, workshopLectureColor, colorRules }: {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments }: {
     event: Appointment,
     onClose: () => void,
     onAction: (type: 'book' | 'cancel' | 'participants') => void,
@@ -364,8 +433,8 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     dogs: any[],
     selectedDogId: number | null,
     onDogChange: (id: number | null) => void,
-    workshopLectureColor: string,
-    colorRules?: ColorRule[]
+    colorRules?: ColorRule[],
+    allAppointments: Appointment[]
 }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
@@ -373,7 +442,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     const date = new Date(event.start_time);
 
     // Header Farbe basierend auf Event-Titel oder Level-Farbe
-    const levelColor = getCategoryColor(event, workshopLectureColor, colorRules);
+    const levelColor = getCategoryColor(event, colorRules);
     const headerColorClass = levelColor === 'orchid' ? 'purple'
         : levelColor === 'tomato' ? 'red'
             : 'blue';
@@ -428,6 +497,51 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                     <p style={{ lineHeight: '1.6', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
                         {event.description || 'Keine weitere Beschreibung verfügbar.'}
                     </p>
+
+                    {/* NEU: Block-Kurs Termine anzeigen */}
+                    {event.block_id && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Icon name="layers" style={{ width: '14px', height: '14px' }} />
+                                Kurstermine
+                            </h4>
+                            <div style={{ background: 'var(--bg-accent)', borderRadius: '8px', padding: '0.75rem', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
+                                    {allAppointments
+                                        .filter(a => a.block_id === event.block_id)
+                                        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                                        .map((a, idx) => {
+                                            const isThisEvent = a.id === event.id;
+                                            const isPastEvent = new Date(a.end_time) < new Date();
+                                            return (
+                                                <div key={a.id} style={{
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                    fontSize: '0.9rem',
+                                                    opacity: isPastEvent ? 0.6 : 1,
+                                                    color: isThisEvent ? 'var(--primary-color)' : 'inherit',
+                                                    fontWeight: isThisEvent ? 600 : 400
+                                                }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <span style={{ minWidth: '20px', color: 'var(--text-light)' }}>{idx + 1}.</span>
+                                                        <span style={{ textDecoration: isPastEvent ? 'line-through' : 'none' }}>
+                                                            {formatDate(new Date(a.start_time))}
+                                                        </span>
+                                                    </div>
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                                                        {formatTime(new Date(a.start_time))}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                </div>
+                                {!isBooked && (
+                                    <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center' }}>
+                                        Mit der Buchung meldest du dich für alle oben genannten Termine an.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Hund-Auswahl für Kunden vor der Buchung */}
                     {!isBooked && !isPast && (userRole === 'customer' || userRole === 'kunde') && dogs.length > 0 && (
@@ -705,8 +819,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
     const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
-    const [openForAllColor, setOpenForAllColor] = useState('#10b981');
-    const [workshopLectureColor, setWorkshopLectureColor] = useState('#F97316');
+    // const [openForAllColor, setOpenForAllColor] = useState('#10b981'); // DEPRECATED
+    // const [workshopLectureColor, setWorkshopLectureColor] = useState('#F97316'); // DEPRECATED
     const [autoBillingEnabled, setAutoBillingEnabled] = useState(false);
     const [autoProgressEnabled, setAutoProgressEnabled] = useState(false);
     const [defaultDuration, setDefaultDuration] = useState(60);
@@ -730,8 +844,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         }
 
         try {
-            const [appts, bookings, staff, config] = await Promise.all([
-                apiClient.getAppointments(token),
+            // 1. Zuerst Basis-Daten laden (Config, Staff, eigene Buchungen)
+            const [bookings, staff, config] = await Promise.all([
                 apiClient.getMyBookings(token).catch(e => {
                     console.warn("Could not fetch user bookings:", e);
                     return [];
@@ -739,48 +853,73 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 apiClient.getStaff(token).catch(() => []),
                 apiClient.getConfig().catch(() => null)
             ]);
-            console.log("Loaded Appointments:", appts);
-            console.log("Loaded Staff:", staff);
-            setAppointments(appts);
+
             setStaffUsers(staff);
-            if (config && config.levels) {
-                setAllLevels(config.levels);
-            }
-            if (config && config.training_types) {
-                setAllServices(config.training_types);
-            }
+            if (config && config.levels) setAllLevels(config.levels);
+            if (config && config.training_types) setAllServices(config.training_types);
+
             if (config && config.tenant && config.tenant.config) {
                 const tc = config.tenant.config;
-                console.log("Tenant Config:", tc);
                 setAutoBillingEnabled(!!tc.auto_billing_enabled);
                 setAutoProgressEnabled(!!tc.auto_progress_enabled);
-
-                if (tc.branding) {
-                    setOpenForAllColor(tc.branding.open_for_all_color || '#10b981');
-                    setWorkshopLectureColor(tc.branding.workshop_lecture_color || '#F97316');
-                }
                 if (tc.appointments) {
-                    console.log("Loading default appointment values:", tc.appointments);
-                    if (tc.appointments.color_rules) {
-                        console.log("Found color rules in config:", tc.appointments.color_rules);
-                    } else {
-                        console.warn("No color_rules found in tc.appointments");
-                    }
                     setDefaultDuration(tc.appointments.default_duration || 60);
                     setDefaultMaxParticipants(tc.appointments.max_participants || 10);
                     setColorRules(tc.appointments.color_rules || []);
-                } else {
-                    console.warn("No appointments config found in tc");
                 }
             }
+
             if (Array.isArray(bookings)) {
                 const bookingMap = new Map<number, string>();
                 bookings.forEach((b: any) => bookingMap.set(b.appointment_id, b.status));
                 setMyBookings(bookingMap);
             }
+
+            // 2. Termine SCHRITTWEISE laden (Woche für Woche) und sofort anzeigen
+            setAppointments([]); // Reset
+
+            // Definition der Zeiträume (z.B. nächsten 12 Wochen)
+            const weeksToLoad = 12;
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            // Hilfsfunktion zum Laden einer Woche
+            const loadWeek = async (weekOffset: number) => {
+                const start = new Date(now.getTime());
+                start.setDate(start.getDate() + (weekOffset * 7));
+
+                const end = new Date(start.getTime());
+                end.setDate(end.getDate() + 7);
+                end.setMilliseconds(-1); // Kurz vor Mitternacht des 7. Tages
+
+                try {
+                    const newAppts = await apiClient.getAppointments(token, start.toISOString(), end.toISOString());
+                    if (newAppts && newAppts.length > 0) {
+                        setAppointments(prev => {
+                            // Verhindere Duplikate falls Überschneidungen
+                            const existingIds = new Set(prev.map(a => a.id));
+                            const filtered = newAppts.filter((a: any) => !existingIds.has(a.id));
+                            return [...prev, ...filtered].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+                        });
+                    }
+                } catch (err) {
+                    console.error(`Fehler beim Laden von Woche ${weekOffset}:`, err);
+                }
+            };
+
+            // Erste Woche sofort laden (Blocking für den Loading-Spinner)
+            await loadWeek(0);
+            setLoading(false); // Spinner ausblenden, erste Daten sind da!
+
+            // Weitere Wochen im Hintergrund laden
+            for (let i = 1; i < weeksToLoad; i++) {
+                // Kurze Pause, um den Browser nicht zu blockieren und flüssiges UI zu garantieren
+                await new Promise(resolve => setTimeout(resolve, 50));
+                await loadWeek(i);
+            }
+
         } catch (e: any) {
-            console.error("API Error:", e);
-        } finally {
+            console.error("API Error during initial load:", e);
             setLoading(false);
         }
     };
@@ -1030,7 +1169,29 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 }
 
                 // Tab "Alle": Nur Zukunft/Heute anzeigen (Standardverhalten)
-                return isFutureOrToday;
+                // Tab "Alle": Nur Zukunft/Heute anzeigen (Standardverhalten)
+                const shouldShow = isFutureOrToday;
+                // NEU: Block-Filterung
+                // Wenn es ein Block-Kurs ist (block_id vorhanden):
+                // 1. Wenn User diesen Block NICHT gebucht hat: Zeige NUR den allerersten Termin des Blocks (start date).
+                // 2. Wenn User diesen Block gebucht hat: Zeige ALLE Termine.
+                if (shouldShow && a.block_id) {
+                    // Ist User eingeschrieben?
+                    const enrolled = isBlockEnrolled(a.block_id, myBookings, appointments);
+                    if (!enrolled) {
+                        // User ist NICHT eingeschrieben -> Zeige nur den ersten Termin des Blocks
+                        // Finde den ersten Termin des Blocks in der GESAMTEN Liste (nicht nur gefiltert)
+                        const blockEvents = appointments.filter(evt => evt.block_id === a.block_id).sort((x, y) => new Date(x.start_time).getTime() - new Date(y.start_time).getTime());
+                        const firstEvent = blockEvents[0];
+
+                        // Wenn dieser Termin nicht der erste ist, verstecke ihn
+                        if (firstEvent && a.id !== firstEvent.id) {
+                            return false;
+                        }
+                    }
+                }
+
+                return shouldShow;
             });
 
         const sortedEvents = filtered.sort((a, b) => {
@@ -1106,22 +1267,18 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 <LiveStatusBanner statusData={appStatus || null} />
             )}
 
-            {/* Color Legend */}
+            {/* Color Legend - Now showing Color Rules */}
             <div className="color-legend" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', padding: '0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: openForAllColor }}></span>
-                    <span>Alle Level</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: workshopLectureColor }}></span>
-                    <span>Workshops & Vorträge</span>
-                </div>
-                {allLevels.map(lvl => (
-                    <div key={lvl.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: lvl.color || 'gold' }}></span>
-                        <span>{lvl.name}</span>
-                    </div>
-                ))}
+                {colorRules.length > 0 ? (
+                    colorRules.map(rule => (
+                        <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span style={{ display: 'block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: rule.color }}></span>
+                            <span>{rule.name}</span>
+                        </div>
+                    ))
+                ) : (
+                    <span style={{ fontStyle: 'italic', color: 'var(--text-light)' }}>Es wurden noch keine Farbregeln definiert.</span>
+                )}
             </div>
 
             <div className="segmented-tabs" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
@@ -1182,17 +1339,11 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                         const bookingStatus = myBookings.get(event.id); // 'confirmed' oder 'waitlist'
 
                                         const targetLevels = event.target_levels || [];
-                                        const eventColor = getCategoryColor(event, workshopLectureColor, colorRules);
+                                        const eventColor = getCategoryColor(event, colorRules);
                                         let barColors = [eventColor];
 
-                                        if (event.is_open_for_all) {
-                                            barColors = [openForAllColor];
-                                        } else if (eventColor === 'gold' && targetLevels.length > 0) {
-                                            // Fallback auf Level-Farben falls keine spezifische Regel greift
-                                            barColors = targetLevels.map((l: any) => l.color || 'gold');
-                                        }
-
-                                        const levelColor = targetLevels.length > 0 ? targetLevels[0].color : 'gold';
+                                        /* Logic for overriding colors based on old settings REMOVED.
+                                           Now strictly following color rules or keywords. */
 
                                         return (
                                             <li
@@ -1206,7 +1357,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                     left: 0,
                                                     top: 0,
                                                     bottom: 0,
-                                                    width: '8px',
+                                                    width: '24px',
                                                     display: 'flex',
                                                     flexDirection: 'column'
                                                 }}>
@@ -1215,7 +1366,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                     ))}
                                                 </div>
                                                 {/* Klickbarer Bereich für Details */}
-                                                <div className="event-details" style={{ paddingLeft: '1.25rem' }}>
+                                                <div className="event-details">
                                                     <span className="event-title">{event.title}</span>
                                                     <div className="event-line-2">
                                                         <span>{formatDate(date)} &bull; {formatTime(date)}</span>
@@ -1362,6 +1513,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     showLeistung={autoBillingEnabled || autoProgressEnabled} // Nur anzeigen wenn einer der beiden an ist
                     defaultDuration={defaultDuration}
                     defaultMaxParticipants={defaultMaxParticipants}
+                    allAppointments={appointments}
                 />
             )}
             <ParticipantsModal
@@ -1390,8 +1542,9 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     dogs={userDogs}
                     selectedDogId={selectedDogId}
                     onDogChange={setSelectedDogId}
-                    workshopLectureColor={workshopLectureColor}
+                    // workshopLectureColor={workshopLectureColor} // REMOVED
                     colorRules={colorRules}
+                    allAppointments={appointments}
                 />
             )}
         </div>
