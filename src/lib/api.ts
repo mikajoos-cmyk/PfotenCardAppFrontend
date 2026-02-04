@@ -313,6 +313,31 @@ export const apiClient = {
 
     createTopUpIntent: async (data: { amount: number, bonus: number }, token: string | null) => {
         return apiClient.post('/api/stripe/create-topup-intent', data, token);
+    },
+
+    // --- RECHNUNGEN ---
+    downloadInvoice: async (transactionId: number, token: string | null) => {
+        // Wir nutzen nicht die Wrapper-Funktion, weil wir einen Blob zurückbekommen wollen
+        console.log(`API GET PDF: ${API_BASE_URL}/api/transactions/${transactionId}/invoice`);
+
+        const response = await fetch(`${API_BASE_URL}/api/transactions/${transactionId}/invoice`, {
+            method: 'GET',
+            headers: getHeaders(token),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text().catch(() => null);
+            throw new Error(errorBody || `API Fehler (${response.status})`);
+        }
+
+        // Prüfen ob JSON zurückkam (unser Dummy-Response)
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return response.json();
+        }
+
+        // Ansonsten Blob
+        return response.blob();
     }
 };
 

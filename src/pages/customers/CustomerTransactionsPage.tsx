@@ -2,11 +2,40 @@
 import React, { FC } from 'react';
 import Icon from '../../components/ui/Icon';
 
+import { apiClient } from '../../lib/api';
+
 interface CustomerTransactionsPageProps {
     transactions: any[];
+    token: string | null; // NEU
 }
 
-const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transactions }) => {
+const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transactions, token }) => {
+
+    const handleDownloadInvoice = async (transactionId: number, invoiceNumber: string) => {
+        if (!token) return;
+        try {
+            const result = await apiClient.downloadInvoice(transactionId, token);
+
+            // Fallback für Dummy-Response (JSON)
+            if (result && result.message) {
+                alert(result.message);
+                return;
+            }
+
+            // Blob Handling für PDF
+            const url = window.URL.createObjectURL(new Blob([result]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Rechnung-${invoiceNumber}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+        } catch (e: any) {
+            console.error("Download failed", e);
+            alert("Fehler beim Herunterladen der Rechnung: " + e.message);
+        }
+    };
+
     return (
         <>
             <header className="page-header">
@@ -29,6 +58,16 @@ const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transacti
                                         </div>
                                         <div className="tx-line-2">
                                             <span>{new Date(tx.date).toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                                            {/* NEU: Rechnungs-Button bei Einnahmen mit Rechnungsnummer */}
+                                            {tx.amount > 0 && tx.invoice_number && (
+                                                <button
+                                                    className="text-button small-text-button"
+                                                    style={{ marginLeft: '1rem', color: 'var(--primary-color)', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                                                    onClick={() => handleDownloadInvoice(tx.id, tx.invoice_number)}
+                                                >
+                                                    Rechnung {tx.invoice_number}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <div className={`tx-amount ${tx.amount < 0 ? 'debit' : 'topup'}`}>

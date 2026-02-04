@@ -1323,6 +1323,7 @@ export default function App() {
         if (view.page === 'transactions') {
             return <CustomerTransactionsPage
                 transactions={transactions}
+                token={authToken} // NEU
             />;
         }
 
