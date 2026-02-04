@@ -1297,6 +1297,7 @@ export default function App() {
                         wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                         isDarkMode={isDarkMode}
                         isPreviewMode={isPreviewMode}
+                        activeModules={activeModules}
                         onConfirmTransaction={handleConfirmTransaction}
                     />
                 );
@@ -1323,7 +1324,8 @@ export default function App() {
         if (view.page === 'transactions') {
             return <CustomerTransactionsPage
                 transactions={transactions}
-                token={authToken} // NEU
+                token={authToken}
+                activeModules={activeModules} // NEU
             />;
         }
 
@@ -1354,6 +1356,7 @@ export default function App() {
                         wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                         isDarkMode={isDarkMode}
                         isPreviewMode={isPreviewMode}
+                        activeModules={activeModules}
                         onConfirmTransaction={handleConfirmTransaction}
                     />
                 );
@@ -1478,6 +1481,7 @@ export default function App() {
                                 wording={appConfigData?.tenant?.config?.wording || (isPreviewMode ? { level: previewConfig.levelTerm || 'Level', vip: previewConfig.vipTerm || 'VIP' } : undefined)}
                                 isDarkMode={isDarkMode}
                                 isPreviewMode={isPreviewMode}
+                                activeModules={activeModules}
                                 onConfirmTransaction={handleConfirmTransaction} // NEU
                             />
                         )}

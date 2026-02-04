@@ -196,7 +196,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
             )}
 
             {/* Top-Up Modal */}
-            {isTopUpOpen && (
+            {isTopUpOpen && activeModules?.includes('balance_topup') && (
                 <TopUpModal
                     token={token}
                     balanceConfig={balanceConfig}

@@ -32,6 +32,7 @@ interface CustomerDetailPageProps {
     isDarkMode?: boolean;
     // NEU
     isPreviewMode?: boolean;
+    activeModules?: string[];
     onConfirmTransaction: (txData: {
         title: string;
         amount: number;
@@ -46,7 +47,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, authToken, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
-    wording, isDarkMode, isPreviewMode, onConfirmTransaction
+    wording, isDarkMode, isPreviewMode, activeModules, onConfirmTransaction
 }) => {
 
     const levelTerm = wording?.level || 'Level';
@@ -262,7 +263,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id), dogId: activeDogId || undefined })}>Guthaben verwalten</button>
                                         </>
                                     )}
-                                    {String(currentUser.id) === String(customer.id) && (currentUser.role === 'customer' || currentUser.role === 'kunde') && (
+                                    {String(currentUser.id) === String(customer.id) && (currentUser.role === 'customer' || currentUser.role === 'kunde') && activeModules?.includes('balance_topup') && (
                                         <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id), dogId: activeDogId || undefined })}>Guthaben aufladen</button>
                                     )}
                                 </>

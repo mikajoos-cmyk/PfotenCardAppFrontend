@@ -6,10 +6,11 @@ import { apiClient } from '../../lib/api';
 
 interface CustomerTransactionsPageProps {
     transactions: any[];
-    token: string | null; // NEU
+    token: string | null;
+    activeModules?: string[]; // NEU
 }
 
-const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transactions, token }) => {
+const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transactions, token, activeModules }) => {
 
     const handleDownloadInvoice = async (transactionId: number, invoiceNumber: string) => {
         if (!token) return;
@@ -58,8 +59,8 @@ const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transacti
                                         </div>
                                         <div className="tx-line-2">
                                             <span>{new Date(tx.date).toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
-                                            {/* NEU: Rechnungs-Button bei Einnahmen mit Rechnungsnummer */}
-                                            {tx.amount > 0 && tx.invoice_number && (
+                                            {/* NEU: Rechnungs-Button bei Einnahmen mit Rechnungsnummer (nur wenn Modul aktiv) */}
+                                            {tx.amount > 0 && tx.invoice_number && activeModules?.includes('invoice_download') && (
                                                 <button
                                                     className="text-button small-text-button"
                                                     style={{ marginLeft: '1rem', color: 'var(--primary-color)', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
