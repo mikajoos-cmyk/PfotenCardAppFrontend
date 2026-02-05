@@ -13,6 +13,10 @@ import Icon from '../components/ui/Icon';
 import InfoModal from '../components/modals/InfoModal';
 import { useAppointments } from '../hooks/queries/useAppointments';
 import { useQueryClient } from '@tanstack/react-query';
+import { useConfig } from '../hooks/queries/useConfig';
+import { useStaff } from '../hooks/queries/useStaff';
+import { useMyBookings } from '../hooks/queries/useMyBookings';
+
 // --- MOCK DATEN FÜR PREVIEW ---
 const MOCK_APPOINTMENTS: any[] = [
     { id: 101, title: 'Welpenstunde', description: 'Spiel & Spaß für die Kleinen.', start_time: new Date(Date.now() + 86400000).toISOString(), end_time: new Date(Date.now() + 90000000).toISOString(), location: 'Welpenwiese', max_participants: 8, participants_count: 5 },
@@ -786,35 +790,54 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     onUpdateStatus?: (status: any, message: string) => void,
     activeModules?: string[]
 }) {
-    // Hook initialisieren
     const queryClient = useQueryClient();
+    const isPreview = !token || token === 'preview-token';
 
-    // 1. Daten aus dem Cache holen (Dank Prefetching in App.tsx sind sie oft sofort da!)
-    const { data: appointmentsData, isLoading: isQueryLoading } = useAppointments(token);
-
-    // 2. Daten zuweisen (Fallback auf leeres Array, damit der Rest des Codes nicht crasht)
+    // 1. HAUPTDATEN (Termine)
+    const { data: appointmentsData, isLoading: apptsLoading } = useAppointments(token);
     const appointments = appointmentsData || [];
 
-    // 3. Loading Status vereinheitlichen
-    const isPreview = !token || token === 'preview-token';
-    // Wenn Preview, laden wir nicht (wir haben Mock-Daten), sonst warten wir auf den Hook
-    const loading = isQueryLoading && !isPreview;
+    // 2. CONFIG DATEN (Farben, Level, Services)
+    const { data: configData } = useConfig();
 
-    // MOCK DATEN F�R PREVIEW (optional, falls du das Mocking behalten willst)
+    // Daten aus der Config extrahieren (mit Fallbacks)
+    const allLevels = configData?.levels || [];
+    const allServices = configData?.training_types || [];
+    const colorRules = configData?.tenant?.config?.appointments?.color_rules || [];
+    const defaultDuration = configData?.tenant?.config?.appointments?.default_duration || 60;
+    const defaultMaxParticipants = configData?.tenant?.config?.appointments?.max_participants || 10;
+    const autoBillingEnabled = !!configData?.tenant?.config?.auto_billing_enabled;
+    const autoProgressEnabled = !!configData?.tenant?.config?.auto_progress_enabled;
+
+    // 3. MITARBEITER (Trainer)
+    const { data: staffData } = useStaff(token);
+    const staffUsers = staffData || [];
+
+    // 4. EIGENE BUCHUNGEN (Status der Buttons)
+    const { data: myBookingsData } = useMyBookings(token);
+
+    // Umwandlung in Map für schnellen Zugriff (wie im alten Code)
+    const myBookings = useMemo(() => {
+        const map = new Map<number, string>();
+        if (myBookingsData) {
+            myBookingsData.forEach((b: any) => map.set(b.appointment_id, b.status));
+        }
+        return map;
+    }, [myBookingsData]);
+
+    // Loading Status
+    const loading = apptsLoading && !isPreview;
+
+    // MOCK DATEN FÜR PREVIEW (optional, falls du das Mocking behalten willst)
     useEffect(() => {
         if (isPreview && appointments.length === 0) {
             queryClient.setQueryData(['appointments', token], MOCK_APPOINTMENTS);
         }
     }, [isPreview, appointments.length, queryClient, token]);
 
-    // �NDERUNG: Status statt nur ID speichern (Map<ID, Status>)
-    const [myBookings, setMyBookings] = useState<Map<number, string>>(new Map());
-    // Admin State
+    // --- STATE FÜR MODALS & UI ---
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Appointment | null>(null);
-    const [staffUsers, setStaffUsers] = useState<any[]>([]);
-    const [allLevels, setAllLevels] = useState<any[]>([]);
-    const [allServices, setAllServices] = useState<any[]>([]);
 
     const [participantsOpen, setParticipantsOpen] = useState(false);
     const [currentParticipants, setCurrentParticipants] = useState<Booking[]>([]);
@@ -833,59 +856,11 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             setSelectedDogId(null);
         }
     }, [user]);
-    useEffect(() => {
-        if (isPreview) {
-            return;
-        }
-
-        const loadMetaData = async () => {
-            try {
-                const [bookings, staff, config] = await Promise.all([
-                    apiClient.getMyBookings(token).catch(e => {
-                        console.warn("Could not fetch user bookings:", e);
-                        return [];
-                    }),
-                    apiClient.getStaff(token).catch(() => []),
-                    apiClient.getConfig().catch(() => null)
-                ]);
-
-                setStaffUsers(staff);
-                if (config && config.levels) setAllLevels(config.levels);
-                if (config && config.training_types) setAllServices(config.training_types);
-
-                if (config && config.tenant && config.tenant.config) {
-                    const tc = config.tenant.config;
-                    setAutoBillingEnabled(!!tc.auto_billing_enabled);
-                    setAutoProgressEnabled(!!tc.auto_progress_enabled);
-                    if (tc.appointments) {
-                        setDefaultDuration(tc.appointments.default_duration || 60);
-                        setDefaultMaxParticipants(tc.appointments.max_participants || 10);
-                        setColorRules(tc.appointments.color_rules || []);
-                    }
-                }
-
-                if (Array.isArray(bookings)) {
-                    const bookingMap = new Map<number, string>();
-                    bookings.forEach((b: any) => bookingMap.set(b.appointment_id, b.status));
-                    setMyBookings(bookingMap);
-                }
-            } catch (e: any) {
-                console.error("API Error during initial load:", e);
-            }
-        };
-
-        loadMetaData();
-    }, [isPreview, token]);
     const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
     const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
     // const [openForAllColor, setOpenForAllColor] = useState('#10b981'); // DEPRECATED
     // const [workshopLectureColor, setWorkshopLectureColor] = useState('#F97316'); // DEPRECATED
-    const [autoBillingEnabled, setAutoBillingEnabled] = useState(false);
-    const [autoProgressEnabled, setAutoProgressEnabled] = useState(false);
-    const [defaultDuration, setDefaultDuration] = useState(60);
-    const [defaultMaxParticipants, setDefaultMaxParticipants] = useState(10);
-    const [colorRules, setColorRules] = useState<ColorRule[]>([]);
     const isPageLoading = loading;
 
     // --- ACTIONS ---
@@ -923,14 +898,15 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             handleViewParticipants(event);
             return;
         }
-
         if (isPreview) {
             // ... (Preview Logic bleibt gleich)
             if (type === 'book') {
                 // Simulate Waitlist if full
                 const isFull = (event.participants_count || 0) >= event.max_participants;
                 const status = isFull ? 'waitlist' : 'confirmed';
-                setMyBookings(prev => new Map(prev).set(event.id, status));
+                const current = queryClient.getQueryData<any[]>(['myBookings', token]) || [];
+                const next = [...current.filter((b: any) => b.appointment_id !== event.id), { appointment_id: event.id, status }];
+                queryClient.setQueryData(['myBookings', token], next);
 
                 if (status === 'waitlist') {
                     alert("Preview: Du bist auf der Warteliste.");
@@ -938,23 +914,22 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     alert("Preview: Erfolgreich angemeldet!");
                 }
             } else {
-                setMyBookings(prev => { const next = new Map(prev); next.delete(event.id); return next; });
+                const current = queryClient.getQueryData<any[]>(['myBookings', token]) || [];
+                const next = current.filter((b: any) => b.appointment_id !== event.id);
+                queryClient.setQueryData(['myBookings', token], next);
                 alert("Preview: Storniert.");
             }
             setSelectedEvent(null);
             return;
         }
-
         try {
             if (type === 'book') {
                 const response = await apiClient.bookAppointment(event.id, token, selectedDogId || undefined);
                 // API sollte das Booking-Objekt zurückgeben
                 if (response.status === 'waitlist') {
                     alert("Du wurdest auf die Warteliste gesetzt! Wir informieren dich, sobald ein Platz frei wird.");
-                    setMyBookings(prev => new Map(prev).set(event.id, 'waitlist'));
                 } else {
                     alert("Erfolgreich angemeldet!");
-                    setMyBookings(prev => new Map(prev).set(event.id, 'confirmed'));
                 }
             } else {
                 const result = await apiClient.cancelAppointment(event.id, token);
@@ -963,14 +938,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     // Info für den Admin (optional, oder nur Console Log)
                     console.log("User wurde nachgerückt:", result.promoted_user_id);
                 }
-                setMyBookings(prev => {
-                    const next = new Map(prev);
-                    next.delete(event.id);
-                    return next;
-                });
             }
             setSelectedEvent(null);
             queryClient.invalidateQueries({ queryKey: ['appointments'] }); // Lädt die Zahlen neu (Teilnehmerzahl etc.)
+            queryClient.invalidateQueries({ queryKey: ['myBookings'] });
         } catch (e: any) {
             alert(e.message || "Aktion fehlgeschlagen");
         }
@@ -1511,6 +1482,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         </div>
     );
 }
+
+
+
+
 
 
 
