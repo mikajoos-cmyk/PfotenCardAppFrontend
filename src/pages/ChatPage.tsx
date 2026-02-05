@@ -11,6 +11,7 @@ import { ContextHelp } from '../components/ui/ContextHelp';
 
 // NEU: Hook importieren
 import { useChat } from '../hooks/queries/useChat';
+import { useChatMessages } from '../hooks/queries/useChatMessages';
 
 interface ChatPageProps {
     user: User | any;
@@ -28,14 +29,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     const { data: conversationsData } = useChat(token);
 
     // Fallback: Entweder Mock-Daten (Preview) oder Daten aus dem Cache oder leeres Array
-    const conversations = isPreviewMode
+    const conversations = conversationsData || (isPreviewMode
         ? (isAdminOrStaff ? MOCK_CONVERSATIONS_ADMIN : MOCK_CONVERSATIONS_CUSTOMER)
-        : (conversationsData || []);
+        : []);
 
     // State
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messagesState, setMessagesState] = useState<ChatMessage[]>([]); // Umbenannt von messages um Konflikt mit Hook zu vermeiden
     const [newMessage, setNewMessage] = useState('');
+
+    // --- NEU: NACHRICHTEN PER HOOK ---
+    const { data: hookMessages } = useChatMessages(selectedUser ? (typeof selectedUser.id === 'string' ? parseInt(selectedUser.id) : selectedUser.id) : null, token);
+
+    const messages = isPreviewMode
+        ? (selectedUser ? (isAdminOrStaff ? MOCK_MESSAGES_ADMIN[selectedUser.id] : MOCK_MESSAGES_CUSTOMER[selectedUser.id]) : [])
+        : (hookMessages || messagesState);
 
     // Upload State
     const [isUploading, setIsUploading] = useState(false);
@@ -104,7 +112,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     useEffect(() => {
         if (isPreviewMode) {
             setSelectedUser(null);
-            setMessages([]);
+            setMessagesState([]);
         }
     }, [isAdminOrStaff, isPreviewMode]);
 
@@ -192,12 +200,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         if (!partnerId) return;
         if (isPreviewMode) {
             const mockSet = isAdminOrStaff ? MOCK_MESSAGES_ADMIN : MOCK_MESSAGES_CUSTOMER;
-            setMessages(mockSet[partnerId] || []);
+            setMessagesState(mockSet[partnerId] || []);
             return;
         }
         try {
             const data = await apiClient.getChatMessages(Number(partnerId), token);
-            setMessages(prev => {
+            setMessagesState(prev => {
                 if (prev.length !== data.length || (data.length > 0 && prev.length > 0 && (data[data.length - 1].id !== prev[prev.length - 1].id || data[data.length - 1].is_read !== prev[prev.length - 1].is_read))) {
                     return data;
                 }
@@ -296,7 +304,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
             created_at: new Date().toISOString(),
             is_read: false
         };
-        setMessages(prev => [...prev, tempMsg]);
+        setMessagesState(prev => [...prev, tempMsg]);
 
         try {
             if (!isPreviewMode) {

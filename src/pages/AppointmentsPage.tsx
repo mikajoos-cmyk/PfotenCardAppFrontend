@@ -71,7 +71,7 @@ const getCategoryColor = (event: Appointment, colorRules?: ColorRule[]): string 
 
 // --- MODALS ---
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[] }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean }) => {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -212,7 +212,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 
 
                         <div className="form-group row" style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ flex: 1 }}><label>Datum</label><input type="date" required className="form-input" style={{ colorScheme: 'dark' }} value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
+                            <div style={{ flex: 1 }}><label>Datum</label><input type="date" required className="form-input" style={{ colorScheme: isDarkMode ? 'dark' : 'light' }} value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} /></div>
                             <div style={{ flex: 1 }}><label>Max. Teilnehmer</label><input type="number" required className="form-input" value={formData.max_participants} onChange={e => setFormData({ ...formData, max_participants: parseInt(e.target.value) })} /></div>
                         </div>
 
@@ -223,7 +223,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                     type="time"
                                     required
                                     className="form-input"
-                                    style={{ colorScheme: 'dark' }}
+                                    style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
                                     value={formData.start_time}
                                     onChange={e => {
                                         const newStart = e.target.value;
@@ -371,7 +371,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                                     type="date"
                                                     disabled={!!initialData}
                                                     className="form-input"
-                                                    style={{ colorScheme: 'dark' }}
+                                                    style={{ colorScheme: isDarkMode ? 'dark' : 'light' }}
                                                     value={formData.end_at_date}
                                                     onChange={e => setFormData({ ...formData, end_at_date: e.target.value, end_after_count: 0 })}
                                                 />
@@ -469,11 +469,11 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                 <div className="modal-body">
                     <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Icon name="calendar" style={{ color: 'var(--primary-color)' }} />
+                            <Icon name="calendar" />
                             <span style={{ fontWeight: 500 }}>{formatDate(date)}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Icon name="clock" style={{ color: 'var(--primary-color)' }} />
+                            <Icon name="clock" />
                             <span style={{ fontWeight: 500 }}>{formatTime(date)}</span>
                         </div>
                     </div>
@@ -493,7 +493,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                     )}
                     {event.location && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                            <Icon name="mapPin" style={{ color: 'var(--primary-color)' }} />
+                            <Icon name="mapPin" />
                             <span>{event.location}</span>
                         </div>
                     )}
@@ -782,13 +782,14 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
 // --- MAIN PAGE ---
 
-export default function AppointmentsPage({ user, token, setView, appStatus, onUpdateStatus, activeModules }: {
+export default function AppointmentsPage({ user, token, setView, appStatus, onUpdateStatus, activeModules, isDarkMode }: {
     user: User | any,
     token: string | null,
     setView?: (view: View) => void,
     appStatus?: AppStatus | null,
     onUpdateStatus?: (status: any, message: string) => void,
-    activeModules?: string[]
+    activeModules?: string[],
+    isDarkMode?: boolean
 }) {
     const queryClient = useQueryClient();
     const isPreview = !token || token === 'preview-token';
@@ -1446,6 +1447,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     defaultDuration={defaultDuration}
                     defaultMaxParticipants={defaultMaxParticipants}
                     allAppointments={appointments}
+                    isDarkMode={isDarkMode}
                 />
             )}
             <ParticipantsModal

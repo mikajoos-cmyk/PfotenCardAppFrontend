@@ -126,7 +126,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                 />
                 <KpiCard
                     title="Guthaben gesamt"
-                    value={`€ ${Math.floor(totalCredit).toLocaleString('de-DE')}`}
+                    value={`€ ${(totalCredit ?? 0).toLocaleString('de-DE')}`}
                     icon="creditCard" bgIcon="creditCard" color="orange"
                     onClick={() => handleKpiDetail('balance', 'orange')}
                 />
@@ -160,9 +160,9 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                                     </div>
                                     <div className="info">
                                         <div className="customer-name">{firstName} {lastName}</div>
-                                        <div className="dog-name">{cust.dogs[0]?.name || '-'}</div>
+                                        <div className="dog-name">{cust.dogs?.[0]?.name || '-'}</div>
                                     </div>
-                                    <div className="balance">{Math.floor(cust.balance).toLocaleString('de-DE')} €</div>
+                                    <div className="balance">{(cust.balance ?? 0).toLocaleString('de-DE')} €</div>
                                 </li>
                             );
                         })}
@@ -180,7 +180,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                                         <div className="customer">{customer?.name || 'Unbekannter Kunde'}</div>
                                         <div className="details">{new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description}</div>
                                     </div>
-                                    <div className="amount">{Math.floor(tx.amount).toLocaleString('de-DE')} €</div>
+                                    <div className="amount">{(tx.amount ?? 0).toLocaleString('de-DE')} €</div>
                                 </li>
                             );
                         })}

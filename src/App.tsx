@@ -481,14 +481,52 @@ export default function App() {
                 achievements: []
             };
 
-            const mockTransactions = [
-                { id: 'tx-1', user_id: '999', amount: 150, title: 'Aufladung', date: new Date().toISOString(), type: 'topup', booked_by_id: '888' }
-            ];
+            const mockUserCustomerWithDogs = {
+                ...mockUserCustomer,
+                dogs: mockCustomerData.dogs
+            };
+
+            const mockUserAdminWithDogs = {
+                ...mockUserAdmin,
+                dogs: []
+            };
 
             setLoggedInUser(mockUserCustomer);
             setAuthToken('preview-token');
-            queryClient.setQueryData(['users', 'preview-token'], [mockUserCustomer, mockUserAdmin]);
+
+            // --- ERWEITERTE MOCK DATEN FÜR PREVIEW ---
+            const mockTransactions = [
+                { id: 1, user_id: '999', amount: -25.00, description: 'Gruppenstunde', date: new Date().toISOString() },
+                { id: 2, user_id: '999', amount: 50.00, description: 'Guthaben Aufladung', date: new Date(Date.now() - 86400000).toISOString() },
+                { id: 3, user_id: '999', amount: -25.00, description: 'Social Walk', date: new Date(Date.now() - 172800000).toISOString() }
+            ];
+
+            const mockNews = [
+                { id: 1, title: 'Willkommen in der App!', content: 'Schön, dass du da bist. Hier erfährst du alles Wichtige.', created_at: new Date().toISOString() },
+                { id: 2, title: 'Neue Kurse im März', content: 'Wir starten neue Welpenkurse. Melde dich jetzt an!', created_at: new Date(Date.now() - 86400000 * 2).toISOString() }
+            ];
+
+            const mockAppointments = [
+                { id: 1, title: 'Gruppenstunde', start_time: new Date(Date.now() + 3600000 * 2).toISOString(), end_time: new Date(Date.now() + 3600000 * 3).toISOString(), location: 'Trainingsplatz 1' },
+                { id: 2, title: 'Einzelstunde', start_time: new Date(Date.now() + 86400000).toISOString(), end_time: new Date(Date.now() + 86400000 + 3600000).toISOString(), location: 'Waldweg' }
+            ];
+
+            const mockConversations = [
+                { id: 1, partner_id: '888', partner_name: 'Anna Admin', last_message: 'Hallo! Wie geht es Bello?', last_message_at: new Date().toISOString(), unread_count: 1 }
+            ];
+
+            const mockMessages = [
+                { id: 1, sender_id: '888', receiver_id: '999', message: 'Hallo! Wie geht es Bello?', created_at: new Date(Date.now() - 3600000).toISOString() },
+                { id: 2, sender_id: '999', receiver_id: '888', message: 'Sehr gut, danke!', created_at: new Date(Date.now() - 3500000).toISOString() }
+            ];
+
+            queryClient.setQueryData(['users', 'preview-token'], [mockUserCustomerWithDogs, mockUserAdminWithDogs]);
             queryClient.setQueryData(['transactions', 'preview-token', 'all'], mockTransactions);
+            queryClient.setQueryData(['news', 'preview-token'], mockNews);
+            queryClient.setQueryData(['appointments', 'preview-token'], mockAppointments);
+            queryClient.setQueryData(['chat', 'preview-token'], mockConversations);
+            queryClient.setQueryData(['chatMessages', '888', 'preview-token'], mockMessages);
+            queryClient.setQueryData(['user', 'preview-token'], mockCustomerData);
         }
     }, []);
 
@@ -1433,6 +1471,7 @@ export default function App() {
                     appStatus={appStatus}
                     onUpdateStatus={handleUpdateAppStatus}
                     activeModules={activeModules}
+                    isDarkMode={isDarkMode}
                 />
             );
         }

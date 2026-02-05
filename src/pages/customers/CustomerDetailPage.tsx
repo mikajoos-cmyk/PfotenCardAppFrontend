@@ -426,7 +426,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             <span style={{ fontWeight: 600 }}>€</span>
                                         </div>
                                     ) : (
-                                        <span className="value">{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
+                                        <span className="value">{(customer.balance ?? 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
                                     )}
                                 </div>
                             </div>

@@ -33,7 +33,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
         return customers.filter(c => activeIds.has(c.id));
     }, [customers, transactions, startOfMonth]);
 
-    const totalCredit = customers.reduce((sum, cust) => sum + cust.balance, 0);
+    const totalCredit = customers.reduce((sum, cust) => sum + (cust.balance ?? 0), 0);
     const transactionsMonthList = transactions.filter(tx => new Date(tx.date as any) >= startOfMonth);
 
     const filteredCustomers = useMemo(() => {
@@ -56,7 +56,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                 {list.length > 0 ? list.map(c => (
                     <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: String(c.id) }); }} style={{ cursor: 'pointer' }}>
                         <span>{c.name} ({c.dogs?.[0]?.name || '-'})</span>
-                        <span style={{ fontWeight: 600 }}>€ {Math.floor(c.balance).toLocaleString('de-DE')}</span>
+                        <span style={{ fontWeight: 600 }}>€ {(c.balance ?? 0).toLocaleString('de-DE')}</span>
                     </li>
                 )) : <p className="text-gray-500 italic">Keine Daten.</p>}
             </ul>
@@ -70,7 +70,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                         <li key={tx.id}>
                             <span>{new Date(tx.date as any).toLocaleDateString('de-DE')} - {tx.description} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
-                                € {Math.abs(tx.amount).toLocaleString('de-DE')}
+                                € {(Math.abs(tx.amount) ?? 0).toLocaleString('de-DE')}
                             </span>
                         </li>
                     );
@@ -127,7 +127,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                 />
                 <KpiCard
                     title="Guthaben"
-                    value={`€ ${Math.floor(totalCredit).toLocaleString('de-DE')}`}
+                    value={`€ ${(totalCredit ?? 0).toLocaleString('de-DE')}`}
                     icon="creditCard" bgIcon="creditCard" color="blue"
                     onClick={() => handleKpiDetail('credit', 'blue')}
                 />
@@ -171,8 +171,8 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                                             </div>
                                         </div>
                                     </td>
-                                    <td data-label="Hund">{customer.dogs[0]?.name || '-'}</td>
-                                    <td data-label="Guthaben">€ {Math.floor(customer.balance).toLocaleString('de-DE')}</td>
+                                    <td data-label="Hund">{customer.dogs?.[0]?.name || '-'}</td>
+                                    <td data-label="Guthaben">€ {(customer.balance ?? 0).toLocaleString('de-DE')}</td>
                                     <td data-label={levelTerm}><span className="level-badge">{level?.name || '-'}</span></td>
                                     <td data-label="Erstellt">{new Date(customer.customer_since as any).toLocaleDateString('de-DE')}</td>
                                     <td data-label="Aktion">&gt;</td>
