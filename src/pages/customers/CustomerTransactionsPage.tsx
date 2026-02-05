@@ -63,10 +63,12 @@ const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transacti
                                             {tx.amount > 0 && tx.invoice_number && activeModules?.includes('invoice_download') && (
                                                 <button
                                                     className="text-button small-text-button"
-                                                    style={{ marginLeft: '1rem', color: 'var(--primary-color)', textDecoration: 'underline', border: 'none', background: 'none', cursor: 'pointer', padding: 0 }}
+                                                    style={{ marginLeft: '1rem', color: 'var(--primary-color)', border: 'none', background: 'none', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center' }}
                                                     onClick={() => handleDownloadInvoice(tx.id, tx.invoice_number)}
+                                                    title={`Rechnung ${tx.invoice_number} herunterladen`}
+                                                    aria-label={`Rechnung ${tx.invoice_number} herunterladen`}
                                                 >
-                                                    Rechnung {tx.invoice_number}
+                                                    <Icon name="download" />
                                                 </button>
                                             )}
                                         </div>
