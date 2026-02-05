@@ -1,7 +1,12 @@
 import { useMemo } from 'react';
 import { useUsers } from './useUsers';
 
-export const useCustomers = (token: string | null, options?: { enabled?: boolean }) => {
+type QueryOptions = {
+    enabled?: boolean;
+    refetchInterval?: number;
+};
+
+export const useCustomers = (token: string | null, options?: QueryOptions) => {
     const usersQuery = useUsers(token, options);
     const customers = useMemo(() => {
         if (!usersQuery.data) return [];
