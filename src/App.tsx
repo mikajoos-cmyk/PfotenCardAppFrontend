@@ -1,7 +1,8 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './lib/supabase';
 import { apiClient } from './lib/api';
-import { User, View, AppStatus } from './types';
+import { User, View } from './types';
 
 import './status-tabs.css';
 
@@ -38,6 +39,10 @@ import { ChatPage } from './pages/ChatPage';
 
 // NEU: Hook importieren
 import { useVisualViewport } from './hooks/useVisualViewport';
+import { useUser } from './hooks/queries/useUser';
+import { useUsers } from './hooks/queries/useUsers';
+import { useCustomers } from './hooks/queries/useCustomers';
+import { useTransactions } from './hooks/queries/useTransactions';
 import { hasPermission } from './lib/permissions';
 
 // Legal Pages
@@ -91,8 +96,10 @@ export default function App() {
     // NEU: Hook hier aufrufen, damit er global wirkt
     useVisualViewport();
 
+    const queryClient = useQueryClient();
     const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
+    const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
 
     // ... (Restlicher Code bleibt unverändert bis zum Return) ...
     // Initial View basierend auf URL bestimmen
@@ -134,11 +141,30 @@ export default function App() {
     }, []);
 
     // ... (Hier der ganze restliche State & Effects Code - UNVERÄNDERT) ...
-    const [customers, setCustomers] = useState<any[]>([]);
-    const [users, setUsers] = useState<any[]>([]);
-    const [transactions, setTransactions] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [appStatus, setAppStatus] = useState<AppStatus | null>(null);
+    const userQuery = useUser(authToken, { enabled: !!authToken && !isPreviewMode });
+    const isCustomerRole = loggedInUser?.role === 'customer' || loggedInUser?.role === 'kunde';
+
+    const usersQuery = useUsers(authToken, { enabled: !!authToken && !isPreviewMode && !!loggedInUser && !isCustomerRole });
+    const customersQuery = useCustomers(authToken, { enabled: !!authToken && !isPreviewMode && !!loggedInUser && !isCustomerRole });
+    const transactionsQuery = useTransactions(authToken, undefined, { enabled: !!authToken && !isPreviewMode && !!loggedInUser });
+
+    const appStatusQuery = useQuery({
+        queryKey: ['appStatus', authToken],
+        queryFn: () => apiClient.getAppStatus(authToken),
+        enabled: !!authToken && !isPreviewMode,
+        refetchInterval: 30000
+    });
+
+    const customers = isCustomerRole && loggedInUser ? [loggedInUser] : (customersQuery.data || []);
+    const users = isCustomerRole && loggedInUser ? [loggedInUser] : (usersQuery.data || []);
+    const transactions = transactionsQuery.data || [];
+    const appStatus = appStatusQuery.data || null;
+    const isAppLoading = !!authToken && userQuery.isLoading;
+
+    useEffect(() => {
+        if (isPreviewMode) return;
+        setLoggedInUser(userQuery.data || null);
+    }, [userQuery.data, isPreviewMode]);
 
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({ isOpen: false, title: '', content: null, color: 'green' });
     const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
@@ -190,7 +216,6 @@ export default function App() {
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [hasNewNews, setHasNewNews] = useState(false);
 
-    const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
     const [isDarkMode, setIsDarkMode] = useState(false);
 
     // Ref to prevent infinite logout loop
@@ -205,6 +230,7 @@ export default function App() {
             name: newRole === 'admin' ? 'Max Admin' : 'Max Mustermann'
         };
         setLoggedInUser(updatedUser);
+        updateUsersCache(prev => prev.map((user: any) => user.id === loggedInUser.id ? updatedUser : user));
         setView({ page: 'dashboard' });
     };
 
@@ -450,11 +476,9 @@ export default function App() {
             ];
 
             setLoggedInUser(mockUserCustomer);
-            setCustomers([mockCustomerData]);
-            setUsers([mockUserCustomer, mockUserAdmin]);
-            setTransactions(mockTransactions);
             setAuthToken('preview-token');
-            setIsLoading(false);
+            queryClient.setQueryData(['users', 'preview-token'], [mockUserCustomer, mockUserAdmin]);
+            queryClient.setQueryData(['transactions', 'preview-token', 'all'], mockTransactions);
         }
     }, []);
 
@@ -651,112 +675,68 @@ export default function App() {
         return () => clearInterval(interval);
     }, [authToken, view.page]);
 
-    const loadCustomerTransactions = async (customerId: string) => {
-        if (!authToken || isPreviewMode) return;
-        try {
-            const customerTxs = await apiClient.getTransactions(authToken, customerId);
-            setTransactions(prev => {
-                const newIds = new Set(customerTxs.map((t: any) => t.id));
-                const oldFiltered = prev.filter(t => !newIds.has(t.id));
-                return [...customerTxs, ...oldFiltered];
-            });
-        } catch (e) {
-            console.error("Konnte Kunden-Transaktionen nicht laden", e);
-        }
-    };
-
     useEffect(() => {
-        if (view.customerId) {
-            loadCustomerTransactions(view.customerId);
-        }
-    }, [view.customerId]);
+        if (!authToken || !loggedInUser || isPreviewMode) return;
+
+        queryClient.prefetchQuery({
+            queryKey: ['appointments', authToken, 'all', 'all'],
+            queryFn: () => apiClient.getAppointments(authToken)
+        });
+        queryClient.prefetchQuery({
+            queryKey: ['news', authToken],
+            queryFn: () => apiClient.getNews(authToken)
+        });
+        queryClient.prefetchQuery({
+            queryKey: ['chat', authToken],
+            queryFn: () => apiClient.getConversations(authToken)
+        });
+    }, [authToken, loggedInUser, isPreviewMode, queryClient]);
 
     const handleUpdateAppStatus = async (status: 'active' | 'cancelled' | 'partial', message: string) => {
         if (!authToken) return;
         try {
             const newStatus = await apiClient.updateAppStatus({ status, message }, authToken);
-            setAppStatus(newStatus);
+            queryClient.setQueryData(['appStatus', authToken], newStatus);
         } catch (e) {
             console.error("Failed to update status", e);
             alert("Fehler beim Aktualisieren des Status.");
         }
     };
 
-    const fetchAppData = async (forceLoadingScreen: boolean = false) => {
-        if (isPreviewMode) return;
-        if (!authToken) { setIsLoading(false); return; }
-
-        const shouldShowFullLoader = forceLoadingScreen || (isLoading && customers.length === 0);
-
-        if (shouldShowFullLoader) {
-            setIsLoading(true);
-        }
-
-        try {
-            const [configRes, currentUser, statusRes] = await Promise.all([
-                apiClient.getConfig().catch(err => console.warn("Config load failed", err)),
-                apiClient.get('/api/users/me', authToken),
-                apiClient.getAppStatus(authToken).catch(() => null)
-            ]);
-
-            if (statusRes) setAppStatus(statusRes);
-
-            if (configRes) {
-                setAppConfigData(configRes);
-                if (configRes.tenant?.name) setSchoolName(configRes.tenant.name);
-                applyTheme({ branding: configRes.tenant?.config?.branding || {} });
-            }
-
-            setLoggedInUser(currentUser);
-
-            if (currentUser.role === 'customer' || currentUser.role === 'kunde') {
-                const transactionsResponse = await apiClient.getTransactions(authToken);
-                setTransactions(transactionsResponse);
-                setCustomers([currentUser]);
-                setUsers([currentUser]);
-            } else {
-                const [usersResponse, transactionsResponse] = await Promise.all([
-                    apiClient.get('/api/users', authToken),
-                    apiClient.getTransactions(authToken)
-                ]);
-                setCustomers(usersResponse.filter((user: any) => user.role === 'customer' || user.role === 'kunde'));
-                setUsers(usersResponse);
-                setTransactions(transactionsResponse);
-            }
-        } catch (error: any) {
-            console.error("Fehler beim Laden:", error);
-
-            // --- WICHTIGE ÄNDERUNG HIER ---
-            // Prüfen, ob der Fehler ein Authentifizierungsfehler ist (401 oder Session expired)
-            const isAuthError = error.message?.includes('401') || error.message?.includes('Session expired') || error.message?.includes('Unauthorized');
-
-            if (isAuthError) {
-                console.log("Token abgelaufen, versuche Refresh via Supabase...");
-                // Versuche, die Session über Supabase zu retten
-                const { data, error: sessionError } = await supabase.auth.getSession();
-
-                if (data.session && !sessionError) {
-                    console.log("Refresh erfolgreich! Neues Token setzen.");
-                    // Wenn Supabase noch eine gültige Session hat (Refresh Token noch gültig),
-                    // aktualisieren wir das Token und brechen den Logout ab.
-                    // Das Setzen von setAuthToken triggert automatisch den useEffect, der fetchAppData erneut aufruft.
-                    const newToken = data.session.access_token;
-                    localStorage.setItem('authToken', newToken);
-                    setAuthToken(newToken);
-                    return; // KEIN LOGOUT!
-                }
-            }
-
-            // Nur wenn Supabase auch keine Session mehr hat, loggen wir aus
-            if (shouldShowFullLoader) handleLogout();
-        } finally {
-            setIsLoading(false);
-        }
+    const fetchAppData = async (_forceLoadingScreen: boolean = false) => {
+        if (!authToken || isPreviewMode) return;
+        await Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['user', authToken] }),
+            queryClient.invalidateQueries({ queryKey: ['users', authToken] }),
+            queryClient.invalidateQueries({ queryKey: ['transactions', authToken] }),
+            queryClient.invalidateQueries({ queryKey: ['appStatus', authToken] })
+        ]);
     };
 
     useEffect(() => {
-        fetchAppData();
-    }, [authToken]);
+        if (!userQuery.error || isPreviewMode) return;
+        const error = userQuery.error as Error;
+        const message = error.message || '';
+        const isAuthError = message.includes('401') || message.includes('Session expired') || message.includes('Unauthorized');
+        if (!isAuthError) return;
+
+        const refreshSession = async () => {
+            console.log("Token abgelaufen, versuche Refresh via Supabase...");
+            const { data, error: sessionError } = await supabase.auth.getSession();
+
+            if (data.session && !sessionError) {
+                console.log("Refresh erfolgreich! Neues Token setzen.");
+                const newToken = data.session.access_token;
+                localStorage.setItem('authToken', newToken);
+                setAuthToken(newToken);
+                return;
+            }
+
+            handleLogout();
+        };
+
+        refreshSession();
+    }, [userQuery.error, isPreviewMode]);
 
     useEffect(() => {
         if (schoolName) {
@@ -851,6 +831,7 @@ export default function App() {
         localStorage.setItem('authToken', token);
         setAuthToken(token);
         setLoggedInUser(user);
+        queryClient.setQueryData(['user', token], user);
         setServerLoading({ active: false, message: '' });
     };
 
@@ -868,12 +849,29 @@ export default function App() {
         localStorage.removeItem('authToken');
         setAuthToken(null);
         setLoggedInUser(null);
+        queryClient.clear();
         setDirectAccessedCustomer(null);
         window.history.pushState({}, '', '/');
 
         setTimeout(() => {
             isLoggingOut.current = false;
         }, 1000);
+    };
+
+    const updateTransactionsCache = (updater: (prev: any[]) => any[]) => {
+        if (!authToken) return;
+        queryClient.setQueryData(['transactions', authToken, 'all'], (prev: any) => {
+            const safePrev = Array.isArray(prev) ? prev : [];
+            return updater(safePrev);
+        });
+    };
+
+    const updateUsersCache = (updater: (prev: any[]) => any[]) => {
+        if (!authToken) return;
+        queryClient.setQueryData(['users', authToken], (prev: any) => {
+            const safePrev = Array.isArray(prev) ? prev : [];
+            return updater(safePrev);
+        });
     };
 
     const handleConfirmTransaction = async (txData: {
@@ -896,8 +894,8 @@ export default function App() {
                 booked_by_id: loggedInUser?.id
             };
 
-            setTransactions(prev => [newTx, ...prev]);
-            setCustomers(prev => prev.map(c => {
+            updateTransactionsCache(prev => [newTx, ...prev]);
+            updateUsersCache(prev => prev.map(c => {
                 if (String(c.id) === view.customerId) {
                     return { ...c, balance: c.balance + txData.amount };
                 }
@@ -917,8 +915,8 @@ export default function App() {
         // --- OPTIMISTIC UI ---
         const tempId = `temp-${Date.now()}`;
         const amount = txData.amount;
-        const previousTransactions = [...transactions];
-        const previousCustomers = [...customers];
+        const previousTransactions = queryClient.getQueryData(['transactions', authToken, 'all']) as any[] || [];
+        const previousUsers = queryClient.getQueryData(['users', authToken]) as any[] || [];
         const previousLoggedInUser = loggedInUser ? { ...loggedInUser } : null;
 
         const optimisticTx = {
@@ -931,8 +929,8 @@ export default function App() {
             booked_by_id: loggedInUser?.id
         };
 
-        setTransactions(prev => [optimisticTx, ...prev]);
-        setCustomers(prev => prev.map(c => {
+        updateTransactionsCache(prev => [optimisticTx, ...prev]);
+        updateUsersCache(prev => prev.map(c => {
             if (String(c.id) === view.customerId) {
                 return { ...c, balance: (c.balance || 0) + amount };
             }
@@ -965,8 +963,8 @@ export default function App() {
             fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Buchen der Transaktion:", error);
-            setTransactions(previousTransactions);
-            setCustomers(previousCustomers);
+            queryClient.setQueryData(['transactions', authToken, 'all'], previousTransactions);
+            queryClient.setQueryData(['users', authToken], previousUsers);
             if (previousLoggedInUser) setLoggedInUser(previousLoggedInUser);
             alert(`Fehler beim Buchen: ${error}`);
         }
@@ -1091,7 +1089,7 @@ export default function App() {
 
     const handleSaveCustomerDetails = async (userToUpdate: any, dogToUpdate: any) => {
         if (isPreviewMode) {
-            setCustomers(prev => prev.map(c => {
+            updateUsersCache(prev => prev.map(c => {
                 if (c.id === userToUpdate.id) {
                     const updatedC = { ...c, ...userToUpdate };
                     if (dogToUpdate) {
@@ -1101,14 +1099,17 @@ export default function App() {
                 }
                 return c;
             }));
+            if (loggedInUser && loggedInUser.id === userToUpdate.id) {
+                setLoggedInUser((prev: any) => ({ ...prev, ...userToUpdate }));
+            }
             console.log('Preview-Daten erfolgreich lokal gespeichert!');
             return;
         }
 
-        const previousCustomers = [...customers];
+        const previousUsers = queryClient.getQueryData(['users', authToken]) as any[] || [];
         const previousLoggedInUser = loggedInUser ? { ...loggedInUser } : null;
 
-        setCustomers(prev => prev.map(c => {
+        updateUsersCache(prev => prev.map(c => {
             if (c.id === userToUpdate.id) {
                 const updatedC = { ...c, ...userToUpdate };
                 if (dogToUpdate) {
@@ -1166,7 +1167,7 @@ export default function App() {
             fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Speichern der Kundendaten:", error);
-            setCustomers(previousCustomers);
+            queryClient.setQueryData(['users', authToken], previousUsers);
             if (previousLoggedInUser) setLoggedInUser(previousLoggedInUser);
             alert(`Fehler beim Speichern: ${error}`);
         }
@@ -1253,7 +1254,7 @@ export default function App() {
         );
     }
 
-    if (isLoading) {
+    if (isAppLoading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--background-color)' }}>
                 <LoadingSpinner message="Lade App..." />
@@ -1298,6 +1299,7 @@ export default function App() {
                         isDarkMode={isDarkMode}
                         isPreviewMode={isPreviewMode}
                         activeModules={activeModules}
+                        initialDogId={view.dogId}
                         onConfirmTransaction={handleConfirmTransaction}
                     />
                 );
@@ -1357,6 +1359,7 @@ export default function App() {
                         isDarkMode={isDarkMode}
                         isPreviewMode={isPreviewMode}
                         activeModules={activeModules}
+                        initialDogId={view.dogId}
                         onConfirmTransaction={handleConfirmTransaction}
                     />
                 );
@@ -1484,6 +1487,7 @@ export default function App() {
                                 isDarkMode={isDarkMode}
                                 isPreviewMode={isPreviewMode}
                                 activeModules={activeModules}
+                                initialDogId={view.dogId}
                                 onConfirmTransaction={handleConfirmTransaction} // NEU
                             />
                         )}

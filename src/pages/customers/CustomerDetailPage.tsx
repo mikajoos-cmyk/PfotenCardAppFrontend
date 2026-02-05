@@ -33,6 +33,7 @@ interface CustomerDetailPageProps {
     // NEU
     isPreviewMode?: boolean;
     activeModules?: string[];
+    initialDogId?: number;
     onConfirmTransaction: (txData: {
         title: string;
         amount: number;
@@ -47,7 +48,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     customer, transactions, setView, handleLevelUp, onSave, currentUser, users,
     onUploadDocuments, onDeleteDocument, fetchAppData, authToken, onDeleteUserClick,
     onToggleVipStatus, onToggleExpertStatus, setDogFormModal, setDeletingDog, levels,
-    wording, isDarkMode, isPreviewMode, activeModules, onConfirmTransaction
+    wording, isDarkMode, isPreviewMode, activeModules, initialDogId, onConfirmTransaction
 }) => {
 
     const levelTerm = wording?.level || 'Level';
@@ -59,7 +60,10 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     // NEU: Dog-Tab Logik
     const dogs = customer.dogs || [];
-    const [activeDogId, setActiveDogId] = useState<number | null>(dogs.length > 0 ? dogs[0].id : null);
+    const [activeDogId, setActiveDogId] = useState<number | null>(() => {
+        if (initialDogId) return initialDogId;
+        return dogs.length > 0 ? dogs[0].id : null;
+    });
 
     const activeDog = dogs.find((d: any) => d.id === activeDogId) || (dogs.length > 0 ? dogs[0] : null);
     const dogName = activeDog?.name || '-';
@@ -97,10 +101,17 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     // Initialisiere mit korrekter Logik
     const [previewLevelId, setPreviewLevelId] = useState<number>(getInitialLevelId());
 
-    // Update wenn sich der Kunde ändert (z.B. nach echtem Level-Up)
+    // Update wenn sich der Kunde oder der aktive Hund ändert (z.B. nach echtem Level-Up)
     useEffect(() => {
         setPreviewLevelId(getInitialLevelId());
-    }, [customer.level_id, customer.current_level_id, levelsToUse]);
+    }, [activeDogId, customer.level_id, customer.current_level_id, levelsToUse]);
+
+    useEffect(() => {
+        if (!initialDogId) return;
+        if (dogs.some((d: any) => d.id === initialDogId)) {
+            setActiveDogId(initialDogId);
+        }
+    }, [initialDogId, dogs]);
 
     useEffect(() => {
         if (navigator.share) {
