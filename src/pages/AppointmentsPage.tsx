@@ -12,7 +12,7 @@ import LiveStatusModal from '../components/modals/LiveStatusModal';
 import Icon from '../components/ui/Icon';
 import InfoModal from '../components/modals/InfoModal';
 import { useAppointments } from '../hooks/queries/useAppointments';
-
+import { useQueryClient } from '@tanstack/react-query';
 // --- MOCK DATEN FÜR PREVIEW ---
 const MOCK_APPOINTMENTS: any[] = [
     { id: 101, title: 'Welpenstunde', description: 'Spiel & Spaß für die Kleinen.', start_time: new Date(Date.now() + 86400000).toISOString(), end_time: new Date(Date.now() + 90000000).toISOString(), location: 'Welpenwiese', max_participants: 8, participants_count: 5 },
@@ -786,16 +786,29 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     onUpdateStatus?: (status: any, message: string) => void,
     activeModules?: string[]
 }) {
-    const [appointments, setAppointments] = useState<Appointment[]>([]);
-    const [loading, setLoading] = useState(true);
-    // ÄNDERUNG: Status statt nur ID speichern (Map<ID, Status>)
-    const [myBookings, setMyBookings] = useState<Map<number, string>>(new Map());
-    const isPreview = !token || token === 'preview-token';
-    const appointmentsQuery = useAppointments(token, undefined, undefined, {
-        enabled: !!token && !isPreview,
-        refetchInterval: 30000
-    });
+    // Hook initialisieren
+    const queryClient = useQueryClient();
 
+    // 1. Daten aus dem Cache holen (Dank Prefetching in App.tsx sind sie oft sofort da!)
+    const { data: appointmentsData, isLoading: isQueryLoading } = useAppointments(token);
+
+    // 2. Daten zuweisen (Fallback auf leeres Array, damit der Rest des Codes nicht crasht)
+    const appointments = appointmentsData || [];
+
+    // 3. Loading Status vereinheitlichen
+    const isPreview = !token || token === 'preview-token';
+    // Wenn Preview, laden wir nicht (wir haben Mock-Daten), sonst warten wir auf den Hook
+    const loading = isQueryLoading && !isPreview;
+
+    // MOCK DATEN F�R PREVIEW (optional, falls du das Mocking behalten willst)
+    useEffect(() => {
+        if (isPreview && appointments.length === 0) {
+            queryClient.setQueryData(['appointments', token], MOCK_APPOINTMENTS);
+        }
+    }, [isPreview, appointments.length, queryClient, token]);
+
+    // �NDERUNG: Status statt nur ID speichern (Map<ID, Status>)
+    const [myBookings, setMyBookings] = useState<Map<number, string>>(new Map());
     // Admin State
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingEvent, setEditingEvent] = useState<Appointment | null>(null);
@@ -820,14 +833,49 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             setSelectedDogId(null);
         }
     }, [user]);
-
     useEffect(() => {
-        if (isPreview) return;
-        if (!appointmentsQuery.data) return;
-        const sorted = [...appointmentsQuery.data].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-        setAppointments(sorted);
-    }, [appointmentsQuery.data, isPreview]);
+        if (isPreview) {
+            return;
+        }
 
+        const loadMetaData = async () => {
+            try {
+                const [bookings, staff, config] = await Promise.all([
+                    apiClient.getMyBookings(token).catch(e => {
+                        console.warn("Could not fetch user bookings:", e);
+                        return [];
+                    }),
+                    apiClient.getStaff(token).catch(() => []),
+                    apiClient.getConfig().catch(() => null)
+                ]);
+
+                setStaffUsers(staff);
+                if (config && config.levels) setAllLevels(config.levels);
+                if (config && config.training_types) setAllServices(config.training_types);
+
+                if (config && config.tenant && config.tenant.config) {
+                    const tc = config.tenant.config;
+                    setAutoBillingEnabled(!!tc.auto_billing_enabled);
+                    setAutoProgressEnabled(!!tc.auto_progress_enabled);
+                    if (tc.appointments) {
+                        setDefaultDuration(tc.appointments.default_duration || 60);
+                        setDefaultMaxParticipants(tc.appointments.max_participants || 10);
+                        setColorRules(tc.appointments.color_rules || []);
+                    }
+                }
+
+                if (Array.isArray(bookings)) {
+                    const bookingMap = new Map<number, string>();
+                    bookings.forEach((b: any) => bookingMap.set(b.appointment_id, b.status));
+                    setMyBookings(bookingMap);
+                }
+            } catch (e: any) {
+                console.error("API Error during initial load:", e);
+            }
+        };
+
+        loadMetaData();
+    }, [isPreview, token]);
     const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
     const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
@@ -838,84 +886,21 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [defaultDuration, setDefaultDuration] = useState(60);
     const [defaultMaxParticipants, setDefaultMaxParticipants] = useState(10);
     const [colorRules, setColorRules] = useState<ColorRule[]>([]);
-    const isPageLoading = loading || (appointmentsQuery.isLoading && appointments.length === 0);
-
-
-    useEffect(() => {
-        loadData();
-    }, [token, user]);
-
-    const loadData = async (forceRefetch: boolean = false) => {
-        if (appointments.length === 0) {
-            setLoading(true);
-        }
-
-        // Automatische Erkennung für Preview-Modus
-        if (isPreview) {
-            console.log("Lade Preview-Daten für Termine...");
-            setAppointments(MOCK_APPOINTMENTS);
-            setLoading(false);
-            return;
-        }
-
-        try {
-            // 1. Zuerst Basis-Daten laden (Config, Staff, eigene Buchungen)
-            const [bookings, staff, config] = await Promise.all([
-                apiClient.getMyBookings(token).catch(e => {
-                    console.warn("Could not fetch user bookings:", e);
-                    return [];
-                }),
-                apiClient.getStaff(token).catch(() => []),
-                apiClient.getConfig().catch(() => null)
-            ]);
-
-            setStaffUsers(staff);
-            if (config && config.levels) setAllLevels(config.levels);
-            if (config && config.training_types) setAllServices(config.training_types);
-
-            if (config && config.tenant && config.tenant.config) {
-                const tc = config.tenant.config;
-                setAutoBillingEnabled(!!tc.auto_billing_enabled);
-                setAutoProgressEnabled(!!tc.auto_progress_enabled);
-                if (tc.appointments) {
-                    setDefaultDuration(tc.appointments.default_duration || 60);
-                    setDefaultMaxParticipants(tc.appointments.max_participants || 10);
-                    setColorRules(tc.appointments.color_rules || []);
-                }
-            }
-
-            if (Array.isArray(bookings)) {
-                const bookingMap = new Map<number, string>();
-                bookings.forEach((b: any) => bookingMap.set(b.appointment_id, b.status));
-                setMyBookings(bookingMap);
-            }
-
-            if (forceRefetch || !appointmentsQuery.data) {
-                await appointmentsQuery.refetch();
-            }
-            setLoading(false);
-
-        } catch (e: any) {
-            console.error("API Error during initial load:", e);
-            setLoading(false);
-        }
-    };
+    const isPageLoading = loading;
 
     // --- ACTIONS ---
 
     const handleSave = async (data: any) => {
         if (isPreview) {
-            if (editingEvent) {
-                setAppointments(appointments.map(a => a.id === editingEvent.id ? { ...a, ...data } : a));
-            } else {
-                const newAppt = { ...data, id: Date.now(), participants_count: 0 };
-                setAppointments([...appointments, newAppt]);
-            }
+            const current = queryClient.getQueryData<Appointment[]>(['appointments', token]) || [];
+            const next = editingEvent
+                ? current.map(a => a.id === editingEvent.id ? { ...a, ...data } : a)
+                : [...current, { ...data, id: Date.now(), participants_count: 0 }];
+            queryClient.setQueryData(['appointments', token], next);
             setIsCreateOpen(false);
             setEditingEvent(null);
             return;
         }
-
         try {
             console.log("Saving Appointment Data:", data);
             if (editingEvent) {
@@ -927,7 +912,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             }
             setIsCreateOpen(false);
             setEditingEvent(null);
-            loadData(true);
+            queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e) {
             alert("Fehler beim Speichern");
         }
@@ -985,7 +970,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 });
             }
             setSelectedEvent(null);
-            loadData(true); // Lädt die Zahlen neu (Teilnehmerzahl etc.)
+            queryClient.invalidateQueries({ queryKey: ['appointments'] }); // Lädt die Zahlen neu (Teilnehmerzahl etc.)
         } catch (e: any) {
             alert(e.message || "Aktion fehlgeschlagen");
         }
@@ -1026,7 +1011,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         try {
             await apiClient.billBooking(bookingId, token);
             alert("Abrechnung erfolgreich.");
-            loadData(true);
+            queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e: any) {
             alert(e.message || "Fehler bei der Abrechnung");
         }
@@ -1070,7 +1055,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 }
             }
             alert(msg);
-            loadData(true);
+            queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e: any) {
             alert(e.message || "Fehler bei der Sammel-Aktion");
         }
@@ -1094,15 +1079,14 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         if (!confirm("Möchten Sie diesen Termin wirklich unwiderruflich löschen? Alle Buchungen dazu werden ebenfalls gelöscht.")) {
             return;
         }
-
         if (isPreview) {
-            setAppointments(appointments.filter(a => a.id !== appointmentId));
+            const current = queryClient.getQueryData<Appointment[]>(['appointments', token]) || [];
+            queryClient.setQueryData(['appointments', token], current.filter(a => a.id !== appointmentId));
             return;
         }
-
         try {
             await apiClient.delete(`/api/appointments/${appointmentId}`, token);
-            loadData(true);
+            queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e) {
             alert("Fehler beim Löschen des Termins");
         }
@@ -1527,3 +1511,9 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         </div>
     );
 }
+
+
+
+
+
+
