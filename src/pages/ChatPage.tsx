@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query'; // NEU
 import { apiClient } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { ChatMessage, ChatConversation, User, View } from '../types';
@@ -8,6 +9,9 @@ import { getInitials, getAvatarColorClass } from '../lib/utils';
 import InfoModal from '../components/modals/InfoModal';
 import { ContextHelp } from '../components/ui/ContextHelp';
 
+// NEU: Hook importieren
+import { useChat } from '../hooks/queries/useChat';
+
 interface ChatPageProps {
     user: User | any;
     token: string | null;
@@ -16,10 +20,19 @@ interface ChatPageProps {
 }
 
 export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode }) => {
+    const queryClient = useQueryClient();
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
+    // --- NEU: CACHING FÜR KONTAKTE ---
+    // Wir holen die Kontakte aus dem Cache. Durch das Prefetching in App.tsx sind sie sofort da.
+    const { data: conversationsData } = useChat(token);
+
+    // Fallback: Entweder Mock-Daten (Preview) oder Daten aus dem Cache oder leeres Array
+    const conversations = isPreviewMode
+        ? (isAdminOrStaff ? MOCK_CONVERSATIONS_ADMIN : MOCK_CONVERSATIONS_CUSTOMER)
+        : (conversationsData || []);
+
     // State
-    const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
@@ -66,34 +79,32 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         }
     }, [newMessage]);
 
-    // --- POLLING SETUP ---
+    // --- POLLING SETUP (Nur noch für Nachrichten) ---
     useEffect(() => {
-        if (isPreviewMode) {
-            setConversations(isAdminOrStaff ? MOCK_CONVERSATIONS_ADMIN : MOCK_CONVERSATIONS_CUSTOMER);
-            return;
-        }
+        if (isPreviewMode) return;
 
-        loadConversations();
+        // loadConversations() entfernt, macht jetzt der Hook!
+
         if (selectedUser) {
             loadMessages(selectedUser.id);
         }
 
         const intervalId = setInterval(() => {
-            loadConversations(false);
+            // Wir aktualisieren nur noch die Nachrichten der offenen Unterhaltung
+            // Die Kontaktliste links aktualisiert sich automatisch über den Hook (alle 5s)
             if (selectedUser) {
                 loadMessages(selectedUser.id);
             }
         }, 4000);
 
         return () => clearInterval(intervalId);
-    }, [token, selectedUser, isPreviewMode, isAdminOrStaff]);
+    }, [token, selectedUser, isPreviewMode]);
 
     // --- RESET ON ROLE CHANGE (PREVIEW) ---
     useEffect(() => {
         if (isPreviewMode) {
             setSelectedUser(null);
             setMessages([]);
-            setConversations(isAdminOrStaff ? MOCK_CONVERSATIONS_ADMIN : MOCK_CONVERSATIONS_CUSTOMER);
         }
     }, [isAdminOrStaff, isPreviewMode]);
 
@@ -103,12 +114,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
             const lastMessage = messages[messages.length - 1];
             if (lastMessage.sender_id === Number(selectedUser.id)) {
                 apiClient.markChatRead(parseInt(selectedUser.id), token).catch(console.error);
-                setConversations(prev => prev.map(c =>
-                    c.user.id === selectedUser.id ? { ...c, unread_count: 0 } : c
-                ));
+                // Cache invalidieren, damit Badge verschwindet
+                queryClient.invalidateQueries({ queryKey: ['chat'] });
             }
         }
-    }, [messages, selectedUser, token]);
+    }, [messages, selectedUser, token, queryClient]);
 
     // Responsive Handler
     useEffect(() => {
@@ -134,16 +144,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
 
     // --- DATA LOGIC ---
 
-    const loadConversations = async (showLoading = true) => {
-        if (isPreviewMode) return;
-        try {
-            const data = await apiClient.getConversations(token);
-            setConversations(data);
-        } catch (e) {
-            if (showLoading) console.error("Fehler beim Laden der Chats", e);
-        }
-    };
-
     const handleSelectUser = (chatPartner: User) => {
         if (selectedUser?.id === chatPartner.id) return;
 
@@ -152,10 +152,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         loadMessages(chatPartner.id);
 
         apiClient.markChatRead(parseInt(chatPartner.id), token).catch(console.error);
-
-        setConversations(prev => prev.map(c =>
-            c.user.id === chatPartner.id ? { ...c, unread_count: 0 } : c
-        ));
+        queryClient.invalidateQueries({ queryKey: ['chat'] }); // Update cache status
     };
 
     const handleOpenNewChatModal = async () => {
@@ -270,7 +267,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
             }, token);
 
             loadMessages(selectedUser.id);
-            loadConversations(false);
+            // Liste aktualisieren für "letzte Nachricht"
+            queryClient.invalidateQueries({ queryKey: ['chat'] });
 
         } catch (error: any) {
             console.error("Upload Fehler:", error);
@@ -307,7 +305,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     receiver_id: Number(selectedUser.id)
                 }, token);
                 loadMessages(selectedUser.id);
-                loadConversations(false);
+                // Liste sofort aktualisieren
+                queryClient.invalidateQueries({ queryKey: ['chat'] });
             }
         } catch (e) {
             alert("Senden fehlgeschlagen");
@@ -579,99 +578,68 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 borderBottom: '1px solid var(--border-color)',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.75rem',
+                                gap: '1rem',
                                 height: '60px',
-                                flexShrink: 0,
-                                zIndex: 10
+                                flexShrink: 0
                             }}>
-                                {!isDesktop && (
-                                    <button
-                                        onClick={handleBackToList}
-                                        style={{ background: 'none', border: 'none', padding: '0.5rem', cursor: 'pointer', color: 'white', marginLeft: '-0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                        <Icon name="arrowLeft" style={{ width: '24px', height: '24px' }} />
-                                    </button>
-                                )}
-
-                                <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name)}`} style={{ width: '38px', height: '38px', fontSize: '1rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                    {getInitials(selectedUser.name)}
+                                <button className="button-icon" onClick={handleBackToList} style={{ display: isDesktop ? 'none' : 'flex', color: isDesktop ? 'var(--text-primary)' : 'var(--sidebar-text)' }}>
+                                    <Icon name="arrow-left" />
+                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, cursor: 'pointer' }} onClick={navigateToCustomerProfile}>
+                                    <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name.split(' ')[0])}`}>
+                                        {getInitials(selectedUser.name.split(' ')[0], selectedUser.name.split(' ').slice(1).join(' '))}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 600, color: isDesktop ? 'var(--text-primary)' : 'var(--sidebar-text-hover)' }}>{selectedUser.name}</span>
+                                        {isAdminOrStaff && <span style={{ fontSize: '0.75rem', color: isDesktop ? 'var(--text-secondary)' : 'var(--sidebar-text)', opacity: 0.8 }}>Profil anzeigen</span>}
+                                    </div>
                                 </div>
-                                <div onClick={navigateToCustomerProfile} style={{ cursor: isAdminOrStaff ? 'pointer' : 'default', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: isDesktop ? 'var(--text-primary)' : 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {selectedUser.name.toLowerCase()}
-                                        <Icon name="arrowRight" style={{ width: '16px', height: '16px', opacity: 0.6 }} />
-                                    </span>
-                                </div>
-                                <ContextHelp
-                                    currentPage="chat"
-                                    userRole={user?.role}
-                                    floating={false}
-                                />
                             </div>
 
-                            {/* NACHRICHTEN - GRUPPIERT NACH DATUM */}
-                            <div style={{
-                                flex: 1,
-                                overflowY: 'auto',
-                                padding: '1rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0', // Abstand zwischen den Gruppen wird über margin-bottom geregelt
-                                scrollBehavior: 'smooth',
-                                overscrollBehavior: 'contain'
-                            }}>
-                                {messages.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', opacity: 0.7 }}><p>Schreiben Sie die erste Nachricht...</p></div>}
-
-                                {groupedMessages.map((group) => (
-                                    <div key={group.dateStr} style={{ position: 'relative', marginBottom: '1.5rem' }}>
-                                        {/* Sticky Header Container */}
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'center',
-                                            marginBottom: '1rem',
-                                            position: 'sticky',
-                                            top: '0',
-                                            zIndex: 5,
-                                            pointerEvents: 'none' // Klicks gehen durch
-                                        }}>
-                                            <span style={{
-                                                backgroundColor: 'rgba(0,0,0,0.05)',
-                                                backdropFilter: 'blur(4px)',
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '1rem',
-                                                fontSize: '0.75rem',
-                                                fontWeight: 600,
-                                                color: 'var(--text-secondary)',
-                                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                            }}>
-                                                {formatDateHeader(group.msgs[0].created_at)}
-                                            </span>
+                            {/* NACHRICHTEN */}
+                            <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', backgroundColor: 'var(--background-color)' }}>
+                                {groupedMessages.map((group, groupIdx) => (
+                                    <div key={groupIdx}>
+                                        <div style={{ textAlign: 'center', margin: '1rem 0', opacity: 0.6, fontSize: '0.8rem' }}>
+                                            <span style={{ backgroundColor: 'var(--background-secondary)', padding: '0.25rem 0.75rem', borderRadius: '1rem' }}>{formatDateHeader(group.dateStr)}</span>
                                         </div>
-
-                                        {/* Nachrichten in dieser Gruppe */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                            {group.msgs.map((msg, index) => {
-                                                const isMe = msg.sender_id === Number(user?.id);
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            {group.msgs.map((msg) => {
+                                                const isMe = msg.sender_id === Number(user.id);
                                                 return (
-                                                    <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                                                    <div key={msg.id} style={{
+                                                        alignSelf: isMe ? 'flex-end' : 'flex-start',
+                                                        maxWidth: '85%',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: isMe ? 'flex-end' : 'flex-start'
+                                                    }}>
                                                         <div style={{
-                                                            maxWidth: '85%', padding: '0.75rem 1rem', borderRadius: '1rem',
-                                                            borderBottomRightRadius: isMe ? '0' : '1rem',
-                                                            borderBottomLeftRadius: !isMe ? '0' : '1rem',
+                                                            padding: '0.75rem 1rem',
+                                                            borderRadius: '1rem',
+                                                            borderBottomRightRadius: isMe ? '0.25rem' : '1rem',
+                                                            borderBottomLeftRadius: isMe ? '1rem' : '0.25rem',
                                                             backgroundColor: isMe ? 'var(--primary-color)' : 'var(--card-background)',
                                                             color: isMe ? 'white' : 'var(--text-primary)',
-                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: isMe ? 'none' : '1px solid var(--border-color)'
+                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                                                            border: isMe ? 'none' : '1px solid var(--border-color)',
+                                                            position: 'relative'
                                                         }}>
                                                             {renderMessageContent(msg, isMe)}
-                                                            <div style={{ fontSize: '0.65rem', marginTop: '0.25rem', textAlign: 'right', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
-                                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                {isMe && (
-                                                                    <div style={{ position: 'relative', width: msg.is_read ? '18px' : '12px', height: '12px', display: 'flex', alignItems: 'center' }}>
-                                                                        <Icon name="check" style={{ width: '12px', height: '12px', color: msg.is_read ? '#fff' : 'rgba(255,255,255,0.6)', position: 'absolute', left: 0 }} />
-                                                                        {msg.is_read && <Icon name="check" style={{ width: '12px', height: '12px', color: '#fff', position: 'absolute', left: '6px' }} />}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '0.7rem',
+                                                            marginTop: '0.25rem',
+                                                            color: 'var(--text-light)',
+                                                            padding: '0 0.5rem',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.25rem'
+                                                        }}>
+                                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            {isMe && (
+                                                                <Icon name="check" style={{ width: '12px', height: '12px', opacity: msg.is_read ? 1 : 0.5, color: msg.is_read ? 'var(--primary-color)' : 'currentColor' }} />
+                                                            )}
                                                         </div>
                                                     </div>
                                                 );
@@ -682,101 +650,161 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            {/* EINGABEZEILE MIT TEXTAREA */}
+                            {/* INPUT AREA */}
                             <div style={{
-                                padding: '0.75rem',
+                                padding: '1rem',
                                 backgroundColor: 'var(--card-background)',
                                 borderTop: '1px solid var(--border-color)',
-                                flexShrink: 0,
-                                touchAction: 'none'
+                                display: 'flex',
+                                alignItems: 'flex-end',
+                                gap: '0.75rem',
+                                minHeight: '80px'
                             }}>
-                                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} accept="image/*,application/pdf,.doc,.docx" />
-                                <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="button button-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3px', flexShrink: 0 }}>
-                                        {isUploading ? <Icon name="refresh" className="animate-spin" /> : <Icon name="paperclip" />}
-                                    </button>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileSelect}
+                                    style={{ display: 'none' }}
+                                    accept="image/*,.pdf,.doc,.docx"
+                                />
+                                <button
+                                    className="button-icon"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
+                                    title="Datei anhängen"
+                                    style={{ padding: '0.75rem', backgroundColor: 'var(--background-secondary)', borderRadius: '50%', color: 'var(--text-secondary)' }}
+                                >
+                                    {isUploading ? <Icon name="refresh" className="animate-spin" /> : <Icon name="plus" />}
+                                </button>
+
+                                <div style={{
+                                    flex: 1,
+                                    backgroundColor: 'var(--background-secondary)',
+                                    borderRadius: '1.5rem',
+                                    padding: '0.75rem 1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    border: '1px solid transparent',
+                                    transition: 'border-color 0.2s'
+                                }}>
                                     <textarea
                                         ref={textareaRef}
                                         value={newMessage}
-                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        onChange={e => setNewMessage(e.target.value)}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="Nachricht..."
-                                        className="form-input custom-scrollbar"
-                                        style={{
-                                            flex: 1,
-                                            borderRadius: '20px',
-                                            padding: '0.75rem 1rem',
-                                            resize: 'none',
-                                            minHeight: '46px',
-                                            maxHeight: isDesktop ? '182px' : '114px',
-                                            overflowY: 'auto',
-                                            fontFamily: 'inherit',
-                                            lineHeight: '1.4',
-                                            touchAction: 'auto'
-                                        }}
+                                        placeholder="Nachricht schreiben..."
                                         rows={1}
+                                        style={{
+                                            width: '100%',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            outline: 'none',
+                                            resize: 'none',
+                                            maxHeight: '120px',
+                                            padding: 0,
+                                            lineHeight: '1.5',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.95rem'
+                                        }}
                                     />
-                                    <button type="submit" disabled={!newMessage.trim()} className="button button-primary" style={{ borderRadius: '50%', width: '46px', height: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0', flexShrink: 0 }}>
-                                        <Icon name="share" style={{ width: '20px', height: '20px' }} />
-                                    </button>
-                                </form>
+                                </div>
+
+                                <button
+                                    className="button button-primary"
+                                    onClick={handleSendMessage}
+                                    disabled={(!newMessage.trim() && !isUploading)}
+                                    style={{ padding: '0.75rem', borderRadius: '50%', minWidth: 'auto', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                    <Icon name="send" style={{ marginLeft: '2px' }} />
+                                </button>
                             </div>
                         </>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-light)' }}>
-                            <Icon name="mail" style={{ width: '64px', height: '64px', marginBottom: '1rem', opacity: 0.2 }} />
-                            <p>Wählen Sie einen Chat aus der Liste.</p>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center' }}>
+                            <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--background-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                                <Icon name="message-circle" style={{ width: '40px', height: '40px', opacity: 0.5 }} />
+                            </div>
+                            <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Ihre Nachrichten</h3>
+                            <p style={{ maxWidth: '300px' }}>Wählen Sie einen Chat aus der Liste oder starten Sie eine neue Unterhaltung.</p>
+                            <button className="button button-primary" style={{ marginTop: '1.5rem' }} onClick={handleOpenNewChatModal}>
+                                Neuen Chat starten
+                            </button>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* MODALS HIER EINFÜGEN (PreviewFile & NewChatModal bleiben unverändert) */}
+            {/* PREVIEW MODAL */}
             {previewFile && (
-                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(4px)' }} onClick={() => setPreviewFile(null)}>
-                    {/* ... Preview Modal Content ... */}
-                    <div style={{ backgroundColor: 'var(--card-background)', borderRadius: '1rem', maxWidth: '900px', width: '100%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{previewFile.name}</h3>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <button onClick={(e) => handleDownload(e, previewFile.url, previewFile.name)} className="button button-outline" style={{ padding: '0.5rem', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Herunterladen"><Icon name="download" style={{ width: '18px', height: '18px' }} /></button>
-                                <button onClick={() => setPreviewFile(null)} className="button button-outline" style={{ padding: '0.5rem', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="x" style={{ width: '18px', height: '18px' }} /></button>
+                <div className="modal-overlay" style={{ zIndex: 9999 }} onClick={() => setPreviewFile(null)}>
+                    <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+                        <button
+                            onClick={() => setPreviewFile(null)}
+                            style={{
+                                position: 'absolute', top: '-40px', right: 0,
+                                background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white',
+                                width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                        >
+                            <Icon name="x" />
+                        </button>
+                        {previewFile.type === 'image' ? (
+                            <img src={previewFile.url} alt="Preview" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '0.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} />
+                        ) : (
+                            <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', textAlign: 'center', minWidth: '300px' }}>
+                                <Icon name="file" style={{ width: '48px', height: '48px', color: 'var(--primary-color)', marginBottom: '1rem' }} />
+                                <h3 style={{ marginBottom: '1rem', wordBreak: 'break-all' }}>{previewFile.name}</h3>
+                                <a href={previewFile.url} download={previewFile.name} className="button button-primary" target="_blank" rel="noopener noreferrer">
+                                    <Icon name="download" /> Herunterladen
+                                </a>
                             </div>
-                        </div>
-                        <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--background-color)' }}>
-                            {previewFile.type === 'image' ? (
-                                <img src={previewFile.url} alt={previewFile.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '0.5rem' }} />
-                            ) : previewFile.type === 'pdf' ? (
-                                <iframe src={previewFile.url} title={previewFile.name} style={{ width: '100%', height: '100%', minHeight: '60vh', border: 'none', borderRadius: '0.5rem', backgroundColor: 'white' }} />
-                            ) : (
-                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                                    <Icon name="file" style={{ width: '64px', height: '64px', marginBottom: '1rem', opacity: 0.5 }} />
-                                    <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Keine Vorschau verfügbar.</p>
-                                    <button onClick={(e) => handleDownload(e, previewFile.url, previewFile.name)} className="button button-primary">Datei herunterladen</button>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
             )}
 
+            {/* NEW CHAT MODAL */}
             {isNewChatModalOpen && (
-                <InfoModal title="Neuen Chat starten" onClose={() => setIsNewChatModalOpen(false)} color="blue">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '60vh', minHeight: '300px' }}>
-                        <div style={{ position: 'sticky', top: 0, backgroundColor: 'var(--card-background)', zIndex: 10 }}>
-                            <input type="text" placeholder={isAdminOrStaff ? "Kunden suchen..." : "Mitarbeiter suchen..."} className="form-input" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} autoFocus />
+                <InfoModal title="Neuen Chat starten" onClose={() => setIsNewChatModalOpen(false)}>
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '400px' }}>
+                        <div style={{ marginBottom: '1rem' }}>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Suchen..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                autoFocus
+                            />
                         </div>
-                        {loadingUsers ? <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Lade Kontakte...</div> : (
-                            <ul className="info-modal-list" style={{ overflowY: 'auto' }}>
-                                {filteredUsers.length === 0 ? <p className="text-gray-500 text-center py-4">Keine Einträge gefunden.</p> : filteredUsers.map(u => (
-                                    <li key={u.id} onClick={() => startNewChat(u)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem' }}>
-                                        <div className={`initials-avatar small ${getAvatarColorClass(u.name)}`}>{getInitials(u.name)}</div>
-                                        <div style={{ flex: 1 }}><div style={{ fontWeight: 600 }}>{u.name}</div><div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{u.role === 'customer' || u.role === 'kunde' ? 'Kunde' : 'Mitarbeiter'}</div></div>
-                                        <Icon name="arrowRight" style={{ marginLeft: 'auto', opacity: 0.5, width: '16px', height: '16px' }} />
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {loadingUsers ? (
+                                <div style={{ textAlign: 'center', padding: '2rem' }}>Lade Kontakte...</div>
+                            ) : filteredUsers.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Keine Kontakte gefunden.</div>
+                            ) : (
+                                filteredUsers.map(u => (
+                                    <div key={u.id} onClick={() => startNewChat(u)} style={{
+                                        padding: '0.75rem',
+                                        borderBottom: '1px solid var(--border-color)',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        transition: 'background 0.2s'
+                                    }}
+                                         onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--background-secondary)'}
+                                         onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                        <div className={`initials-avatar small ${getAvatarColorClass(u.name.split(' ')[0])}`}>
+                                            {getInitials(u.name.split(' ')[0], u.name.split(' ').slice(1).join(' '))}
+                                        </div>
+                                        <span style={{ fontWeight: 500 }}>{u.name}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </InfoModal>
             )}
