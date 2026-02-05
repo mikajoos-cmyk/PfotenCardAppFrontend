@@ -156,7 +156,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         if (selectedUser?.id === chatPartner.id) return;
 
         setSelectedUser(chatPartner);
-        setMessages([]);
+        setMessagesState([]);
         loadMessages(chatPartner.id);
 
         apiClient.markChatRead(parseInt(chatPartner.id), token).catch(console.error);
@@ -318,7 +318,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
             }
         } catch (e) {
             alert("Senden fehlgeschlagen");
-            setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+            setMessagesState(prev => prev.filter(m => m.id !== tempMsg.id));
             setNewMessage(msgContent);
         }
     };
@@ -430,7 +430,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 style={{ color: iconColor, cursor: 'pointer', flexShrink: 0, display: 'flex' }}
                                 onClick={() => setPreviewFile({ url: msg.file_url!, type: msg.file_type || 'document', name: fileName })}
                             >
-                                <Icon name="file" style={{ width: '24px', height: '24px' }} />
+                                <Icon name={msg.file_type === 'pdf' ? 'reports' : 'file'} style={{ width: '24px', height: '24px' }} />
                             </div>
 
                             <div
@@ -646,7 +646,16 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                                         }}>
                                                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                             {isMe && (
-                                                                <Icon name="check" style={{ width: '12px', height: '12px', opacity: msg.is_read ? 1 : 0.5, color: msg.is_read ? 'var(--primary-color)' : 'currentColor' }} />
+                                                                <span title={msg.is_read ? 'Gelesen' : 'Gesendet'} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                                                    {msg.is_read ? (
+                                                                        <span style={{ position: 'relative', width: '16px', height: '12px' }}>
+                                                                            <Icon name="check" style={{ width: '12px', height: '12px', color: 'var(--primary-color)', position: 'absolute', left: 0 }} />
+                                                                            <Icon name="check" style={{ width: '12px', height: '12px', color: 'var(--primary-color)', position: 'absolute', left: 6 }} />
+                                                                        </span>
+                                                                    ) : (
+                                                                        <Icon name="check" style={{ width: '12px', height: '12px', opacity: 0.5 }} />
+                                                                    )}
+                                                                </span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -759,6 +768,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                         </button>
                         {previewFile.type === 'image' ? (
                             <img src={previewFile.url} alt="Preview" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '0.5rem', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} />
+                        ) : previewFile.type === 'pdf' ? (
+                            <div style={{ backgroundColor: 'white', borderRadius: '1rem', overflow: 'hidden', width: '80vw', height: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+                                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>{previewFile.name}</span>
+                                    <a href={previewFile.url} download={previewFile.name} className="button-as-link" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary-color)' }}>
+                                        <Icon name="download" style={{ width: '14px', height: '14px' }} /> Speichern
+                                    </a>
+                                </div>
+                                <iframe
+                                    src={`${previewFile.url}#toolbar=0`}
+                                    style={{ width: '100%', height: '100%', border: 'none' }}
+                                    title={previewFile.name}
+                                />
+                            </div>
                         ) : (
                             <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '1rem', textAlign: 'center', minWidth: '300px' }}>
                                 <Icon name="file" style={{ width: '48px', height: '48px', color: 'var(--primary-color)', marginBottom: '1rem' }} />
