@@ -1454,6 +1454,8 @@ export default function App() {
     const isAccessingLegalPage = ['impressum', 'datenschutz', 'agb'].includes(view.page);
     const allowUnauthenticatedAccess = (!REQUIRE_AUTH_FOR_CUSTOMER_VIEW && isAccessingCustomerPage) || isAccessingLegalPage;
 
+    const activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar', 'chat'];
+
     if (!authToken || !loggedInUser) {
         if (allowUnauthenticatedAccess && (directAccessedCustomer || isAccessingLegalPage)) {
             return (
@@ -1513,9 +1515,6 @@ export default function App() {
             />
         );
     }
-
-
-    let activeModules = appConfigData?.tenant?.config?.active_modules || previewConfig.activeModules || ['news', 'documents', 'calendar', 'chat'];
 
     return (
         <div className={`app-container ${isSidebarOpen ? "sidebar-open" : ""}`}>
