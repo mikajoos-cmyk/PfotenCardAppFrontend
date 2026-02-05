@@ -1,10 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { NewsPost, User } from '../types';
 import { hasPermission } from '../lib/permissions';
 import { MOCK_NEWS } from '../lib/mockData';
 import Icon from '../components/ui/Icon';
+
+// Hooks importieren
+import { useNews } from '../hooks/queries/useNews';
+import { useConfig } from '../hooks/queries/useConfig';
 
 interface NewsPageProps {
     user: User | any;
@@ -14,8 +19,23 @@ interface NewsPageProps {
 }
 
 export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointmentId, isPreviewMode }) => {
-    const [posts, setPosts] = useState<NewsPost[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+
+    // 1. DATEN AUS DEM CACHE HOLEN
+    const { data: newsData, isLoading: newsLoading } = useNews(token, {
+        refetchInterval: 30000 // Alle 30 Sekunden automatisch prüfen
+    });
+    const { data: configData } = useConfig();
+
+    const posts = isPreviewMode ? MOCK_NEWS : (newsData || []);
+
+    // Config-Daten für Dropdowns (Fallback auf leeres Array)
+    const availableLevels = configData?.levels || [];
+    const availableAppointments = configData?.appointments || [];
+
+    const loading = newsLoading && !isPreviewMode;
+
+    // Local State
     const [isCreating, setIsCreating] = useState(false);
 
     // Form State
@@ -31,56 +51,32 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
     const [editingPost, setEditingPost] = useState<NewsPost | null>(null);
 
     // Audience Selection State
-    const [availableLevels, setAvailableLevels] = useState<any[]>([]);
-    const [availableAppointments, setAvailableAppointments] = useState<any[]>([]);
     const [audienceType, setAudienceType] = useState<'all' | 'specific_levels' | 'specific_appointments'>('all');
     const [selectedLevelIds, setSelectedLevelIds] = useState<number[]>([]);
     const [selectedAppointmentIds, setSelectedAppointmentIds] = useState<number[]>([]);
     const [appointmentFilter, setAppointmentFilter] = useState<'upcoming' | 'past'>('upcoming');
 
-    const filteredAppointments = availableAppointments
-        .filter(app => {
-            const isPast = new Date(app.start_time) < new Date();
-            return appointmentFilter === 'past' ? isPast : !isPast;
-        })
-        .sort((a, b) => {
-            const timeA = new Date(a.start_time).getTime();
-            const timeB = new Date(b.start_time).getTime();
-            if (appointmentFilter === 'upcoming') {
-                return timeA - timeB; // Closest to now first (ascending)
-            } else {
-                return timeB - timeA; // Closest to now first (descending)
-            }
-        });
-
     // UI State for Custom Dropdowns
     const [isMainTypeDropdownOpen, setIsMainTypeDropdownOpen] = useState(false);
     const [isSpecificDropdownOpen, setIsSpecificDropdownOpen] = useState(false);
 
-    const fetchNews = async () => {
-        try {
-            setLoading(true);
-            const data = isPreviewMode ? MOCK_NEWS : await apiClient.getNews(token);
-            setPosts(data);
-        } catch (error) {
-            console.error("Failed to load news", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchNews();
-
-        // Fetch config for audience selection
-        apiClient.getConfig().then(config => {
-            if (config) {
-                setAvailableLevels(config.levels || []);
-                setAvailableAppointments(config.appointments || []);
+    // Filter Logic for Dropdown
+    const filteredAppointments = availableAppointments
+        .filter((app: any) => {
+            const isPast = new Date(app.start_time) < new Date();
+            return appointmentFilter === 'past' ? isPast : !isPast;
+        })
+        .sort((a: any, b: any) => {
+            const timeA = new Date(a.start_time).getTime();
+            const timeB = new Date(b.start_time).getTime();
+            if (appointmentFilter === 'upcoming') {
+                return timeA - timeB;
+            } else {
+                return timeB - timeA;
             }
-        }).catch(err => console.error("Failed to load config", err));
-    }, [token]);
+        });
 
+    // Effect for pre-selecting appointment if navigated from calendar
     useEffect(() => {
         if (targetAppointmentId) {
             setAudienceType('specific_appointments');
@@ -140,7 +136,9 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
             }
 
             resetForm();
-            fetchNews();
+            // CACHE AKTUALISIEREN (statt fetchNews)
+            queryClient.invalidateQueries({ queryKey: ['news'] });
+
         } catch (error) {
             alert(editingPost ? 'Fehler beim Aktualisieren des Beitrags' : 'Fehler beim Erstellen des Beitrags');
         } finally {
@@ -183,7 +181,8 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
 
         try {
             await apiClient.deleteNews(postId, token);
-            fetchNews();
+            // CACHE AKTUALISIEREN
+            queryClient.invalidateQueries({ queryKey: ['news'] });
         } catch (error) {
             alert('Fehler beim Löschen des Beitrags');
         }
@@ -588,11 +587,11 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                                                         }}>
                                                             {audienceType === 'specific_levels' ? (
                                                                 selectedLevelIds.length === 0 ? 'Level wählen...' :
-                                                                    selectedLevelIds.length === 1 ? availableLevels.find(l => l.id === selectedLevelIds[0])?.name :
+                                                                    selectedLevelIds.length === 1 ? availableLevels.find((l: any) => l.id === selectedLevelIds[0])?.name :
                                                                         `${selectedLevelIds.length} Level ausgewählt`
                                                             ) : (
                                                                 selectedAppointmentIds.length === 0 ? 'Termine wählen...' :
-                                                                    selectedAppointmentIds.length === 1 ? availableAppointments.find(a => a.id === selectedAppointmentIds[0])?.title :
+                                                                    selectedAppointmentIds.length === 1 ? availableAppointments.find((a: any) => a.id === selectedAppointmentIds[0])?.title :
                                                                         `${selectedAppointmentIds.length} Termine ausgewählt`
                                                             )}
                                                         </span>
@@ -624,7 +623,7 @@ export const NewsPage: React.FC<NewsPageProps> = ({ user, token, targetAppointme
                                                                 overflowY: 'auto',
                                                                 animation: 'slideUp 0.15s ease-out'
                                                             }}>
-                                                                {(audienceType === 'specific_levels' ? availableLevels : filteredAppointments).map(item => {
+                                                                {(audienceType === 'specific_levels' ? availableLevels : filteredAppointments).map((item: any) => {
                                                                     const isSelected = audienceType === 'specific_levels' ?
                                                                         selectedLevelIds.includes(item.id) :
                                                                         selectedAppointmentIds.includes(item.id);
