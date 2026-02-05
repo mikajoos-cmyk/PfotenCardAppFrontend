@@ -141,17 +141,27 @@ export default function App() {
     }, []);
 
     // ... (Hier der ganze restliche State & Effects Code - UNVERÄNDERT) ...
-    const userQuery = useUser(authToken, { enabled: !!authToken && !isPreviewMode });
+    const shouldFetchData = !!authToken && !isPreviewMode;
+    const userQuery = useUser(authToken, { enabled: shouldFetchData, refetchInterval: 30000 });
     const isCustomerRole = loggedInUser?.role === 'customer' || loggedInUser?.role === 'kunde';
 
-    const usersQuery = useUsers(authToken, { enabled: !!authToken && !isPreviewMode && !!loggedInUser && !isCustomerRole });
-    const customersQuery = useCustomers(authToken, { enabled: !!authToken && !isPreviewMode && !!loggedInUser && !isCustomerRole });
-    const transactionsQuery = useTransactions(authToken, undefined, { enabled: !!authToken && !isPreviewMode && !!loggedInUser });
+    const usersQuery = useUsers(authToken, {
+        enabled: shouldFetchData && !!loggedInUser && !isCustomerRole,
+        refetchInterval: 30000
+    });
+    const customersQuery = useCustomers(authToken, {
+        enabled: shouldFetchData && !!loggedInUser && !isCustomerRole,
+        refetchInterval: 30000
+    });
+    const transactionsQuery = useTransactions(authToken, undefined, {
+        enabled: shouldFetchData && !!loggedInUser,
+        refetchInterval: 30000
+    });
 
     const appStatusQuery = useQuery({
         queryKey: ['appStatus', authToken],
         queryFn: () => apiClient.getAppStatus(authToken),
-        enabled: !!authToken && !isPreviewMode,
+        enabled: shouldFetchData,
         refetchInterval: 30000
     });
 
@@ -159,7 +169,7 @@ export default function App() {
     const users = isCustomerRole && loggedInUser ? [loggedInUser] : (usersQuery.data || []);
     const transactions = transactionsQuery.data || [];
     const appStatus = appStatusQuery.data || null;
-    const isAppLoading = !!authToken && userQuery.isLoading;
+    const isAppLoading = shouldFetchData && userQuery.isLoading;
 
     useEffect(() => {
         if (isPreviewMode) return;
