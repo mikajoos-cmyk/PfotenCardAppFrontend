@@ -13,7 +13,7 @@ export const useAppointments = (
     options?: QueryOptions
 ) => {
     return useQuery({
-        queryKey: ['appointments', token, startDate || 'all', endDate || 'all'],
+        queryKey: ['appointments', token],
         queryFn: () => apiClient.getAppointments(token, startDate, endDate),
         enabled: !!token && (options?.enabled ?? true),
         refetchInterval: options?.refetchInterval ?? 30000

@@ -689,7 +689,7 @@ export default function App() {
         if (!authToken || !loggedInUser || isPreviewMode) return;
 
         queryClient.prefetchQuery({
-            queryKey: ['appointments', authToken, 'all', 'all'],
+            queryKey: ['appointments', authToken],
             queryFn: () => apiClient.getAppointments(authToken)
         });
         queryClient.prefetchQuery({

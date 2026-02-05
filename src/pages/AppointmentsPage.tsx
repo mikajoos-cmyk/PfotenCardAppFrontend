@@ -11,6 +11,7 @@ import LiveStatusBanner from '../components/ui/LiveStatusBanner';
 import LiveStatusModal from '../components/modals/LiveStatusModal';
 import Icon from '../components/ui/Icon';
 import InfoModal from '../components/modals/InfoModal';
+import { useAppointments } from '../hooks/queries/useAppointments';
 
 // --- MOCK DATEN FÜR PREVIEW ---
 const MOCK_APPOINTMENTS: any[] = [
@@ -790,6 +791,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     // ÄNDERUNG: Status statt nur ID speichern (Map<ID, Status>)
     const [myBookings, setMyBookings] = useState<Map<number, string>>(new Map());
     const isPreview = !token || token === 'preview-token';
+    const appointmentsQuery = useAppointments(token, undefined, undefined, {
+        enabled: !!token && !isPreview,
+        refetchInterval: 30000
+    });
 
     // Admin State
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -816,6 +821,13 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         }
     }, [user]);
 
+    useEffect(() => {
+        if (isPreview) return;
+        if (!appointmentsQuery.data) return;
+        const sorted = [...appointmentsQuery.data].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+        setAppointments(sorted);
+    }, [appointmentsQuery.data, isPreview]);
+
     const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
     // NEU: Sub-Filter für "Meine Buchungen" (Zukunft / Vergangenheit)
     const [bookingTimeFilter, setBookingTimeFilter] = useState<'future' | 'past'>('future');
@@ -826,14 +838,17 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [defaultDuration, setDefaultDuration] = useState(60);
     const [defaultMaxParticipants, setDefaultMaxParticipants] = useState(10);
     const [colorRules, setColorRules] = useState<ColorRule[]>([]);
+    const isPageLoading = loading || (appointmentsQuery.isLoading && appointments.length === 0);
 
 
     useEffect(() => {
         loadData();
     }, [token, user]);
 
-    const loadData = async () => {
-        setLoading(true);
+    const loadData = async (forceRefetch: boolean = false) => {
+        if (appointments.length === 0) {
+            setLoading(true);
+        }
 
         // Automatische Erkennung für Preview-Modus
         if (isPreview) {
@@ -875,48 +890,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 setMyBookings(bookingMap);
             }
 
-            // 2. Termine SCHRITTWEISE laden (Woche für Woche) und sofort anzeigen
-            setAppointments([]); // Reset
-
-            // Definition der Zeiträume (z.B. nächsten 12 Wochen)
-            const weeksToLoad = 12;
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-
-            // Hilfsfunktion zum Laden einer Woche
-            const loadWeek = async (weekOffset: number) => {
-                const start = new Date(now.getTime());
-                start.setDate(start.getDate() + (weekOffset * 7));
-
-                const end = new Date(start.getTime());
-                end.setDate(end.getDate() + 7);
-                end.setMilliseconds(-1); // Kurz vor Mitternacht des 7. Tages
-
-                try {
-                    const newAppts = await apiClient.getAppointments(token, start.toISOString(), end.toISOString());
-                    if (newAppts && newAppts.length > 0) {
-                        setAppointments(prev => {
-                            // Verhindere Duplikate falls Überschneidungen
-                            const existingIds = new Set(prev.map(a => a.id));
-                            const filtered = newAppts.filter((a: any) => !existingIds.has(a.id));
-                            return [...prev, ...filtered].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-                        });
-                    }
-                } catch (err) {
-                    console.error(`Fehler beim Laden von Woche ${weekOffset}:`, err);
-                }
-            };
-
-            // Erste Woche sofort laden (Blocking für den Loading-Spinner)
-            await loadWeek(0);
-            setLoading(false); // Spinner ausblenden, erste Daten sind da!
-
-            // Weitere Wochen im Hintergrund laden
-            for (let i = 1; i < weeksToLoad; i++) {
-                // Kurze Pause, um den Browser nicht zu blockieren und flüssiges UI zu garantieren
-                await new Promise(resolve => setTimeout(resolve, 50));
-                await loadWeek(i);
+            if (forceRefetch || !appointmentsQuery.data) {
+                await appointmentsQuery.refetch();
             }
+            setLoading(false);
 
         } catch (e: any) {
             console.error("API Error during initial load:", e);
@@ -950,7 +927,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             }
             setIsCreateOpen(false);
             setEditingEvent(null);
-            loadData();
+            loadData(true);
         } catch (e) {
             alert("Fehler beim Speichern");
         }
@@ -1008,7 +985,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 });
             }
             setSelectedEvent(null);
-            loadData(); // Lädt die Zahlen neu (Teilnehmerzahl etc.)
+            loadData(true); // Lädt die Zahlen neu (Teilnehmerzahl etc.)
         } catch (e: any) {
             alert(e.message || "Aktion fehlgeschlagen");
         }
@@ -1049,7 +1026,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         try {
             await apiClient.billBooking(bookingId, token);
             alert("Abrechnung erfolgreich.");
-            loadData();
+            loadData(true);
         } catch (e: any) {
             alert(e.message || "Fehler bei der Abrechnung");
         }
@@ -1093,7 +1070,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 }
             }
             alert(msg);
-            loadData();
+            loadData(true);
         } catch (e: any) {
             alert(e.message || "Fehler bei der Sammel-Aktion");
         }
@@ -1125,7 +1102,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
         try {
             await apiClient.delete(`/api/appointments/${appointmentId}`, token);
-            loadData();
+            loadData(true);
         } catch (e) {
             alert("Fehler beim Löschen des Termins");
         }
@@ -1316,7 +1293,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 </div>
             )}
 
-            {loading ? <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Lade Termine...</div> : (
+            {isPageLoading ? <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Lade Termine...</div> : (
                 <div className="event-list-container">
                     {eventsByWeek.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--card-background)', borderRadius: '1rem', border: '1px solid var(--border-color)' }}>
