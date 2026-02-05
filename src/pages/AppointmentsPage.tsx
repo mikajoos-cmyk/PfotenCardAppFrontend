@@ -484,7 +484,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                                 <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-accent-success)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}>
-                                <Icon name="dollar" width={16} height={16} style={{ color: 'var(--brand-green)' }} />
+                                <Icon name="euro" width={16} height={16} style={{ color: 'var(--brand-green)' }} />
                                 <span style={{ fontWeight: 700, color: 'var(--brand-green)', fontSize: '1rem' }}>
                                     {event.price ?? event.training_type.default_price}€
                                 </span>
@@ -592,7 +592,9 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                                         </span>
                                     ))
                                 ) : (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Alle Level</span>
+                                    <span style={{ fontSize: '0.75rem', padding: '0.1rem 0.6rem', borderRadius: '12px', background: 'var(--bg-accent-success)', color: 'var(--brand-green)', fontWeight: 600, border: '1px solid var(--success-color-light)' }}>
+                                        Alle dürfen kommen
+                                    </span>
                                 )}
                             </div>
                         </div>
@@ -690,7 +692,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                     <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
                         {confirmedList.some(b => !b.is_billed) ? (
                             <button onClick={onBillAll} className="button button-primary button-small">
-                                <Icon name={showBilling ? "dollar" : "check-circle"} />
+                                <Icon name={showBilling ? "euro" : "check-circle"} />
                                 {showBilling && showProgress
                                     ? ` ${confirmedList.filter(b => !b.is_billed).length} Abrechnen & Fortschritt`
                                     : showBilling
@@ -757,7 +759,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                                 className="button button-outline button-small"
                                                 title="Abrechnen"
                                             >
-                                                <Icon name="dollar" />
+                                                <Icon name="euro" />
                                             </button>
                                         )}
                                         {activeTab === 'confirmed' && b.status === 'confirmed' && (
@@ -1318,7 +1320,11 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                                 {event.trainer.name}
                                                             </div>
                                                         )}
-                                                        {event.target_levels?.map((lvl: any) => (
+                                                        {event.is_open_for_all ? (
+                                                            <div style={{ fontSize: '0.7rem', color: 'var(--brand-green)', background: 'var(--bg-accent-success)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--success-color-light)' }}>
+                                                                Alle dürfen kommen
+                                                            </div>
+                                                        ) : event.target_levels?.map((lvl: any) => (
                                                             <div key={lvl.id} style={{ fontSize: '0.7rem', color: 'var(--primary-color)', background: 'var(--bg-accent)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600 }}>
                                                                 {lvl.name}
                                                             </div>

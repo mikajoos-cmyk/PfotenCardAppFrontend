@@ -65,6 +65,7 @@ const Icon = ({ name, ...props }: { name: string } & React.SVGProps<SVGSVGElemen
         alarm: { path: <><path d="M12 21a2 2 0 0 1-2-2h4a2 2 0 0 1-2 2z" /><path d="M19.3 17.5a1.43 1.43 0 0 1-1.3-1.4V10a6 6 0 0 0-6-6 6 6 0 0 0-6 6v6.1c0 .8-.5 1.4-1.3 1.4h14.6z" /><path d="M5 4.5l-2-2" /><path d="M19 4.5l2-2" /><path d="M2.5 10h-2" /><path d="M23.5 10h-2" /></> },
         activity: { path: <><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></> },
         dollar: { path: <><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></> },
+        euro: { path: <><path d="M19 5.5a8 8 0 1 0 0 13" /><path d="M7 9h10" /><path d="M7 15h10" /></> },
     };
 
     const selectedIcon = icons[name];
