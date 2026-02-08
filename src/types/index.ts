@@ -5,6 +5,7 @@ export type View = { page: Page; customerId?: string, chatPartnerId?: string, su
 
 export interface User {
     id: string;
+    auth_id?: string;
     name: string;
     email: string;
     role: UserRole;

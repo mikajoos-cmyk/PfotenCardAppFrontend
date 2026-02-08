@@ -99,27 +99,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         }
     }, [newMessage]);
 
-    // --- POLLING SETUP (Nur noch für Nachrichten) ---
-    useEffect(() => {
-        if (isPreviewMode) return;
-
-        // loadConversations() entfernt, macht jetzt der Hook!
-
-        if (selectedUser) {
-            loadMessages(selectedUser.auth_id || selectedUser.id);
-        }
-
-        const intervalId = setInterval(() => {
-            // Wir aktualisieren nur noch die Nachrichten der offenen Unterhaltung
-            // Die Kontaktliste links aktualisiert sich automatisch über den Hook (alle 5s)
-            if (selectedUser) {
-                loadMessages(selectedUser.auth_id || selectedUser.id);
-            }
-        }, 4000);
-
-        return () => clearInterval(intervalId);
-    }, [token, selectedUser, isPreviewMode]);
-
     // --- RESET ON ROLE CHANGE (PREVIEW) ---
     useEffect(() => {
         if (isPreviewMode) {
@@ -133,7 +112,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         if (selectedUser && messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
             if (lastMessage.sender_id === Number(selectedUser.id)) {
-                apiClient.markChatRead(parseInt(selectedUser.id), token).catch(console.error);
+                apiClient.markChatRead(selectedUser.auth_id || selectedUser.id, token).catch(console.error);
                 // Cache invalidieren, damit Badge verschwindet
                 queryClient.invalidateQueries({ queryKey: ['chat'] });
             }
