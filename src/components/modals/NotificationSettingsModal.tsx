@@ -23,17 +23,13 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
         notif_email_chat: user?.notif_email_chat ?? true,
         notif_email_news: user?.notif_email_news ?? true,
         notif_email_booking: user?.notif_email_booking ?? true,
-        notif_email_reminder: user?.notif_email_reminder ?? true,
         notif_email_alert: user?.notif_email_alert ?? true,
 
         notif_push_overall: user?.notif_push_overall ?? true,
         notif_push_chat: user?.notif_push_chat ?? true,
         notif_push_news: user?.notif_push_news ?? true,
         notif_push_booking: user?.notif_push_booking ?? true,
-        notif_push_reminder: user?.notif_push_reminder ?? true,
         notif_push_alert: user?.notif_push_alert ?? true,
-
-        reminder_offset_minutes: user?.reminder_offset_minutes ?? 60,
     });
 
     // Track if we have synced with the user prop for this open session
@@ -54,17 +50,13 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
                 notif_email_chat: user.notif_email_chat ?? true,
                 notif_email_news: user.notif_email_news ?? true,
                 notif_email_booking: user.notif_email_booking ?? true,
-                notif_email_reminder: user.notif_email_reminder ?? true,
                 notif_email_alert: user.notif_email_alert ?? true,
 
                 notif_push_overall: user.notif_push_overall ?? true,
                 notif_push_chat: user.notif_push_chat ?? true,
                 notif_push_news: user.notif_push_news ?? true,
                 notif_push_booking: user.notif_push_booking ?? true,
-                notif_push_reminder: user.notif_push_reminder ?? true,
                 notif_push_alert: user.notif_push_alert ?? true,
-
-                reminder_offset_minutes: user.reminder_offset_minutes ?? 60,
             });
             hasSyncedRef.current = true;
         }
@@ -103,27 +95,18 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
         }
     };
 
-    const handleToggle = (key: keyof typeof settings) => {
-        const newValue = !settings[key];
+    const handleToggle = (key: string) => {
+        const newValue = !settings[key as keyof typeof settings];
         setSettings(prev => ({ ...prev, [key]: newValue }));
-        handleSaveField(key as string, newValue);
+        handleSaveField(key, newValue);
     };
 
-    const handleOffsetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = parseInt(e.target.value) || 0;
-        setSettings(prev => ({ ...prev, reminder_offset_minutes: value }));
-    };
-
-    const handleOffsetBlur = () => {
-        handleSaveField('reminder_offset_minutes', settings.reminder_offset_minutes);
-    };
-
-    const renderToggleRow = (label: string, description: string, icon: any, key: keyof typeof settings, disabled: boolean = false, accent: string = 'blue') => (
+    const renderToggleRow = (label: string, description: string, icon: any, key: string, disabled: boolean = false, accent: string = 'blue') => (
         <div
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                padding: '1rem',
+                padding: '0.875rem',
                 backgroundColor: 'var(--background-color)',
                 borderRadius: '0.75rem',
                 border: '1px solid var(--border-color)',
@@ -132,11 +115,12 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
                 marginBottom: '0.75rem'
             }}
         >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', minWidth: 0, flex: 1 }}>
                     <div style={{
-                        width: '40px',
-                        height: '40px',
+                        width: '36px',
+                        height: '36px',
+                        minWidth: '36px',
                         borderRadius: '50%',
                         backgroundColor: `var(--bg-accent-${accent})`,
                         color: `var(--text-accent-${accent})`,
@@ -144,38 +128,35 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
                         alignItems: 'center',
                         justifyContent: 'center'
                     }}>
-                        <Icon name={icon} />
+                        <Icon name={icon} width={20} height={20} />
                     </div>
-                    <div>
-                        <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{label}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{description}</div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ 
+                            fontWeight: '600', 
+                            color: 'var(--text-primary)',
+                            fontSize: '0.95rem',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                        }} title={label}>{label}</div>
+                        <div style={{ 
+                            fontSize: '0.75rem', 
+                            color: 'var(--text-secondary)',
+                            lineHeight: '1.2',
+                            marginTop: '0.125rem'
+                        }}>{description}</div>
                     </div>
                 </div>
-                <label className="switch">
+                <label className="switch" style={{ flexShrink: 0 }}>
                     <input
                         type="checkbox"
-                        checked={settings[key] as boolean}
+                        checked={settings[key as keyof typeof settings] as boolean}
                         onChange={() => handleToggle(key)}
                         disabled={status === 'loading' || disabled}
                     />
                     <span className="slider"></span>
                 </label>
             </div>
-
-            {key.includes('reminder') && settings[key] && !disabled && (
-                <div style={{ marginTop: '1rem', paddingLeft: '3.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Erinnerung</span>
-                    <input
-                        type="number"
-                        className="form-input"
-                        style={{ width: '80px', padding: '0.25rem 0.5rem', fontSize: '0.9rem' }}
-                        value={settings.reminder_offset_minutes}
-                        onChange={handleOffsetChange}
-                        onBlur={handleOffsetBlur}
-                    />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Minuten vor dem Termin</span>
-                </div>
-            )}
         </div>
     );
 
@@ -189,79 +170,79 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
                     </button>
                 </div>
 
-                <div className="modal-body" style={{ padding: '0' }}>
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)' }}>
+                <div className="modal-body" style={{ padding: '0', overflowX: 'hidden' }}>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--background-color)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                         <button
                             onClick={() => setActiveTab('email')}
                             style={{
                                 flex: 1,
-                                padding: '1rem',
+                                padding: '0.875rem 0.5rem',
                                 border: 'none',
                                 background: 'none',
                                 borderBottom: activeTab === 'email' ? '3px solid var(--primary-color)' : '3px solid transparent',
                                 color: activeTab === 'email' ? 'var(--primary-color)' : 'var(--text-secondary)',
                                 fontWeight: '600',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                minWidth: '100px'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <Icon name="mail" width={18} height={18} /> E-Mail
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', fontSize: '0.9rem' }}>
+                                <Icon name="mail" width={16} height={16} /> E-Mail
                             </div>
                         </button>
                         <button
                             onClick={() => setActiveTab('push')}
                             style={{
                                 flex: 1,
-                                padding: '1rem',
+                                padding: '0.875rem 0.5rem',
                                 border: 'none',
                                 background: 'none',
                                 borderBottom: activeTab === 'push' ? '3px solid var(--primary-color)' : '3px solid transparent',
                                 color: activeTab === 'push' ? 'var(--primary-color)' : 'var(--text-secondary)',
                                 fontWeight: '600',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                minWidth: '100px'
                             }}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <Icon name="bell" width={18} height={18} /> Push
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.375rem', fontSize: '0.9rem' }}>
+                                <Icon name="bell" width={16} height={16} /> Push
                             </div>
                         </button>
                     </div>
 
-                    <div style={{ padding: '1.5rem' }}>
+                    <div style={{ padding: '1rem 0.75rem' }}>
                         {activeTab === 'email' ? (
                             <>
-                                {renderToggleRow("Alle E-Mails erlauben", "Hauptschalter für alle E-Mail Benachrichtigungen", "mail", "notif_email_overall", false, "orange")}
+                                {renderToggleRow("Alle E-Mails erlauben", "Hauptschalter für alle E-Mails", "mail", "notif_email_overall", false, "orange")}
                                 <div style={{
-                                    paddingLeft: '1rem',
+                                    paddingLeft: '0.75rem',
                                     borderLeft: '2px solid var(--border-color)',
-                                    marginLeft: '1.25rem',
-                                    marginTop: '1.5rem'
+                                    marginLeft: '1rem',
+                                    marginTop: '1.25rem'
                                 }}>
-                                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+                                    <h4 style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
                                         E-Mail Benachrichtigungsgründe
                                     </h4>
                                     {renderToggleRow("Neuigkeiten", "Updates deiner Hundeschule", "news", "notif_email_news", !settings.notif_email_overall, "purple")}
-                                    {renderToggleRow("Termine", "Buchungsbestätigungen & Änderungen", "calendar", "notif_email_booking", !settings.notif_email_overall, "green")}
-                                    {renderToggleRow("Erinnerungen", "Erinnerungen an kommende Termine", "clock", "notif_email_reminder", !settings.notif_email_overall, "blue")}
-                                    {renderToggleRow("Wichtige Alarme", "Status-Änderungen der Hundeschule", "alarm", "notif_email_alert", !settings.notif_email_overall, "red")}
+                                    {renderToggleRow("Termine", "Buchungen & Änderungen", "calendar", "notif_email_booking", !settings.notif_email_overall, "green")}
+                                    {renderToggleRow("Wichtige Alarme", "Status-Änderungen", "alarm", "notif_email_alert", !settings.notif_email_overall, "red")}
                                 </div>
                             </>
                         ) : (
                             <>
-                                {renderToggleRow("Alle Push erlauben", "Hauptschalter für Push-Benachrichtigungen", "bell", "notif_push_overall", false, "green")}
+                                {renderToggleRow("Alle Push erlauben", "Hauptschalter für Push", "bell", "notif_push_overall", false, "green")}
                                 <div style={{
-                                    paddingLeft: '1rem',
+                                    paddingLeft: '0.75rem',
                                     borderLeft: '2px solid var(--border-color)',
-                                    marginLeft: '1.25rem',
-                                    marginTop: '1.5rem'
+                                    marginLeft: '1rem',
+                                    marginTop: '1.25rem'
                                 }}>
-                                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
+                                    <h4 style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
                                         Push Benachrichtigungsgründe
                                     </h4>
-                                    {renderToggleRow("Chat-Nachrichten", "Direkte Nachrichten am Handy", "mail", "notif_push_chat", !settings.notif_push_overall)}
+                                    {renderToggleRow("Chat-Nachrichten", "Nachrichten am Handy", "mail", "notif_push_chat", !settings.notif_push_overall)}
                                     {renderToggleRow("Neuigkeiten", "Push bei neuen Updates", "news", "notif_push_news", !settings.notif_push_overall, "purple")}
-                                    {renderToggleRow("Termine", "Echtzeit-Updates zu Buchungen", "calendar", "notif_push_booking", !settings.notif_push_overall, "green")}
-                                    {renderToggleRow("Erinnerungen", "Erinnerungen an kommende Termine", "clock", "notif_push_reminder", !settings.notif_push_overall, "blue")}
+                                    {renderToggleRow("Termine", "Updates zu Buchungen", "calendar", "notif_push_booking", !settings.notif_push_overall, "green")}
                                     {renderToggleRow("Wichtige Alarme", "Dringende Status-Änderungen", "alarm", "notif_push_alert", !settings.notif_push_overall, "red")}
                                 </div>
                             </>

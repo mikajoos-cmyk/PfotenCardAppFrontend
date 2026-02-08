@@ -18,9 +18,10 @@ interface ChatPageProps {
     token: string | null;
     setView: (view: View) => void;
     isPreviewMode?: boolean;
+    initialChatPartnerId?: string;
 }
 
-export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode }) => {
+export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode, initialChatPartnerId }) => {
     const queryClient = useQueryClient();
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
@@ -39,7 +40,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     const [newMessage, setNewMessage] = useState('');
 
     // --- NEU: NACHRICHTEN PER HOOK ---
-    const { data: hookMessages } = useChatMessages(selectedUser ? (typeof selectedUser.id === 'string' ? parseInt(selectedUser.id) : selectedUser.id) : null, token);
+    const { data: hookMessages } = useChatMessages(selectedUser ? (selectedUser.auth_id || selectedUser.id) : null, token);
 
     const messages = isPreviewMode
         ? (selectedUser ? (isAdminOrStaff ? MOCK_MESSAGES_ADMIN[selectedUser.id] : MOCK_MESSAGES_CUSTOMER[selectedUser.id]) : [])
@@ -76,6 +77,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // --- INITIAL SELECTION ---
+    useEffect(() => {
+        if (initialChatPartnerId && conversations.length > 0 && !selectedUser) {
+            const partner = conversations.find(c => c.user.auth_id === initialChatPartnerId || String(c.user.id) === initialChatPartnerId);
+            if (partner) {
+                setSelectedUser(partner.user);
+                setIsMobileListVisible(false);
+            }
+        }
+    }, [initialChatPartnerId, conversations, selectedUser]);
+
     // --- AUTO RESIZE EFFECT ---
     useEffect(() => {
         const textarea = textareaRef.current;
@@ -94,14 +106,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         // loadConversations() entfernt, macht jetzt der Hook!
 
         if (selectedUser) {
-            loadMessages(selectedUser.id);
+            loadMessages(selectedUser.auth_id || selectedUser.id);
         }
 
         const intervalId = setInterval(() => {
             // Wir aktualisieren nur noch die Nachrichten der offenen Unterhaltung
             // Die Kontaktliste links aktualisiert sich automatisch über den Hook (alle 5s)
             if (selectedUser) {
-                loadMessages(selectedUser.id);
+                loadMessages(selectedUser.auth_id || selectedUser.id);
             }
         }, 4000);
 
@@ -157,9 +169,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
 
         setSelectedUser(chatPartner);
         setMessagesState([]);
-        loadMessages(chatPartner.id);
+        const partnerId = chatPartner.auth_id || chatPartner.id;
+        loadMessages(partnerId);
 
-        apiClient.markChatRead(parseInt(chatPartner.id), token).catch(console.error);
+        apiClient.markChatRead(partnerId, token).catch(console.error);
         queryClient.invalidateQueries({ queryKey: ['chat'] }); // Update cache status
     };
 
@@ -196,15 +209,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         setIsNewChatModalOpen(false);
     };
 
-    const loadMessages = async (partnerId: string | number) => {
-        if (!partnerId) return;
+    const loadMessages = async (partnerIdentifier: string | number) => {
+        if (!partnerIdentifier) return;
         if (isPreviewMode) {
             const mockSet = isAdminOrStaff ? MOCK_MESSAGES_ADMIN : MOCK_MESSAGES_CUSTOMER;
-            setMessagesState(mockSet[partnerId] || []);
+            setMessagesState(mockSet[partnerIdentifier] || []);
             return;
         }
         try {
-            const data = await apiClient.getChatMessages(Number(partnerId), token);
+            const data = await apiClient.getChatMessages(partnerIdentifier, token);
             setMessagesState(prev => {
                 if (prev.length !== data.length || (data.length > 0 && prev.length > 0 && (data[data.length - 1].id !== prev[prev.length - 1].id || data[data.length - 1].is_read !== prev[prev.length - 1].is_read))) {
                     return data;
@@ -274,7 +287,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                 file_name: fileName
             }, token);
 
-            loadMessages(selectedUser.id);
+            loadMessages(selectedUser.auth_id || selectedUser.id);
             // Liste aktualisieren für "letzte Nachricht"
             queryClient.invalidateQueries({ queryKey: ['chat'] });
 
@@ -312,7 +325,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                     content: msgContent,
                     receiver_id: Number(selectedUser.id)
                 }, token);
-                loadMessages(selectedUser.id);
+                loadMessages(selectedUser.auth_id || selectedUser.id);
                 // Liste sofort aktualisieren
                 queryClient.invalidateQueries({ queryKey: ['chat'] });
             }

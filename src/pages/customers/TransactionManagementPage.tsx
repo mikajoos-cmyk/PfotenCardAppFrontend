@@ -142,7 +142,7 @@ const TransactionManagementPage: FC<TransactionManagementPageProps> = ({
     return (
         <>
             <header className="detail-header">
-                <button className="back-button" onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: String(customer.id), dogId: activeDogId || undefined })}>
+                <button className="back-button" onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: customer.auth_id || String(customer.id), dogId: activeDogId || undefined })}>
                     <Icon name="arrowLeft" />
                 </button>
                 <div className="detail-header-info">

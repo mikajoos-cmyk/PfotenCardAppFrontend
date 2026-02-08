@@ -271,11 +271,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                     Kunde löschen
                                                 </button>
                                             )}
-                                            <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id), dogId: activeDogId || undefined })}>Guthaben verwalten</button>
+                                            <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: customer.auth_id || String(customer.id), dogId: activeDogId || undefined })}>Guthaben verwalten</button>
                                         </>
                                     )}
                                     {String(currentUser.id) === String(customer.id) && (currentUser.role === 'customer' || currentUser.role === 'kunde') && activeModules?.includes('balance_topup') && (
-                                        <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: String(customer.id), dogId: activeDogId || undefined })}>Guthaben aufladen</button>
+                                        <button className="button button-primary" onClick={() => setView({ page: 'customers', subPage: 'transactions', customerId: customer.auth_id || String(customer.id), dogId: activeDogId || undefined })}>Guthaben aufladen</button>
                                     )}
                                 </>
                             )}

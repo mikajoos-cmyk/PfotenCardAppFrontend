@@ -110,14 +110,28 @@ export default function App() {
             return { page: 'dashboard' }; // showPasswordReset state will handle rendering
         }
 
-        const match = path.match(/customer\/([a-zA-Z0-9-]+)/);
+        const match = path.match(/^\/customer\/([a-zA-Z0-9-]+)$/);
         if (match && match[1]) {
             const identifier = match[1];
-            return { page: 'customers', subPage: 'detail', customerId: identifier.includes('-') ? undefined : identifier };
+            // Only allow UUID access, reject numeric IDs
+            const isUuid = identifier.includes('-');
+            return { page: 'customers', subPage: 'detail', customerId: isUuid ? identifier : undefined };
         }
 
         if (path === '/news') return { page: 'news' };
         if (path === '/chat') return { page: 'chat' };
+        const chatMatch = path.match(/^\/chat\/([a-zA-Z0-9-]+)$/);
+        if (chatMatch && chatMatch[1]) {
+            const identifier = chatMatch[1];
+            // For chat, we also prefer UUID
+            const isUuid = identifier.includes('-');
+            return { page: 'chat', chatPartnerId: isUuid ? identifier : undefined };
+        }
+        if (path === '/appointments') return { page: 'appointments' };
+        if (path === '/customers') return { page: 'customers' };
+        if (path === '/users') return { page: 'users' };
+        if (path === '/reports') return { page: 'reports' };
+        if (path === '/transactions') return { page: 'transactions' };
         if (path === '/impressum') return { page: 'impressum' };
         if (path === '/datenschutz') return { page: 'datenschutz' };
         if (path === '/agb') return { page: 'agb' };
@@ -138,6 +152,43 @@ export default function App() {
             }
         };
         initSession();
+
+        // Popstate-Event für Browser-Navigation (Zurück/Vor)
+        const handlePopState = () => {
+            const path = window.location.pathname;
+            let newView: View = { page: 'dashboard' };
+
+            const match = path.match(/^\/customer\/([a-zA-Z0-9-]+)$/);
+            if (match && match[1]) {
+                const identifier = match[1];
+                const isUuid = identifier.includes('-');
+                newView = { page: 'customers', subPage: 'detail', customerId: isUuid ? identifier : undefined };
+            } else if (path === '/news') newView = { page: 'news' };
+            else if (path === '/chat') newView = { page: 'chat' };
+            else if (path.startsWith('/chat/')) {
+                const chatMatch = path.match(/^\/chat\/([a-zA-Z0-9-]+)$/);
+                if (chatMatch && chatMatch[1]) {
+                    const identifier = chatMatch[1];
+                    const isUuid = identifier.includes('-');
+                    newView = { page: 'chat', chatPartnerId: isUuid ? identifier : undefined };
+                } else {
+                    newView = { page: 'chat' };
+                }
+            }
+            else if (path === '/appointments') newView = { page: 'appointments' };
+            else if (path === '/customers') newView = { page: 'customers' };
+            else if (path === '/users') newView = { page: 'users' };
+            else if (path === '/reports') newView = { page: 'reports' };
+            else if (path === '/transactions') newView = { page: 'transactions' };
+            else if (path === '/impressum') newView = { page: 'impressum' };
+            else if (path === '/datenschutz') newView = { page: 'datenschutz' };
+            else if (path === '/agb') newView = { page: 'agb' };
+
+            setView(newView);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
     }, []);
 
     // ... (Hier der ganze restliche State & Effects Code - UNVERÄNDERT) ...
@@ -241,7 +292,7 @@ export default function App() {
         };
         setLoggedInUser(updatedUser);
         updateUsersCache(prev => prev.map((user: any) => user.id === loggedInUser.id ? updatedUser : user));
-        setView({ page: 'dashboard' });
+        handleSetView({ page: 'dashboard' });
     };
 
     // --- ZENTRALE THEME ENGINE ---
@@ -553,7 +604,7 @@ export default function App() {
             if (!isUuid) {
                 alert("Zugriff nur über QR-Code möglich. Bitte scannen Sie den QR-Code auf der Kundenkarte.");
                 window.history.pushState({}, '', '/');
-                setView({ page: 'dashboard' });
+                handleSetView({ page: 'dashboard' });
                 return;
             }
 
@@ -592,7 +643,7 @@ export default function App() {
             apiClient.get(endpoint, authToken)
                 .then(customerData => {
                     setDirectAccessedCustomer(customerData);
-                    setView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
+                    handleSetView({ page: 'customers', subPage: 'detail', customerId: String(customerData.id) });
                 })
                 .catch(err => {
                     console.error("Fehler beim Laden des Kunden via QR-Code:", err);
@@ -602,7 +653,7 @@ export default function App() {
                         alert("Kunde konnte nicht gefunden oder geladen werden.");
                     }
                     window.history.pushState({}, '', '/');
-                    setView({ page: 'dashboard' });
+                    handleSetView({ page: 'dashboard' });
                 })
                 .finally(() => {
                     setServerLoading({ active: false, message: '' });
@@ -670,9 +721,42 @@ export default function App() {
     };
 
     const handleSetView = (newView: View) => {
+        console.log("PfotenCard: Changing view to", newView);
+        // Update URL based on the new view
+        let newPath = '/';
+        if (newView.page === 'dashboard') {
+            newPath = '/';
+        } else if (newView.page === 'customers') {
+            if (newView.subPage === 'detail' && newView.customerId) {
+                // Ensure we use auth_id (UUID) in the URL if available
+                let urlId = newView.customerId;
+                if (!urlId.includes('-')) {
+                    // It's a numeric ID, try to find the UUID
+                    const customer = customers.find(c => String(c.id) === String(urlId));
+                    if (customer && customer.auth_id) {
+                        urlId = customer.auth_id;
+                    }
+                }
+                newPath = `/customer/${urlId}`;
+            } else {
+                newPath = '/customers';
+            }
+        } else if (newView.page === 'chat') {
+            if (newView.chatPartnerId) {
+                newPath = `/chat/${newView.chatPartnerId}`;
+            } else {
+                newPath = '/chat';
+            }
+        } else if (['news', 'appointments', 'users', 'reports', 'transactions', 'impressum', 'datenschutz', 'agb'].includes(newView.page)) {
+            newPath = `/${newView.page}`;
+        }
+
+        if (window.location.pathname !== newPath) {
+            window.history.pushState({}, '', newPath);
+        }
+
         if (view.customerId && newView.customerId !== view.customerId) {
             setDirectAccessedCustomer(null);
-            window.history.pushState({}, '', '/');
         }
 
         if (newView.page === 'news') {
@@ -1316,7 +1400,7 @@ export default function App() {
             return <NewsPage user={loggedInUser} token={authToken} targetAppointmentId={view.targetAppointmentId} isPreviewMode={isPreviewMode} />;
         }
         if (view.page === 'chat') {
-            return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} isPreviewMode={isPreviewMode} />;
+            return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} isPreviewMode={isPreviewMode} initialChatPartnerId={view.chatPartnerId} />;
         }
 
         if (view.page === 'dashboard') {
@@ -1359,7 +1443,7 @@ export default function App() {
                     transactions={transactions}
                     currentUser={loggedInUser}
                     onKpiClick={(kpi) => {
-                        if (kpi === 'customers') setView({ page: 'customers' });
+                        if (kpi === 'customers') handleSetView({ page: 'customers' });
                     }}
                     setView={handleSetView}
                     appStatus={appStatus}
@@ -1381,7 +1465,7 @@ export default function App() {
 
         if (view.page === 'customers') {
             if (view.subPage === 'detail' && view.customerId) {
-                const customer = directAccessedCustomer || customers.find(c => String(c.id) === String(view.customerId));
+                const customer = directAccessedCustomer || customers.find(c => String(c.id) === String(view.customerId) || c.auth_id === view.customerId);
                 if (!customer) return <div>Kunde nicht gefunden</div>;
 
                 return (
@@ -1414,7 +1498,7 @@ export default function App() {
             }
 
             if (view.subPage === 'transactions' && view.customerId) {
-                const customer = customers.find(c => String(c.id) === String(view.customerId));
+                const customer = customers.find(c => String(c.id) === String(view.customerId) || c.auth_id === view.customerId);
                 if (!customer) return <div>Kunde nicht gefunden</div>;
 
                 return (
@@ -1577,7 +1661,7 @@ export default function App() {
                     onLogout={handleLogout}
                     setSidebarOpen={setIsSidebarOpen}
                     view={view}
-                    setView={setView}
+                    setView={handleSetView}
                     schoolName={schoolName}
                     logoUrl={getFullImageUrl(appConfigData?.tenant?.config?.branding?.logo_url || previewConfig.logoUrl)}
                     isPreviewMode={isPreviewMode}

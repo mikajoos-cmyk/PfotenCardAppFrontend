@@ -54,7 +54,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
         const renderCustomerList = (list: any[]) => (
             <ul className="info-modal-list">
                 {list.length > 0 ? list.map(c => (
-                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: String(c.id) }); }} style={{ cursor: 'pointer' }}>
+                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.auth_id || String(c.id) }); }} style={{ cursor: 'pointer' }}>
                         <span>{c.name} ({c.dogs?.[0]?.name || '-'})</span>
                         <span style={{ fontWeight: 600 }}>€ {(c.balance ?? 0).toLocaleString('de-DE')}</span>
                     </li>
@@ -159,7 +159,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                             const lastName = nameParts.slice(1).join(' ');
 
                             return (
-                                <tr key={customer.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: String(customer.id) })}>
+                                <tr key={customer.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: customer.auth_id || String(customer.id) })}>
                                     <td data-label="Kunde">
                                         <div className="customer-info">
                                             <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
@@ -167,7 +167,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                                             </div>
                                             <div>
                                                 <div className="name">{firstName} {lastName}</div>
-                                                <div className="id">ID: {customer.id}</div>
+                                                <div className="id" title={customer.auth_id}>ID: {customer.id}</div>
                                             </div>
                                         </div>
                                     </td>

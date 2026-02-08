@@ -55,7 +55,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
         const renderCustomerList = (list: any[]) => (
             <ul className="info-modal-list">
                 {list.map(c => (
-                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: String(c.id) }); }} style={{ cursor: 'pointer' }}>
+                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.auth_id || String(c.id) }); }} style={{ cursor: 'pointer' }}>
                         <span>{c.name} ({c.dogs?.[0]?.name || '-'})</span>
                         <span style={{ fontWeight: 600 }}>€ {Math.floor(c.balance).toLocaleString('de-DE')}</span>
                     </li>
@@ -154,7 +154,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                             const firstName = nameParts[0] || '';
                             const lastName = nameParts.slice(1).join(' ');
                             return (
-                                <li key={cust.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: String(cust.id) })} className="clickable">
+                                <li key={cust.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: cust.auth_id || String(cust.id) })} className="clickable">
                                     <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
                                         {getInitials(firstName, lastName)}
                                     </div>

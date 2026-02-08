@@ -294,12 +294,12 @@ export const apiClient = {
         return apiClient.get('/api/chat/conversations', token);
     },
 
-    getChatMessages: async (otherUserId: number, token: string | null) => {
-        return apiClient.get(`/api/chat/${otherUserId}`, token);
+    getChatMessages: async (otherUserIdentifier: string | number, token: string | null) => {
+        return apiClient.get(`/api/chat/${otherUserIdentifier}`, token);
     },
 
-    markChatRead: async (otherUserId: number, token: string | null) => {
-        return apiClient.post(`/api/chat/${otherUserId}/read`, {}, token);
+    markChatRead: async (otherUserIdentifier: string | number, token: string | null) => {
+        return apiClient.post(`/api/chat/${otherUserIdentifier}/read`, {}, token);
     },
 
     // --- APP STATUS ---

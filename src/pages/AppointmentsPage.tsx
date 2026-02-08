@@ -483,9 +483,9 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                                 <Icon name="activity" style={{ color: 'var(--brand-orange)' }} />
                                 <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-accent-success)', padding: '0.25rem 0.75rem', borderRadius: '20px' }}>
-                                <Icon name="euro" width={16} height={16} style={{ color: 'var(--brand-green)' }} />
-                                <span style={{ fontWeight: 700, color: 'var(--brand-green)', fontSize: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-accent-success)', padding: '0.5rem 1rem', borderRadius: '12px', border: '2px solid var(--brand-green)' }}>
+                                <Icon name="euro" width={20} height={20} style={{ color: 'var(--brand-green)' }} />
+                                <span style={{ fontWeight: 800, color: 'var(--brand-green)', fontSize: '1.5rem' }}>
                                     {event.price ?? event.training_type.default_price}€
                                 </span>
                             </div>
