@@ -3,6 +3,7 @@ import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
 import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet } from '../../lib/utils';
 import { API_BASE_URL, apiClient } from '../../lib/api';
+import { getFullImageUrl } from '../../App';
 import { hasPermission } from '../../lib/permissions';
 import Icon from '../../components/ui/Icon';
 import InfoModal from '../../components/modals/InfoModal';
@@ -326,8 +327,41 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             </div>
                         </div>
                         <div className="personal-data-container">
-                            <div className={`personal-data-avatar ${getAvatarColorClass(firstName)}`}>
-                                {getInitials(firstName, lastName)}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                                <div className={`personal-data-avatar ${getAvatarColorClass(firstName)}`}>
+                                    {getInitials(firstName, lastName)}
+                                </div>
+                                <div style={{ 
+                                    width: '80px', 
+                                    height: '80px', 
+                                    borderRadius: '1rem', 
+                                    overflow: 'hidden', 
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: 'var(--background-color)',
+                                    border: editingSection === 'personal' ? '2px dashed var(--primary-color)' : '1px solid var(--border-color)',
+                                    cursor: editingSection === 'personal' ? 'pointer' : 'default',
+                                    position: 'relative',
+                                    marginTop: '5.5rem'
+                                }}
+                                onClick={editingSection === 'personal' ? () => setDogFormModal({ isOpen: true, dog: activeDog }) : undefined}
+                                >
+                                    {activeDog?.image_url ? (
+                                        <img 
+                                            src={getFullImageUrl(activeDog.image_url) || ''} 
+                                            alt={dogName} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: editingSection === 'personal' ? 0.6 : 1 }} 
+                                        />
+                                    ) : (
+                                        <Icon name="heart" />
+                                    )}
+                                    {editingSection === 'personal' && (
+                                        <div style={{ position: 'absolute', background: 'rgba(0,0,0,0.3)', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Icon name="edit" width={24} height={24} color="white" />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="personal-data-fields">
                                 <div className="data-field"><Icon name="user" /><div className="field-content"><label>Vorname</label>{editingSection === 'personal' ? <input type="text" name="firstName" value={editedData.firstName} onChange={handleInputChange} disabled /> : <p>{firstName}</p>}</div></div>

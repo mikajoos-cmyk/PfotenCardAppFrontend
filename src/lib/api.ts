@@ -3,7 +3,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // Hilfsfunktion: Ermittelt die Subdomain aus der aktuellen URL
-const getSubdomain = () => {
+export const getSubdomain = () => {
     const hostname = window.location.hostname;
 
     // Für lokale Tests (localhost):

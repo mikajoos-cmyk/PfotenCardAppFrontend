@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './lib/supabase';
-import { apiClient } from './lib/api';
+import { apiClient, getSubdomain } from './lib/api';
 import { User, View } from './types';
 
 import './status-tabs.css';
@@ -83,9 +83,18 @@ const generateOpaqueIcon = (url: string, backgroundColor: string = '#FFFFFF'): P
 };
 
 
-const getFullImageUrl = (url?: string) => {
+export const getFullImageUrl = (url?: string) => {
     if (!url) return null;
     if (url.startsWith("http")) return url;
+    
+    // Check if it is a Supabase public_uploads path
+    if (url.startsWith("dogs/") || url.startsWith("news/") || url.startsWith("logos/")) {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl) {
+            return `${supabaseUrl}/storage/v1/object/public/public_uploads/${url}`;
+        }
+    }
+    
     return `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}${url}`;
 };
 
@@ -1286,12 +1295,20 @@ export default function App() {
                     current_level_id: dogToUpdate.current_level_id, // FIX: Level mit übergeben
                 };
 
+                let savedDog;
                 if (dogToUpdate.id) {
-                    await apiClient.put(`/api/dogs/${dogToUpdate.id}`, cleanDogData, authToken);
+                    savedDog = await apiClient.put(`/api/dogs/${dogToUpdate.id}`, cleanDogData, authToken);
                     console.log('Hund aktualisiert');
                 } else {
-                    await apiClient.post(`/api/users/${userToUpdate.id}/dogs`, cleanDogData, authToken);
+                    savedDog = await apiClient.post(`/api/users/${userToUpdate.id}/dogs`, cleanDogData, authToken);
                     console.log('Neuer Hund angelegt');
+                }
+
+                // Wenn ein Bild in dogToUpdate vorhanden ist (aus dem Modal via handleSaveDog -> setDogFormModal -> DogFormModal),
+                // aber handleSaveCustomerDetails wird direkt aus CustomerDetailPage aufgerufen.
+                // Wir müssen sicherstellen, dass falls ein Bild ausgewählt wurde, es hochgeladen wird.
+                if (dogToUpdate.imageFile && savedDog && savedDog.id) {
+                    await uploadDogImage(savedDog.id, dogToUpdate.imageFile);
                 }
             }
 
@@ -1341,11 +1358,18 @@ export default function App() {
         if (!authToken) return;
 
         try {
+            let savedDog;
             if (dogData.id) {
-                await apiClient.put(`/api/dogs/${dogData.id}`, dogData, authToken);
+                savedDog = await apiClient.put(`/api/dogs/${dogData.id}`, dogData, authToken);
             } else {
-                await apiClient.post(`/api/users/${customerId}/dogs`, dogData, authToken);
+                savedDog = await apiClient.post(`/api/users/${customerId}/dogs`, dogData, authToken);
             }
+
+            // Wenn ein Bild ausgewählt wurde, dieses jetzt hochladen
+            if (dogData.imageFile && savedDog && savedDog.id) {
+                await uploadDogImage(savedDog.id, dogData.imageFile);
+            }
+
             await fetchAppData();
             console.log('Hund erfolgreich gespeichert!');
         } catch (error) {
@@ -1353,6 +1377,22 @@ export default function App() {
             alert(`Fehler: ${error}`);
         }
         setDogFormModal({ isOpen: false, dog: null });
+    };
+
+    const uploadDogImage = async (dogId: number, imageFile: File) => {
+        const formData = new FormData();
+        formData.append('upload_file', imageFile);
+        
+        const headers: any = {};
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const subdomain = getSubdomain();
+        if (subdomain) headers['x-tenant-subdomain'] = subdomain;
+
+        return fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000'}/api/dogs/${dogId}/image`, {
+            method: 'POST',
+            headers: headers,
+            body: formData,
+        });
     };
 
     const handleDeleteDog = async (dogId: string) => {

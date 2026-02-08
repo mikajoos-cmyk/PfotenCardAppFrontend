@@ -5,6 +5,7 @@ import Icon from '../components/ui/Icon';
 import KpiCard from '../components/ui/KpiCard';
 import InfoModal from '../components/modals/InfoModal'; // Importieren
 import { getInitials, getAvatarColorClass } from '../lib/utils';
+import { getFullImageUrl } from '../App';
 import TopUpModal from '../components/modals/TopUpModal'; // NEU
 import { Wallet } from 'lucide-react'; // NEU
 
@@ -54,12 +55,18 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
         // Hilfsfunktion für Kundenlisten
         const renderCustomerList = (list: any[]) => (
             <ul className="info-modal-list">
-                {list.map(c => (
-                    <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.auth_id || String(c.id) }); }} style={{ cursor: 'pointer' }}>
-                        <span>{c.name} ({c.dogs?.[0]?.name || '-'})</span>
-                        <span style={{ fontWeight: 600 }}>€ {Math.floor(c.balance).toLocaleString('de-DE')}</span>
-                    </li>
-                ))}
+                {list.map(c => {
+                    const firstDog = c.dogs?.[0];
+                    return (
+                        <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.auth_id || String(c.id) }); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div className={`avatar avatar-sm ${getAvatarColorClass(c.name)}`} style={{ flexShrink: 0 }}>{getInitials(c.name)}</div>
+                            <div style={{ flex: 1 }}>
+                                <span>{c.name} ({firstDog?.name || '-'})</span>
+                            </div>
+                            <span style={{ fontWeight: 600 }}>€ {Math.floor(c.balance).toLocaleString('de-DE')}</span>
+                        </li>
+                    );
+                })}
             </ul>
         );
 
