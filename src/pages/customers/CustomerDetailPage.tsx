@@ -326,25 +326,13 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 </button>
                             </div>
                         </div>
-                        <div className="personal-data-container">
+                        <div className="personal-data-container" data-editing={editingSection}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                 <div className={`personal-data-avatar ${getAvatarColorClass(firstName)}`}>
                                     {getInitials(firstName, lastName)}
                                 </div>
-                                <div style={{ 
-                                    width: '80px', 
-                                    height: '80px', 
-                                    borderRadius: '1rem', 
-                                    overflow: 'hidden', 
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    background: 'var(--background-color)',
-                                    border: editingSection === 'personal' ? '2px dashed var(--primary-color)' : '1px solid var(--border-color)',
-                                    cursor: editingSection === 'personal' ? 'pointer' : 'default',
-                                    position: 'relative',
-                                    marginTop: '5.5rem'
-                                }}
+                                <div className={`dog-image-container ${!activeDog?.image_url ? 'no-image' : ''}`}
+                                data-editing={editingSection}
                                 onClick={editingSection === 'personal' ? () => setDogFormModal({ isOpen: true, dog: activeDog }) : undefined}
                                 >
                                     {activeDog?.image_url ? (
