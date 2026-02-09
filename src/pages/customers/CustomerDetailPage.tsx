@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect, useRef, ChangeEvent } from 'react';
 import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
-import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet, formatDateDE } from '../../lib/utils';
 import { API_BASE_URL, apiClient } from '../../lib/api';
 import { getFullImageUrl } from '../../App';
 import { hasPermission } from '../../lib/permissions';
@@ -54,6 +54,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     const levelTerm = wording?.level || 'Level';
     const vipTerm = wording?.vip || 'VIP';
+
+    const canEditCustomers = hasPermission(currentUser, 'can_edit_customers');
 
     const nameParts = customer.name ? customer.name.split(' ') : [''];
     const firstName = nameParts[0];
@@ -250,7 +252,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 </>
                             ) : (
                                 <>
-                                    <button className="button button-outline" onClick={() => handleStartEditing('personal')}>Stammdaten bearbeiten</button>
+                                    {canEditCustomers && (
+                                        <button className="button button-outline" onClick={() => handleStartEditing('personal')}>Stammdaten bearbeiten</button>
+                                    )}
                                     {currentUser.role === 'admin' && (
                                         customer.is_vip ? (
                                             <button className="button button-outline" onClick={() => onToggleVipStatus(customer)}>
@@ -398,7 +402,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <Icon name="calendar" />
                                     <div className="field-content">
                                         <label>Geburtstag</label>
-                                        {editingSection === 'personal' ? <input type="date" name="birth_date" value={editedData.birth_date} onChange={handleInputChange} /> : <p>{activeDog?.birth_date || '-'}</p>}
+                                        {editingSection === 'personal' ? <input type="date" name="birth_date" value={editedData.birth_date} onChange={handleInputChange} /> : <p>{formatDateDE(activeDog?.birth_date)}</p>}
                                     </div>
                                 </div>
                                 <div className="data-field">
@@ -419,7 +423,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 <div className="tile-content">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span className="label">Aktuelles Guthaben</span>
-                                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && canEditCustomers && (
                                             <button className="button-as-link" onClick={() => handleStartEditing('balance')} style={{ padding: 0, height: 'auto' }}>
                                                 <Icon name="edit" width={14} height={14} />
                                             </button>
@@ -457,7 +461,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 <div className="tile-content">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span className="label">{displayLevel?.name}</span>
-                                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && canEditCustomers && (
                                             <button className="button-as-link" onClick={() => handleStartEditing('level')} style={{ padding: 0, height: 'auto' }}>
                                                 <Icon name="edit" width={14} height={14} />
                                             </button>
@@ -588,7 +592,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <div className="level-progress-container" style={{ marginTop: '1.5rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                 <h2>Zusatz-Veranstaltungen</h2>
-                                {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && canEditCustomers && (
                                     <button className="button-as-link" onClick={() => handleStartEditing('additional')} style={{ padding: 0, height: 'auto' }}>
                                         <Icon name="edit" width={14} height={14} />
                                     </button>

@@ -153,3 +153,21 @@ export const isDarkColor = (hexColor: string) => {
 export function cn(...classes: (string | undefined | null | false)[]) {
     return classes.filter(Boolean).join(' ');
 }
+
+export const formatDateDE = (value: string | Date | number | null | undefined): string => {
+    if (value === null || value === undefined || value === '') return '-';
+    try {
+        if (typeof value === 'string') {
+            const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (m) {
+                const [, y, mo, d] = m;
+                return `${d}.${mo}.${y}`;
+            }
+        }
+        const date = value instanceof Date ? value : new Date(value);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+        return '-';
+    }
+};

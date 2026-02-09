@@ -405,7 +405,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                         .map((a, idx) => (
                                             <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: a.id === initialData.id ? 'var(--primary-color)' : 'var(--text-secondary)' }}>
                                                 <span style={{ fontWeight: a.id === initialData.id ? 'bold' : 'normal' }}>
-                                                    {idx + 1}. {new Date(a.start_time).toLocaleDateString()}
+                                                    {idx + 1}. {new Date(a.start_time).toLocaleDateString('de-DE')}
                                                 </span>
                                                 <span>{new Date(a.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(a.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
@@ -741,7 +741,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <span>
                                                     {activeTab === 'waitlist'
-                                                        ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString()}`
+                                                        ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString('de-DE')}`
                                                         : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
                                                 </span>
                                                 {b.is_billed && (
