@@ -533,13 +533,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 const requirements = level.requirements || [];
                                 const mainRequirements = requirements.filter((r: any) => !r.is_additional);
 
-                                // Prüfen ob Anforderungen erfüllt für Aufstieg
+                                // Prüfen ob Anforderungen erfüllt für Aufstieg (nur Pflicht-Anforderungen)
                                 const currentProgress = getProgressForLevel(customer, level.id, levelsToUse, activeDogId || undefined);
-                                const requirementsMet = requirements.every((r: any) => {
+                                const requirementsMet = mainRequirements.every((r: any) => {
                                     // Wir prüfen sowohl die ID als String als auch als Zahl
                                     const reqKey = r.training_type_id ? String(r.training_type_id) : String(r.id);
                                     const count = currentProgress[reqKey] || 0;
-                                    return count >= (r.required || r.required_count);
+                                    const target = r.required || r.required_count || 1;
+                                    return count >= target;
                                 });
 
                                 const canDoLevelUp = isActive && requirementsMet;
