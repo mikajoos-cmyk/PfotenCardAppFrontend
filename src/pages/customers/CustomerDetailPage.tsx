@@ -107,7 +107,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     // Update wenn sich der Kunde oder der aktive Hund ändert (z.B. nach echtem Level-Up)
     useEffect(() => {
         setPreviewLevelId(getInitialLevelId());
-    }, [activeDogId, customer.level_id, customer.current_level_id, levelsToUse]);
+    }, [activeDogId, activeDog?.current_level_id, customer.level_id, customer.current_level_id, levelsToUse]);
 
     useEffect(() => {
         if (!initialDogId) return;
@@ -574,7 +574,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                     {canDoLevelUp && !isLast && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
                                                         <div className="level-up-button-container" style={{ marginTop: '1rem' }}>
                                                             {/* Nimm die ID des nächsten Levels aus dem Array */}
-                                                            <button className="button button-primary" onClick={() => handleLevelUp(String(customer.id), levelsToUse[index + 1].id, activeDogId || undefined)}>
+                                                            <button className="button button-primary" onClick={() => {
+                                                                const nextLevel = levelsToUse[index + 1];
+                                                                handleLevelUp(String(customer.id), nextLevel.id, activeDogId || undefined);
+                                                                setPreviewLevelId(nextLevel.id);
+                                                            }}>
                                                                 {levelTerm} Aufsteigen!
                                                             </button>
                                                         </div>

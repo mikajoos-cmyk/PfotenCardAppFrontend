@@ -1145,6 +1145,35 @@ export default function App() {
     };
 
     const handleLevelUp = async (customerId: string, newLevelId: number, dogId?: number) => {
+        // Optimistisches Update für UI
+        updateUsersCache(prev => prev.map(u => {
+            if (String(u.id) === customerId || u.auth_id === customerId) {
+                if (dogId) {
+                    return {
+                        ...u,
+                        dogs: (u.dogs || []).map((d: any) => d.id === dogId ? { ...d, current_level_id: newLevelId } : d)
+                    };
+                } else {
+                    return { ...u, current_level_id: newLevelId, level_id: newLevelId };
+                }
+            }
+            return u;
+        }));
+
+        if (directAccessedCustomer && (String(directAccessedCustomer.id) === customerId || directAccessedCustomer.auth_id === customerId)) {
+            setDirectAccessedCustomer((prev: any) => {
+                if (!prev) return prev;
+                if (dogId) {
+                    return {
+                        ...prev,
+                        dogs: (prev.dogs || []).map((d: any) => d.id === dogId ? { ...d, current_level_id: newLevelId } : d)
+                    };
+                } else {
+                    return { ...prev, current_level_id: newLevelId, level_id: newLevelId };
+                }
+            });
+        }
+
         try {
             const url = dogId ? `/api/users/${customerId}/level-up?dog_id=${dogId}` : `/api/users/${customerId}/level-up`;
             await apiClient.post(url, {}, authToken);
@@ -1152,6 +1181,7 @@ export default function App() {
             await fetchAppData();
         } catch (error) {
             console.error("Fehler beim Level-Up:", error);
+            await fetchAppData();
             if (error.toString().includes("Requirements not met")) {
                 alert("Fehler: Voraussetzungen für den Aufstieg sind noch nicht erfüllt.");
             } else {
