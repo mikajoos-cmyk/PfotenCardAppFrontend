@@ -74,7 +74,7 @@ const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transacti
                                         </div>
                                     </div>
                                     <div className={`tx-amount ${tx.amount < 0 ? 'debit' : 'topup'}`}>
-                                        {tx.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                                        {(tx.amount < 0 ? tx.amount : (tx.amount + (tx.bonus || 0))).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                                     </div>
                                 </li>
                             ))

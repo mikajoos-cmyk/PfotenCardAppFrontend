@@ -1062,10 +1062,13 @@ export default function App() {
 
         const optimisticTx = {
             id: tempId,
-            user_id: parseInt(view.customerId.replace('cust-', ''), 10) || 0,
+            user_id: view.customerId.startsWith('cust-') 
+                ? (parseInt(view.customerId.replace('cust-', ''), 10) || 0)
+                : view.customerId,
             type: txData.type === 'topup' ? 'Aufladung' : txData.title,
             description: txData.title,
             amount: amount,
+            bonus: txData.type === 'topup' ? (txData.bonus || 0) : 0,
             date: new Date().toISOString(),
             booked_by_id: loggedInUser?.id
         };
@@ -1094,7 +1097,7 @@ export default function App() {
             type: optimisticTx.type,
             description: optimisticTx.description,
             amount: (txData.type === 'topup' && txData.baseAmount !== undefined) ? txData.baseAmount : optimisticTx.amount,
-            training_type_id: txData.meta?.requirementId ? parseInt(txData.meta.requirementId) : null,
+            training_type_id: txData.meta?.requirementId ? (parseInt(txData.meta.requirementId) || null) : null,
             dog_id: txData.dogId || null // NEU
         };
 

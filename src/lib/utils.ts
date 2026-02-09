@@ -57,26 +57,41 @@ export const getProgressForLevel = (customer: any, levelId: number, dynamicLevel
     });
 
     // Split requirements into exam and non-exam
-    const examReqs = requirements.filter((r: any) => (r.training_type?.category || r.category) === 'exam');
-    const nonExamReqs = requirements.filter((r: any) => (r.training_type?.category || r.category) !== 'exam');
+    const isExamCategory = (cat: string) => {
+        const normalized = (cat || '').trim().toLowerCase();
+        return ['exam', 'examination', 'prüfung', 'pruefung'].includes(normalized);
+    };
 
-    // 1. Count non-exam requirements first
+    // Für die Anzeige zählen wir alle Nicht-Prüfungen (inkl. Zusatzleistungen),
+    // aber für die Freigabe der Prüfung berücksichtigen wir NUR Pflicht-Anforderungen (is_additional === false)
+    const baseRequirements = requirements.filter((r: any) => !r.is_additional);
+    const nonExamAll = requirements.filter((r: any) => !isExamCategory(r.training_type?.category || r.category));
+    const nonExamBase = baseRequirements.filter((r: any) => !isExamCategory(r.training_type?.category || r.category));
+    const examBase = baseRequirements.filter((r: any) => isExamCategory(r.training_type?.category || r.category));
+
+    // 1. Zähle alle Nicht-Prüfungen (inkl. Zusatzleistungen) für den Fortschritt
     let allNonExamMet = true;
-    nonExamReqs.forEach((req: any) => {
+    nonExamBase.forEach((req: any) => {
         const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
         const count = fullAchievementCounts[reqKey] || 0;
         const target = req.required_count || req.required || 1;
-        progress[reqKey] = count;
         if (count < target) allNonExamMet = false;
     });
 
-    // 2. Only count exams if all non-exam requirements are met
-    examReqs.forEach((req: any) => {
+    // Counts für alle Nicht-Prüfungen schreiben (auch Zusatzleistungen sichtbar machen)
+    nonExamAll.forEach((req: any) => {
+        const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
+        const count = fullAchievementCounts[reqKey] || 0;
+        progress[reqKey] = count;
+    });
+
+    // 2. Prüfungen nur zählen, wenn alle Pflicht-Nicht-Prüfungen erfüllt sind
+    examBase.forEach((req: any) => {
         const reqKey = req.training_type_id ? String(req.training_type_id) : String(req.id);
         if (allNonExamMet) {
             progress[reqKey] = fullAchievementCounts[reqKey] || 0;
         } else {
-            progress[reqKey] = 0; // Show 0 if not eligible to count exams yet
+            progress[reqKey] = 0; // 0 anzeigen, solange noch nicht freigeschaltet
         }
     });
 
