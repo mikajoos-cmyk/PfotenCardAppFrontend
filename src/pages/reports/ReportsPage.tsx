@@ -124,7 +124,7 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                     return (
                         <li key={tx.id}>
                             <span>
-                                {new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description}
+                                {new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description?.split(' (Termin-ID:')[0]}
                                 <span className="text-gray-500 text-sm"> ({customer?.name || 'Unbekannt'})</span>
                             </span>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
@@ -193,7 +193,7 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                 new Date(tx.date).toLocaleString('de-DE'),
                 customer?.name || 'Unbekannt',
                 customer?.dogs[0]?.name || '',
-                tx.description,
+                tx.description?.split(' (Termin-ID:')[0],
                 tx.type,
                 realAmount,
                 tx.amount,
@@ -230,7 +230,7 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                 <tr>
                     <td>${new Date(tx.date).toLocaleDateString('de-DE')}</td>
                     <td>${customer?.name || 'Unbekannt'}</td>
-                    <td>${tx.description}</td>
+                    <td>${tx.description?.split(' (Termin-ID:')[0]}</td>
                     <td>${creator?.name || 'Unbekannt'}</td>
                     <td style="text-align: right; color: ${tx.amount < 0 ? 'red' : 'green'};">${displayAmount}</td>
                 </tr>
@@ -373,7 +373,7 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                                     </div>
                                     <div className="tx-details">
                                         <div className="tx-line-1">
-                                            <span className="tx-title">{tx.description}</span>
+                                            <span className="tx-title">{tx.description?.split(' (Termin-ID:')[0]}</span>
                                             <span className="tx-customer">für {customer?.name}</span>
                                         </div>
                                         <div className="tx-line-2">

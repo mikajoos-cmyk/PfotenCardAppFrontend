@@ -68,7 +68,7 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                     const customer = customers.find(c => String(c.id) === String(tx.user_id));
                     return (
                         <li key={tx.id}>
-                            <span>{new Date(tx.date as any).toLocaleDateString('de-DE')} - {tx.description} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
+                            <span>{new Date(tx.date as any).toLocaleDateString('de-DE')} - {tx.description?.split(' (Termin-ID:')[0]} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
                                 € {(Math.abs(tx.amount) ?? 0).toLocaleString('de-DE')}
                             </span>

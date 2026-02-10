@@ -77,7 +77,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                     const customer = customers.find(c => String(c.id) === String(tx.user_id));
                     return (
                         <li key={tx.id}>
-                            <span>{new Date(tx.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr - {tx.description} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
+                            <span>{new Date(tx.date).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr - {tx.description?.split(' (Termin-ID:')[0]} <span className="text-gray-500">({customer?.name || 'Unbekannt'})</span></span>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
                                 € {Math.abs(tx.amount).toLocaleString('de-DE')}
                             </span>
@@ -185,7 +185,7 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                                     <div className={`icon ${tx.amount < 0 ? 'down' : 'up'}`}><Icon name="arrowDown" /></div>
                                     <div className="info">
                                         <div className="customer">{customer?.name || 'Unbekannter Kunde'}</div>
-                                        <div className="details">{new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description}</div>
+                                        <div className="details">{new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description?.split(' (Termin-ID:')[0]}</div>
                                     </div>
                                     <div className="amount">{(tx.amount ?? 0).toLocaleString('de-DE')} €</div>
                                 </li>

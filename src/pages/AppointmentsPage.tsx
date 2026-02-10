@@ -644,19 +644,52 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     );
 };
 
-const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser }: {
+const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser, isBlockEvent }: {
     isOpen: boolean,
     onClose: () => void,
     bookings: Booking[],
     title: string,
     onToggleAttendance: (id: number) => void,
-    onBillParticipant?: (id: number) => void,
-    onBillAll?: () => void,
+    onBillParticipant?: (id: number) => Promise<void> | void,
+    onBillAll?: () => Promise<void> | void,
     showBilling?: boolean,
     showProgress?: boolean,
-    loggedInUser: any
+    loggedInUser: any,
+    isBlockEvent?: boolean
 }) => {
     const [activeTab, setActiveTab] = useState<'confirmed' | 'waitlist'>('confirmed');
+    const [locallyBilled, setLocallyBilled] = useState<Set<number>>(new Set());
+
+    const isBilledForUI = (b: Booking) => {
+        return isBlockEvent ? locallyBilled.has(b.id) : !!b.is_billed;
+    };
+
+    const handleBillOne = async (id: number) => {
+        if (onBillParticipant) {
+            await onBillParticipant(id);
+            if (isBlockEvent) {
+                setLocallyBilled(prev => {
+                    const next = new Set(prev);
+                    next.add(id);
+                    return next;
+                });
+            }
+        }
+    };
+
+    const handleBillAllLocal = async () => {
+        if (onBillAll) {
+            await onBillAll();
+            if (isBlockEvent) {
+                const ids = bookings.filter(b => b.status === 'confirmed').map(b => b.id);
+                setLocallyBilled(prev => {
+                    const next = new Set(prev);
+                    ids.forEach(i => next.add(i));
+                    return next;
+                });
+            }
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -690,14 +723,14 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
                 {activeTab === 'confirmed' && confirmedList.length > 0 && (showBilling || showProgress) && onBillAll && (
                     <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                        {confirmedList.some(b => !b.is_billed) ? (
-                            <button onClick={onBillAll} className="button button-primary button-small">
+                        {confirmedList.some(b => !isBilledForUI(b)) ? (
+                            <button onClick={handleBillAllLocal} className="button button-primary button-small">
                                 <Icon name={showBilling ? "euro" : "check-circle"} />
                                 {showBilling && showProgress
-                                    ? ` ${confirmedList.filter(b => !b.is_billed).length} Abrechnen & Fortschritt`
+                                    ? ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Abrechnen & Fortschritt`
                                     : showBilling
-                                        ? ` ${confirmedList.filter(b => !b.is_billed).length} Abrechnen`
-                                        : ` ${confirmedList.filter(b => !b.is_billed).length} Fortschritte erteilen`}
+                                        ? ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Abrechnen`
+                                        : ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Fortschritte erteilen`}
                             </button>
                         ) : (
                             <span style={{ fontSize: '0.85rem', color: 'var(--brand-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -744,7 +777,7 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                                         ? `Wartet seit: ${new Date(b.created_at).toLocaleDateString('de-DE')}`
                                                         : (b.status === 'confirmed' ? 'Bestätigt' : 'Storniert')}
                                                 </span>
-                                                {b.is_billed && (
+                                                {isBilledForUI(b) && (
                                                     <span style={{ color: 'var(--brand-green)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
                                                         &bull; Abgerechnet
                                                     </span>
@@ -753,9 +786,9 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        {activeTab === 'confirmed' && b.status === 'confirmed' && showBilling && onBillParticipant && !b.is_billed && hasPermission(loggedInUser, 'can_edit_status') && (
+                                        {activeTab === 'confirmed' && b.status === 'confirmed' && showBilling && onBillParticipant && !isBilledForUI(b) && hasPermission(loggedInUser, 'can_edit_status') && (
                                             <button
-                                                onClick={() => onBillParticipant(b.id)}
+                                                onClick={() => handleBillOne(b.id)}
                                                 className="button button-outline button-small"
                                                 title="Abrechnen"
                                             >
@@ -765,10 +798,11 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                         {activeTab === 'confirmed' && b.status === 'confirmed' && (
                                             <button
                                                 onClick={() => onToggleAttendance(b.id)}
-                                                className={`button button-small ${b.attended ? 'button-primary' : 'button-outline'}`}
+                                                className={`button button-small ${b.attended ? '' : 'button-danger'}`}
+                                                style={b.attended ? { backgroundColor: 'var(--brand-green)', color: 'white' } : {}}
                                                 disabled={!hasPermission(loggedInUser, 'can_edit_status')}
                                             >
-                                                {b.attended ? <><Icon name="check" /> Anwesend</> : 'Abstempeln'}
+                                                {b.attended ? <><Icon name="check" /> Anwesend</> : 'Nicht anwesend'}
                                             </button>
                                         )}
                                     </div>
@@ -846,6 +880,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [currentParticipants, setCurrentParticipants] = useState<Booking[]>([]);
     const [currentApptTitle, setCurrentApptTitle] = useState('');
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [currentEvent, setCurrentEvent] = useState<Appointment | null>(null);
 
     // Detail Modal State
     const [selectedEvent, setSelectedEvent] = useState<Appointment | null>(null);
@@ -958,6 +993,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
     const handleViewParticipants = async (event: Appointment) => {
         setCurrentApptTitle(event.title);
+        setCurrentEvent(event);
 
         if (isPreview) {
             setCurrentParticipants([
@@ -1467,6 +1503,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 showBilling={autoBillingEnabled || autoProgressEnabled}
                 showProgress={autoProgressEnabled}
                 loggedInUser={user}
+                isBlockEvent={!!currentEvent?.block_id}
             />
 
             {selectedEvent && (

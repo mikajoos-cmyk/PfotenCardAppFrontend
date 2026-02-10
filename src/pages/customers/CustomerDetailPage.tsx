@@ -770,7 +770,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             .map(t => (
                                 <li key={t.id}>
                                     <span>
-                                        {new Date(t.date as any).toLocaleDateString('de-DE')} - {t.description}
+                                        {new Date(t.date as any).toLocaleDateString('de-DE')} - {t.description?.split(' (Termin-ID:')[0]}
                                     </span>
                                     <span style={{ fontWeight: 600, color: t.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
                                         € {t.amount.toLocaleString('de-DE')}

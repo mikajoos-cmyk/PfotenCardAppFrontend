@@ -55,7 +55,7 @@ const CustomerTransactionsPage: FC<CustomerTransactionsPageProps> = ({ transacti
                                     </div>
                                     <div className="tx-details">
                                         <div className="tx-line-1">
-                                            <span className="tx-title">{tx.description}</span>
+                                            <span className="tx-title">{tx.description?.split(' (Termin-ID:')[0]}</span>
                                         </div>
                                         <div className="tx-line-2">
                                             <span>{new Date(tx.date).toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
