@@ -1021,6 +1021,7 @@ export default function App() {
         type: 'topup' | 'debit';
         meta?: { requirementId?: string };
         baseAmount?: number;
+        bonus?: number;
         dogId?: number | null;
         dogName?: string;
     }) => {

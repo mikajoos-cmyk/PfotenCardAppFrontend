@@ -41,7 +41,9 @@ interface CustomerDetailPageProps {
         type: 'topup' | 'debit';
         meta?: { requirementId?: string };
         baseAmount?: number;
+        bonus?: number;
         dogId?: number | null;
+        dogName?: string;
     }) => Promise<void>;
 }
 
