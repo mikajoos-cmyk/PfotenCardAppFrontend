@@ -772,9 +772,16 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <span>
                                         {new Date(t.date as any).toLocaleDateString('de-DE')} - {t.description?.split(' (Termin-ID:')[0]}
                                     </span>
-                                    <span style={{ fontWeight: 600, color: t.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
-                                        € {t.amount.toLocaleString('de-DE')}
-                                    </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                        <span style={{ fontWeight: 600, color: t.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
+                                            € {t.amount.toLocaleString('de-DE')}
+                                        </span>
+                                        {t.amount > 0 && t.bonus > 0 && (
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--brand-green)', marginTop: '-2px' }}>
+                                                + € {t.bonus.toLocaleString('de-DE')} Bonus
+                                            </span>
+                                        )}
+                                    </div>
                                 </li>
                             ))
                         }

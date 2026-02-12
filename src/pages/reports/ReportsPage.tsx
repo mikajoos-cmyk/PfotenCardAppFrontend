@@ -28,17 +28,10 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
         isOpen: false, title: '', content: null, color: 'blue'
     });
 
-    // Nutzt ausschließlich den in der Datenbank gespeicherten Bonus-Wert
+    // Nutzt ausschließlich den in der Datenbank gespeicherten Betrag (amount).
+    // Der Bonus ist ein separater Wert und muss nicht abgezogen werden, 
+    // da amount bereits den gezahlten Betrag ohne Bonus darstellt.
     const getRealAmount = (tx: any) => {
-        // Abbuchungen sind immer negativ und haben keinen Bonus
-        if (tx.amount <= 0) return tx.amount;
-
-        // Wenn ein Bonus gespeichert ist (auch 0), wird dieser abgezogen.
-        // Falls das Feld fehlt (alte Daten vor der Migration), wird kein Bonus angenommen.
-        if (tx.bonus !== undefined && tx.bonus !== null) {
-            return tx.amount - tx.bonus;
-        }
-
         return tx.amount;
     };
 
@@ -123,12 +116,19 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                     const realAmount = getRealAmount(tx);
                     return (
                         <li key={tx.id}>
-                            <span>
-                                {new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description?.split(' (Termin-ID:')[0]}
-                                <span className="text-gray-500 text-sm"> ({customer?.name || 'Unbekannt'})</span>
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span>
+                                    {new Date(tx.date).toLocaleDateString('de-DE')} - {tx.description?.split(' (Termin-ID:')[0]}
+                                    <span className="text-gray-500 text-sm"> ({customer?.name || 'Unbekannt'})</span>
+                                </span>
+                                {tx.amount > 0 && tx.bonus > 0 && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--brand-green)' }}>
+                                        + {tx.bonus.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} Bonus
+                                    </span>
+                                )}
+                            </div>
                             <span style={{ fontWeight: 600, color: tx.amount < 0 ? 'var(--brand-red)' : 'var(--brand-green)' }}>
-                                € {Math.abs(realAmount).toLocaleString('de-DE')}
+                                {tx.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
                             </span>
                         </li>
                     );
@@ -183,20 +183,21 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
             return stringValue;
         };
 
-        const headers = ["Datum", "Kunde", "Hund", "Titel", "Typ", "Echter Betrag (ohne Bonus)", "Gebuchter Betrag (inkl. Bonus)", "Erstellt von"];
+        const headers = ["Datum", "Kunde", "Hund", "Titel", "Typ", "Betrag (gezahlter Betrag)", "Bonus", "Gesamt Gutschrift (inkl. Bonus)", "Erstellt von"];
         const rows = filteredTransactions.map(tx => {
             const customer = customers.find(c => c.id === tx.user_id);
             const creator = users.find(u => u.id === tx.booked_by_id);
-            const realAmount = getRealAmount(tx);
+            const bonus = tx.bonus || 0;
 
             const rowData = [
                 new Date(tx.date).toLocaleString('de-DE'),
                 customer?.name || 'Unbekannt',
-                customer?.dogs[0]?.name || '',
+                customer?.dogs?.[0]?.name || '',
                 tx.description?.split(' (Termin-ID:')[0],
                 tx.type,
-                realAmount,
                 tx.amount,
+                bonus,
+                tx.amount + bonus,
                 creator?.name || 'Unbekannt'
             ];
             return rowData.map(escapeCSV).join(',');
@@ -220,10 +221,9 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
         let tableRows = filteredTransactions.map(tx => {
             const customer = customers.find(c => c.id === tx.user_id);
             const creator = users.find(u => u.id === tx.booked_by_id);
-            const realAmount = getRealAmount(tx);
-            const isTopupWithBonus = tx.amount > realAmount;
-            const displayAmount = isTopupWithBonus
-                ? `${realAmount.toLocaleString('de-DE')} € <br><span style="font-size:0.8em; color:#666">(+${(tx.amount - realAmount).toLocaleString('de-DE')} Bonus)</span>`
+            const hasBonus = tx.amount > 0 && tx.bonus > 0;
+            const displayAmount = hasBonus
+                ? `${tx.amount.toLocaleString('de-DE')} € <br><span style="font-size:0.8em; color:#666">(+${tx.bonus.toLocaleString('de-DE')} Bonus)</span>`
                 : `${tx.amount.toLocaleString('de-DE')} €`;
 
             return `
@@ -382,7 +382,12 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                                         </div>
                                     </div>
                                     <div className={`tx-amount ${tx.amount < 0 ? 'debit' : 'topup'}`}>
-                                        € {Math.floor(tx.amount).toLocaleString('de-DE')}
+                                        <div>{tx.amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</div>
+                                        {tx.amount > 0 && tx.bonus > 0 && (
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--brand-green)', marginTop: '-2px' }}>
+                                                + {tx.bonus.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })} Bonus
+                                            </div>
+                                        )}
                                     </div>
                                 </li>
                             );
