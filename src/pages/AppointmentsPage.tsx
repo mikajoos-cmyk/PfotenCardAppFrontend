@@ -786,15 +786,6 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        {activeTab === 'confirmed' && b.status === 'confirmed' && showBilling && onBillParticipant && !isBilledForUI(b) && hasPermission(loggedInUser, 'can_edit_status') && (
-                                            <button
-                                                onClick={() => handleBillOne(b.id)}
-                                                className="button button-outline button-small"
-                                                title="Abrechnen"
-                                            >
-                                                <Icon name="euro" />
-                                            </button>
-                                        )}
                                         {activeTab === 'confirmed' && b.status === 'confirmed' && (
                                             <button
                                                 onClick={() => onToggleAttendance(b.id)}
@@ -1017,10 +1008,16 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     };
 
     const handleBillParticipant = async (bookingId: number) => {
-        if (!confirm("Guthaben für diesen Termin jetzt abziehen?")) return;
+        const booking = currentParticipants.find(b => b.id === bookingId);
+        const isVip = booking?.user?.is_vip;
+        const confirmMsg = isVip 
+            ? "Dieser Kunde ist VIP. Es wird kein Guthaben abgezogen, nur der Fortschritt eingetragen. Fortfahren?"
+            : "Guthaben für diesen Termin jetzt abziehen?";
+
+        if (!confirm(confirmMsg)) return;
         try {
             await apiClient.billBooking(bookingId, token);
-            alert("Abrechnung erfolgreich.");
+            alert(isVip ? "Fortschritt erfolgreich eingetragen." : "Abrechnung erfolgreich.");
             queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e: any) {
             alert(e.message || "Fehler bei der Abrechnung");
@@ -1028,13 +1025,23 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     };
 
     const handleBillAllParticipants = async () => {
-        if (!currentParticipants.some(b => b.status === 'confirmed')) {
+        const confirmedList = currentParticipants.filter(b => b.status === 'confirmed');
+        if (confirmedList.length === 0) {
             alert("Keine bestätigten Teilnehmer zum Abrechnen.");
             return;
         }
-        if (!confirm(`Möchtest du wirklich alle ${currentParticipants.filter(b => b.status === 'confirmed').length} Teilnehmer gleichzeitig abrechnen?`)) return;
 
-        const apptId = currentParticipants[0]?.appointment_id;
+        const vipCount = confirmedList.filter(b => b.user?.is_vip).length;
+        const regularCount = confirmedList.length - vipCount;
+        
+        let confirmMsg = `Möchtest du wirklich alle ${confirmedList.length} Teilnehmer gleichzeitig abrechnen?`;
+        if (vipCount > 0) {
+            confirmMsg = `Möchtest du wirklich alle ${confirmedList.length} Teilnehmer abrechnen?\n(${regularCount} reguläre Abrechnungen, ${vipCount} VIP-Fortschritte ohne Abzug)`;
+        }
+
+        if (!confirm(confirmMsg)) return;
+
+        const apptId = confirmedList[0]?.appointment_id;
         if (!apptId) return;
 
         try {
