@@ -803,7 +803,10 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
             )}
             <UpdateEmailModal 
                 isOpen={isEmailModalOpen} 
-                onClose={() => setIsEmailModalOpen(false)} 
+                onClose={() => {
+                    setIsEmailModalOpen(false);
+                    setEditingSection(null);
+                }} 
                 currentEmail={customer.email || ''} 
                 onSuccess={(newEmail) => {
                     // Die E-Mail im UI vorübergehend aktualisieren, damit der Nutzer sieht, dass die Änderung angefordert wurde
