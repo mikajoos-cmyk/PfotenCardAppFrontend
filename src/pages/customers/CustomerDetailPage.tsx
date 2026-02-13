@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect, useRef, ChangeEvent } from 'react';
 import { View, DocumentFile, User } from '../../types';
 import { LEVELS, VIP_LEVEL, EXPERT_LEVEL, LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS } from '../../lib/constants';
-import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet, formatDateDE } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getProgressForLevel, areLevelRequirementsMet, formatDateDE, getLevelColor } from '../../lib/utils';
 import { API_BASE_URL, apiClient } from '../../lib/api';
 import { getFullImageUrl } from '../../App';
 import { hasPermission } from '../../lib/permissions';
@@ -188,6 +188,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const customerTransactions = transactions.filter(t => t.user_id === customer.id);
     const lastLevel = levelsToUse[levelsToUse.length - 1];
     const currentLevelId = activeDog?.current_level_id || customer.level_id || customer.current_level_id || getInitialLevelId();
+    const currentLevelColor = getLevelColor(currentLevelId, levelsToUse);
     const canDoLevelUpCurrent = areLevelRequirementsMet(customer, levelsToUse, activeDogId || undefined);
 
     const showLevelUpButton = canDoLevelUpCurrent && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (currentLevelId !== lastLevel?.id);
@@ -336,12 +337,17 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         </div>
                         <div className="personal-data-container" data-editing={editingSection}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                                <div className={`personal-data-avatar ${getAvatarColorClass(firstName)}`}>
+                                <div 
+                                    className={`personal-data-avatar ${!currentLevelColor ? getAvatarColorClass(firstName) : ''}`}
+                                    style={currentLevelColor ? { backgroundColor: currentLevelColor, color: 'white' } : {}}
+                                >
                                     {getInitials(firstName, lastName)}
                                 </div>
-                                <div className={`dog-image-container ${!activeDog?.image_url ? 'no-image' : ''}`}
-                                data-editing={editingSection}
-                                onClick={editingSection === 'personal' ? () => setDogFormModal({ isOpen: true, dog: activeDog }) : undefined}
+                                <div 
+                                    className={`dog-image-container ${!activeDog?.image_url ? 'no-image' : ''}`}
+                                    data-editing={editingSection}
+                                    onClick={editingSection === 'personal' ? () => setDogFormModal({ isOpen: true, dog: activeDog }) : undefined}
+                                    style={currentLevelColor ? { borderColor: currentLevelColor } : {}}
                                 >
                                     {activeDog?.image_url ? (
                                         <img 
@@ -350,7 +356,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: editingSection === 'personal' ? 0.6 : 1 }} 
                                         />
                                     ) : (
-                                        <Icon name="heart" />
+                                        <Icon name="heart" color={currentLevelColor || undefined} />
                                     )}
                                     {editingSection === 'personal' && (
                                         <div style={{ position: 'absolute', background: 'rgba(0,0,0,0.3)', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -665,12 +671,21 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                 </div>
 
                 <div className="side-col">
-                    <div className="side-card status-card">
+                    <div 
+                        className="side-card status-card"
+                        style={currentLevelColor ? { borderColor: currentLevelColor, background: `${currentLevelColor}08` } : {}}
+                    >
                         {(displayLevel?.badgeImage || displayLevel?.icon_url || displayLevel?.imageUrl) && (
                             <img
                                 src={displayLevel.badgeImage || displayLevel.icon_url || displayLevel.imageUrl}
                                 alt={displayLevel.name}
-                                style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '1rem' }}
+                                style={{ 
+                                    width: '80px', 
+                                    height: '80px', 
+                                    objectFit: 'contain', 
+                                    marginBottom: '1rem',
+                                    filter: currentLevelColor ? `drop-shadow(0 0 10px ${currentLevelColor}44)` : 'none'
+                                }}
                             />
                         )}
                         <h3>{displayLevel?.name}</h3>

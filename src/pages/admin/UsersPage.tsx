@@ -2,7 +2,7 @@
 import React, { FC } from 'react';
 import { User } from '../../types';
 import Icon from '../../components/ui/Icon';
-import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../../lib/utils';
 import { hasPermission } from '../../lib/permissions';
 
 interface UsersPageProps {
@@ -11,9 +11,10 @@ interface UsersPageProps {
     onEditUserClick: (user: User) => void;
     onDeleteUserClick: (user: User) => void;
     currentUser: User | any;
+    levels?: any[];
 }
 
-const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick, onDeleteUserClick, currentUser }) => {
+const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick, onDeleteUserClick, currentUser, levels }) => {
     const systemUsers = users.filter(u => u.role === 'admin' || u.role === 'mitarbeiter');
 
     return (
@@ -46,9 +47,18 @@ const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick,
                                     <tr key={user.id}>
                                         <td data-label="Benutzer">
                                             <div className="user-cell">
-                                                <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
-                                                    {getInitials(firstName, lastName)}
-                                                </div>
+                                                {(() => {
+                                                    const levelId = user.level_id || user.current_level_id;
+                                                    const levelColor = getLevelColor(levelId, levels);
+                                                    return (
+                                                        <div 
+                                                            className={`initials-avatar ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                                            style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                                        >
+                                                            {getInitials(firstName, lastName)}
+                                                        </div>
+                                                    );
+                                                })()}
                                                 <div>
                                                     <div className="user-fullname">{firstName}</div>
                                                     <div className="user-subname">{lastName}</div>

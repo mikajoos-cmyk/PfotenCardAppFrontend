@@ -15,6 +15,12 @@ export const getAvatarColorClass = (name: string) => {
     return `avatar-${colors[colorIndex]}`;
 };
 
+export const getLevelColor = (levelId: number | undefined, levels: any[] = []) => {
+    if (!levelId) return null;
+    const level = levels.find(l => String(l.id) === String(levelId));
+    return level?.color || null;
+};
+
 // --- Level Logic (Dynamisch & Statisch) ---
 
 export const getProgressForLevel = (customer: any, levelId: number, dynamicLevels?: any[], dogId?: number) => {

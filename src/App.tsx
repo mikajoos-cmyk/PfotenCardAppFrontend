@@ -1529,7 +1529,14 @@ export default function App() {
             return <NewsPage user={loggedInUser} token={authToken} targetAppointmentId={view.targetAppointmentId} isPreviewMode={isPreviewMode} />;
         }
         if (view.page === 'chat') {
-            return <ChatPage user={loggedInUser} token={authToken} setView={handleSetView} isPreviewMode={isPreviewMode} initialChatPartnerId={view.chatPartnerId} />;
+            return <ChatPage 
+                user={loggedInUser} 
+                token={authToken} 
+                setView={handleSetView} 
+                isPreviewMode={isPreviewMode} 
+                initialChatPartnerId={view.chatPartnerId} 
+                levels={appConfigData?.levels || previewConfig.levels}
+            />;
         }
 
         if (view.page === 'dashboard') {
@@ -1580,6 +1587,7 @@ export default function App() {
                     fetchAppData={fetchAppData}
                     balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
                     activeModules={activeModules}
+                    levels={appConfigData?.levels || previewConfig.levels}
                 />
             );
         }
@@ -1672,6 +1680,7 @@ export default function App() {
                 users={users}
                 currentUser={loggedInUser}
                 balanceConfig={appConfigData?.tenant?.config?.balance || previewConfig.balance}
+                levels={appConfigData?.levels || previewConfig.levels}
             />;
         }
 
@@ -1697,6 +1706,7 @@ export default function App() {
                     onEditUserClick={(user) => setUserModal({ isOpen: true, user })}
                     onDeleteUserClick={(user) => setDeleteUserModal(user)}
                     currentUser={loggedInUser}
+                    levels={appConfigData?.levels || previewConfig.levels}
                 />
             );
         }
@@ -1799,6 +1809,7 @@ export default function App() {
                     unreadChatCount={unreadChatCount}
                     hasNewNews={hasNewNews}
                     onOpenNotifications={() => setNotificationSettingsOpen(true)}
+                    levels={appConfigData?.levels || previewConfig.levels}
                 />
             ) : (
                 <Sidebar
@@ -1815,6 +1826,7 @@ export default function App() {
                     unreadChatCount={unreadChatCount}
                     hasNewNews={hasNewNews}
                     onOpenNotifications={() => setNotificationSettingsOpen(true)}
+                    levels={appConfigData?.levels || previewConfig.levels}
                 />
             )
             }

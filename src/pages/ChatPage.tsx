@@ -2,10 +2,10 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query'; // NEU
 import { apiClient } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { ChatMessage, ChatConversation, User, View } from '../types';
+import { ChatMessage, ChatConversation, User, View, Level } from '../types';
 import { MOCK_CONVERSATIONS_CUSTOMER, MOCK_MESSAGES_CUSTOMER, MOCK_CONVERSATIONS_ADMIN, MOCK_MESSAGES_ADMIN } from '../lib/mockData';
 import Icon from '../components/ui/Icon';
-import { getInitials, getAvatarColorClass } from '../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../lib/utils';
 import InfoModal from '../components/modals/InfoModal';
 import { ContextHelp } from '../components/ui/ContextHelp';
 
@@ -19,9 +19,10 @@ interface ChatPageProps {
     setView: (view: View) => void;
     isPreviewMode?: boolean;
     initialChatPartnerId?: string;
+    levels?: Level[];
 }
 
-export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode, initialChatPartnerId }) => {
+export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPreviewMode, initialChatPartnerId, levels }) => {
     const queryClient = useQueryClient();
     const isAdminOrStaff = user?.role === 'admin' || user?.role === 'mitarbeiter';
 
@@ -534,13 +535,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 const nameParts = conv.user.name.split(' ');
                                 const firstName = nameParts[0];
                                 const lastName = nameParts.slice(1).join(' ');
+                                const levelId = conv.user.level_id || conv.user.current_level_id;
+                                const levelColor = getLevelColor(levelId, levels);
+
                                 return (
                                     <div key={conv.user.id} onClick={() => handleSelectUser(conv.user)} style={{
                                         padding: '1rem', borderBottom: '1px solid var(--border-color)', cursor: 'pointer',
                                         backgroundColor: isSelected ? 'var(--bg-accent-blue)' : 'transparent',
                                         display: 'flex', alignItems: 'center', gap: '0.75rem'
                                     }}>
-                                        <div className={`initials-avatar small ${getAvatarColorClass(firstName)}`}>{getInitials(firstName, lastName)}</div>
+                                        <div 
+                                            className={`initials-avatar small ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                            style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                        >
+                                            {getInitials(firstName, lastName)}
+                                        </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
                                                 <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70%' }}>{conv.user.name}</span>
@@ -586,9 +595,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                     <Icon name="arrow-left" />
                                 </button>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, cursor: 'pointer' }} onClick={navigateToCustomerProfile}>
-                                    <div className={`initials-avatar small ${getAvatarColorClass(selectedUser.name.split(' ')[0])}`}>
-                                        {getInitials(selectedUser.name.split(' ')[0], selectedUser.name.split(' ').slice(1).join(' '))}
-                                    </div>
+                                    {(() => {
+                                        const firstName = selectedUser.name.split(' ')[0];
+                                        const lastName = selectedUser.name.split(' ').slice(1).join(' ');
+                                        const levelId = selectedUser.level_id || selectedUser.current_level_id;
+                                        const levelColor = getLevelColor(levelId, levels);
+
+                                        return (
+                                            <div 
+                                                className={`initials-avatar small ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                                style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                            >
+                                                {getInitials(firstName, lastName)}
+                                            </div>
+                                        );
+                                    })()}
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <span style={{ fontWeight: 600, color: isDesktop ? 'var(--text-primary)' : 'var(--sidebar-text-hover)' }}>{selectedUser.name}</span>
                                         {isAdminOrStaff && <span style={{ fontSize: '0.75rem', color: isDesktop ? 'var(--text-secondary)' : 'var(--sidebar-text)', opacity: 0.8 }}>Profil anzeigen</span>}
@@ -820,9 +841,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--background-secondary)'}
                                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                     >
-                                        <div className={`initials-avatar small ${getAvatarColorClass(u.name.split(' ')[0])}`}>
-                                            {getInitials(u.name.split(' ')[0], u.name.split(' ').slice(1).join(' '))}
-                                        </div>
+                                        {(() => {
+                                            const firstName = u.name.split(' ')[0];
+                                            const lastName = u.name.split(' ').slice(1).join(' ');
+                                            const levelId = u.level_id || u.current_level_id;
+                                            const levelColor = getLevelColor(levelId, levels);
+
+                                            return (
+                                                <div 
+                                                    className={`initials-avatar small ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                                    style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                                >
+                                                    {getInitials(firstName, lastName)}
+                                                </div>
+                                            );
+                                        })()}
                                         <span style={{ fontWeight: 500 }}>{u.name}</span>
                                     </div>
                                 ))

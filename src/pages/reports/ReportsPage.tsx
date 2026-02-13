@@ -1,7 +1,7 @@
 import React, { FC, useState, useMemo, useEffect } from 'react';
 import KpiCard from '../../components/ui/KpiCard';
 import Icon from '../../components/ui/Icon';
-import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../../lib/utils';
 import InfoModal from '../../components/modals/InfoModal'; // Modal importieren
 
 interface ReportsPageProps {
@@ -14,9 +14,10 @@ interface ReportsPageProps {
         allow_custom_top_up: boolean;
         top_up_options: { amount: number; bonus: number }[];
     };
+    levels?: any[];
 }
 
-const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, currentUser, balanceConfig }) => {
+const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, currentUser, balanceConfig, levels }) => {
     const [reportType, setReportType] = useState<'monthly' | 'yearly'>('monthly');
     const [selectedMitarbeiter, setSelectedMitarbeiter] = useState<string>(
         currentUser.role === 'admin' ? 'all' : String(currentUser.id)
@@ -402,11 +403,16 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
                             const firstName = nameParts[0] || '';
                             const lastName = nameParts.slice(1).join(' ');
                             const dogName = custData.customer.dogs[0]?.name || '-';
+                            const levelId = custData.customer.level_id || custData.customer.current_level_id;
+                            const levelColor = getLevelColor(levelId, levels);
 
                             return (
                                 <li key={custData.customer.id}>
                                     <div className="rank">{index + 1}</div>
-                                    <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
+                                    <div 
+                                        className={`initials-avatar ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                        style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                    >
                                         {getInitials(firstName, lastName)}
                                     </div>
                                     <div className="info">

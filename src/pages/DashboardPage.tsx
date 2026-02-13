@@ -4,7 +4,7 @@ import LiveStatusBanner from '../components/ui/LiveStatusBanner';
 import Icon from '../components/ui/Icon';
 import KpiCard from '../components/ui/KpiCard';
 import InfoModal from '../components/modals/InfoModal'; // Importieren
-import { getInitials, getAvatarColorClass } from '../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../lib/utils';
 import { getFullImageUrl } from '../App';
 import TopUpModal from '../components/modals/TopUpModal'; // NEU
 import { Wallet } from 'lucide-react'; // NEU
@@ -20,9 +20,10 @@ interface DashboardPageProps {
     fetchAppData: (force?: boolean) => void; // NEU
     balanceConfig?: any; // NEU
     activeModules?: string[]; // NEU
+    levels?: any[]; // NEU
 }
 
-const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus, token, fetchAppData, balanceConfig, activeModules }) => {
+const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus, token, fetchAppData, balanceConfig, activeModules, levels }) => {
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
         isOpen: false, title: '', content: null, color: 'blue'
@@ -57,9 +58,16 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
             <ul className="info-modal-list">
                 {list.map(c => {
                     const firstDog = c.dogs?.[0];
+                    const levelId = c.level_id || c.current_level_id;
+                    const levelColor = getLevelColor(levelId, levels || appStatus?.levels);
                     return (
                         <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.auth_id || String(c.id) }); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <div className={`avatar avatar-sm ${getAvatarColorClass(c.name)}`} style={{ flexShrink: 0 }}>{getInitials(c.name)}</div>
+                            <div 
+                                className={`avatar avatar-sm ${!levelColor ? getAvatarColorClass(c.name) : ''}`} 
+                                style={{ flexShrink: 0, ...(levelColor ? { backgroundColor: levelColor, color: 'white' } : {}) }}
+                            >
+                                {getInitials(c.name)}
+                            </div>
                             <div style={{ flex: 1 }}>
                                 <span>{c.name} ({firstDog?.name || '-'})</span>
                             </div>
@@ -160,9 +168,15 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                             const nameParts = cust.name.split(' ');
                             const firstName = nameParts[0] || '';
                             const lastName = nameParts.slice(1).join(' ');
+                            const levelId = cust.level_id || cust.current_level_id;
+                            const levelColor = getLevelColor(levelId, levels || appStatus?.levels);
+
                             return (
                                 <li key={cust.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: cust.auth_id || String(cust.id) })} className="clickable">
-                                    <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
+                                    <div 
+                                        className={`initials-avatar ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                        style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                    >
                                         {getInitials(firstName, lastName)}
                                     </div>
                                     <div className="info">

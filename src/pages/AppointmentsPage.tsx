@@ -27,7 +27,8 @@ const MOCK_APPOINTMENTS: any[] = [
 
 // --- HILFSFUNKTIONEN ---
 const formatDate = (date: Date) => new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(date);
-const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(date) + ' Uhr';
+const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(date);
+import { getInitials, getAvatarColorClass, getLevelColor } from '../lib/utils';
 
 // Farben basierend auf Keywords
 // Farben basierend auf Level oder Keywords
@@ -426,7 +427,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments }: {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments, levels }: {
     event: Appointment,
     onClose: () => void,
     onAction: (type: 'book' | 'cancel' | 'participants') => void,
@@ -439,7 +440,8 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     selectedDogId: number | null,
     onDogChange: (id: number | null) => void,
     colorRules?: ColorRule[],
-    allAppointments: Appointment[]
+    allAppointments: Appointment[],
+    levels?: any[]
 }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
@@ -572,9 +574,26 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                         <div>
                             <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.25rem' }}>Trainer</h4>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <div className="initials-avatar small avatar-gray" style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
-                                    {event.trainer?.name?.charAt(0) || '?'}
-                                </div>
+                                {(() => {
+                                    const trainer = event.trainer;
+                                    const firstName = trainer?.name?.split(' ')[0] || '';
+                                    const levelId = trainer?.level_id || trainer?.current_level_id;
+                                    const levelColor = getLevelColor(levelId, levels);
+
+                                    return (
+                                        <div 
+                                            className={`initials-avatar small ${!levelColor ? 'avatar-gray' : ''}`} 
+                                            style={{ 
+                                                width: '24px', 
+                                                height: '24px', 
+                                                fontSize: '0.7rem',
+                                                ...(levelColor ? { backgroundColor: levelColor, color: 'white' } : {})
+                                            }}
+                                        >
+                                            {trainer?.name?.charAt(0) || '?'}
+                                        </div>
+                                    );
+                                })()}
                                 <span style={{ fontSize: '0.9rem' }}>{event.trainer?.name || 'Kein Trainer zugewiesen'}</span>
                             </div>
                         </div>
@@ -644,7 +663,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     );
 };
 
-const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser, isBlockEvent }: {
+const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser, isBlockEvent, levels }: {
     isOpen: boolean,
     onClose: () => void,
     bookings: Booking[],
@@ -655,7 +674,8 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
     showBilling?: boolean,
     showProgress?: boolean,
     loggedInUser: any,
-    isBlockEvent?: boolean
+    isBlockEvent?: boolean,
+    levels?: any[]
 }) => {
     const [activeTab, setActiveTab] = useState<'confirmed' | 'waitlist'>('confirmed');
     const [locallyBilled, setLocallyBilled] = useState<Set<number>>(new Set());
@@ -757,10 +777,22 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                                 {index + 1}
                                             </div>
                                         )}
+                                        {(() => {
+                                            const firstName = b.user?.name?.split(' ')[0] || '';
+                                            const lastName = b.user?.name?.split(' ').slice(1).join(' ') || '';
+                                            const levelId = b.dog?.current_level_id || b.user?.level_id || b.user?.current_level_id;
+                                            const levelsToUse = levels || [];
+                                            const levelColor = getLevelColor(levelId, levelsToUse);
 
-                                        <div className={`initials-avatar small ${b.attended ? 'avatar-green' : 'avatar-gray'}`}>
-                                            {b.user?.name?.charAt(0) || '?'}
-                                        </div>
+                                            return (
+                                                <div 
+                                                    className={`initials-avatar small ${!levelColor ? (b.attended ? 'avatar-green' : 'avatar-gray') : ''}`}
+                                                    style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                                >
+                                                    {getInitials(firstName, lastName) || '?'}
+                                                </div>
+                                            );
+                                        })()}
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.5rem' }}>
                                                 <div style={{ fontWeight: 600 }}>{b.user?.name || 'Unbekannt'}</div>
@@ -1511,6 +1543,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 showProgress={autoProgressEnabled}
                 loggedInUser={user}
                 isBlockEvent={!!currentEvent?.block_id}
+                levels={allLevels}
             />
 
             {selectedEvent && (
@@ -1529,6 +1562,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     // workshopLectureColor={workshopLectureColor} // REMOVED
                     colorRules={colorRules}
                     allAppointments={appointments}
+                    levels={allLevels}
                 />
             )}
         </div>

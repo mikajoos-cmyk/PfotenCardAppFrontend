@@ -62,6 +62,8 @@ export interface Level {
     id: number;
     name: string;
     imageUrl: string;
+    color?: string;
+    rank_order?: number;
 }
 
 export interface Customer {

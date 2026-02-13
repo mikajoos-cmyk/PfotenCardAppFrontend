@@ -1,7 +1,7 @@
 import React, { FC, useState, useMemo } from 'react';
 import { Customer, Transaction, View } from '../../types';
 import { LEVELS } from '../../lib/constants';
-import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../../lib/utils';
 import KpiCard from '../../components/ui/KpiCard';
 import InfoModal from '../../components/modals/InfoModal'; // Importieren
 
@@ -153,7 +153,10 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                     <tbody>
                         {filteredCustomers.map(customer => {
                             const levelsToUse = levels || LEVELS;
-                            const level = levelsToUse.find(l => l.id === (customer.level_id || customer.current_level_id));
+                            const levelId = customer.level_id || customer.current_level_id;
+                            const level = levelsToUse.find(l => l.id === levelId);
+                            const levelColor = getLevelColor(levelId, levelsToUse);
+                            
                             const nameParts = customer.name.split(' ');
                             const firstName = nameParts[0] || '';
                             const lastName = nameParts.slice(1).join(' ');
@@ -162,7 +165,10 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                                 <tr key={customer.id} onClick={() => setView({ page: 'customers', subPage: 'detail', customerId: customer.auth_id || String(customer.id) })}>
                                     <td data-label="Kunde">
                                         <div className="customer-info">
-                                            <div className={`initials-avatar ${getAvatarColorClass(firstName)}`}>
+                                            <div 
+                                                className={`initials-avatar ${!levelColor ? getAvatarColorClass(firstName) : ''}`}
+                                                style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                            >
                                                 {getInitials(firstName, lastName)}
                                             </div>
                                             <div>
@@ -173,7 +179,14 @@ const CustomerListPage: FC<CustomerListPageProps> = ({ customers, transactions, 
                                     </td>
                                     <td data-label="Hund">{customer.dogs?.[0]?.name || '-'}</td>
                                     <td data-label="Guthaben">€ {(customer.balance ?? 0).toLocaleString('de-DE')}</td>
-                                    <td data-label={levelTerm}><span className="level-badge">{level?.name || '-'}</span></td>
+                                    <td data-label={levelTerm}>
+                                        <span 
+                                            className="level-badge"
+                                            style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                        >
+                                            {level?.name || '-'}
+                                        </span>
+                                    </td>
                                     <td data-label="Erstellt">{new Date(customer.customer_since as any).toLocaleDateString('de-DE')}</td>
                                     <td data-label="Aktion">&gt;</td>
                                 </tr>
