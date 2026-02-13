@@ -743,16 +743,7 @@ export default function App() {
                         const userResponse = await apiClient.get('/api/users/me', session.access_token);
                         
                         // Wenn die E-Mail im Token neuer ist als in der DB (Backend), updaten wir die DB
-                        if (session.user.email && userResponse.email !== session.user.email) {
-                             console.log("PfotenCard: SIGNED_IN - Email mismatch, updating backend", userResponse.email, "->", session.user.email);
-                             try {
-                                 await apiClient.put(`/api/users/${userResponse.id}`, { email: session.user.email }, session.access_token);
-                                 userResponse.email = session.user.email;
-                                 console.log("PfotenCard: SIGNED_IN - Email updated in backend");
-                             } catch (putErr) {
-                                 console.error("PfotenCard: Failed to update email in backend during SIGNED_IN sync", putErr);
-                             }
-                        }
+
 
                         handleLoginSuccess(session.access_token, userResponse);
                         
