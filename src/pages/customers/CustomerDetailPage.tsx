@@ -156,7 +156,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
         const userPayload = {
             ...customer,
             name: `${editedData.firstName} ${editedData.lastName}`.trim(),
-            email: editedData.email,
+            // email: editedData.email, // E-Mail wird separat über UpdateEmailModal geändert
             phone: editedData.phone,
             balance: editedData.balance,
             level_id: editedData.levelId
@@ -806,9 +806,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                 onClose={() => setIsEmailModalOpen(false)} 
                 currentEmail={customer.email || ''} 
                 onSuccess={(newEmail) => {
-                    // Die E-Mail im UI vorübergehend aktualisieren, bis die Bestätigung erfolgt
-                    // Hinweis: In Supabase bleibt sie bis zur Bestätigung die alte.
-                    // setEditedData(prev => ({ ...prev, email: newEmail }));
+                    // Die E-Mail im UI vorübergehend aktualisieren, damit der Nutzer sieht, dass die Änderung angefordert wurde
+                    setEditedData(prev => ({ ...prev, email: newEmail }));
                 }} 
             />
         </>

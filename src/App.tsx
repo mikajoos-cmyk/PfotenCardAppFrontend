@@ -1367,15 +1367,21 @@ export default function App() {
         }
 
         try {
-            const userPayload = {
+            const userPayload: any = {
                 name: userToUpdate.name,
-                email: userToUpdate.email || null,
                 role: userToUpdate.role,
                 level_id: userToUpdate.level_id,
                 is_active: userToUpdate.is_active,
                 balance: userToUpdate.balance,
                 phone: userToUpdate.phone || null,
             };
+
+            // Nur E-Mail senden, wenn sie explizit im userToUpdate vorhanden ist 
+            // (wird bei Stammdaten-Update in CustomerDetailPage jetzt weggelassen)
+            if (userToUpdate.email) {
+                userPayload.email = userToUpdate.email;
+            }
+
             await apiClient.put(`/api/users/${userToUpdate.id}`, userPayload, authToken);
 
             if (dogToUpdate) {
