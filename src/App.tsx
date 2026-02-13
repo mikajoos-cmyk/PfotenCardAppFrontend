@@ -683,6 +683,47 @@ export default function App() {
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'PASSWORD_RECOVERY') {
                 setShowPasswordReset(true);
+            } else if (event === 'USER_UPDATED' && session) {
+                console.log("PfotenCard: User updated event", session.user.email);
+                // Wenn sich die E-Mail geändert hat, müssen wir das Backend informieren
+                // Wir nutzen hier session.user.id um sicher zu sein, dass wir den richtigen User treffen
+                if (session.user.email) {
+                    try {
+                        console.log("PfotenCard: Syncing updated email to backend...");
+                        // Wir holen erst den aktuellen User vom Backend, um seine ID zu haben, falls loggedInUser noch nicht da ist
+                        let currentUserToUpdate = loggedInUser;
+                        if (!currentUserToUpdate || currentUserToUpdate.auth_id !== session.user.id) {
+                            console.log("PfotenCard: Fetching /api/users/me to ensure correct user ID for sync");
+                            currentUserToUpdate = await apiClient.get('/api/users/me', session.access_token);
+                        }
+
+                        if (currentUserToUpdate && currentUserToUpdate.id) {
+                            console.log("PfotenCard: Sending PUT request to backend for user", currentUserToUpdate.id, "with email", session.user.email);
+                            const updateResult = await apiClient.put(`/api/users/${currentUserToUpdate.id}`, { email: session.user.email }, session.access_token);
+                            console.log("PfotenCard: Email sync successful, result:", updateResult);
+                            
+                            // WICHTIG: loggedInUser aktualisieren, damit die UI die neue E-Mail zeigt
+                            setLoggedInUser(prev => prev ? { ...prev, email: session.user.email } : updateResult);
+                            
+                            // Query Cache leeren
+                            queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
+                            queryClient.invalidateQueries({ queryKey: ['customers'] });
+                        }
+                    } catch (err) {
+                        console.error("Error updating user email in backend during USER_UPDATED:", err);
+                        
+                        // Wenn es ein 401 ist, liegt es vielleicht an einem veralteten Token nach der E-Mail Änderung
+                        if (String(err).includes("401") || String(err).includes("Unauthorized")) {
+                            console.log("PfotenCard: Unauthorized during sync, refreshing session...");
+                            await supabase.auth.refreshSession();
+                        }
+                    }
+                }
+            } else if (event === 'INITIAL_SESSION' && session) {
+                // Auch bei initialer Session prüfen
+                if (session.user.email) {
+                    console.log("PfotenCard: Initial session detected", session.user.email);
+                }
             } else if (event === 'SIGNED_IN' && session) {
 
                 // 2. Check beim Login-Event (Supabase-Event)
@@ -697,10 +738,27 @@ export default function App() {
                     setShowPasswordReset(true);
                 }
 
-                if (!loggedInUser || loggedInUser.auth_id !== session.user.id) {
+                if (!loggedInUser || loggedInUser.auth_id !== session.user.id || (session.user.email && session.user.email !== loggedInUser.email)) {
                     try {
                         const userResponse = await apiClient.get('/api/users/me', session.access_token);
+                        
+                        // Wenn die E-Mail im Token neuer ist als in der DB (Backend), updaten wir die DB
+                        if (session.user.email && userResponse.email !== session.user.email) {
+                             console.log("PfotenCard: SIGNED_IN - Email mismatch, updating backend", userResponse.email, "->", session.user.email);
+                             try {
+                                 await apiClient.put(`/api/users/${userResponse.id}`, { email: session.user.email }, session.access_token);
+                                 userResponse.email = session.user.email;
+                                 console.log("PfotenCard: SIGNED_IN - Email updated in backend");
+                             } catch (putErr) {
+                                 console.error("PfotenCard: Failed to update email in backend during SIGNED_IN sync", putErr);
+                             }
+                        }
+
                         handleLoginSuccess(session.access_token, userResponse);
+                        
+                        // Force a re-fetch of all user data to be sure
+                        queryClient.invalidateQueries({ queryKey: ['user', 'me'] });
+                        queryClient.invalidateQueries({ queryKey: ['customers'] });
                     } catch (err) {
                         console.error("Auth Change Error:", err);
                     }

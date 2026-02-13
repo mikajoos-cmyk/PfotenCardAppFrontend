@@ -9,6 +9,7 @@ import Icon from '../../components/ui/Icon';
 import InfoModal from '../../components/modals/InfoModal';
 import DocumentViewerModal from '../../components/modals/DocumentViewerModal';
 import DeleteDocumentModal from '../../components/modals/DeleteDocumentModal';
+import UpdateEmailModal from '../../components/modals/UpdateEmailModal';
 
 interface CustomerDetailPageProps {
     customer: any;
@@ -57,7 +58,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const levelTerm = wording?.level || 'Level';
     const vipTerm = wording?.vip || 'VIP';
 
-    const canEditCustomers = hasPermission(currentUser, 'can_edit_customers');
+    const canEditCustomers = hasPermission(currentUser, 'can_edit_customers') || String(currentUser?.id) === String(customer?.id);
 
     const nameParts = customer.name ? customer.name.split(' ') : [''];
     const firstName = nameParts[0];
@@ -101,6 +102,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const [viewingDocument, setViewingDocument] = useState<DocumentFile | null>(null);
     const [deletingDocument, setDeletingDocument] = useState<DocumentFile | null>(null);
     const [isTxModalOpen, setIsTxModalOpen] = useState(false);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
     const [canShare, setCanShare] = useState(false);
 
     // Initialisiere mit korrekter Logik
@@ -366,14 +368,25 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <div className="field-content">
                                         <label>E-Mail</label>
                                         {editingSection === 'personal' ? (
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                value={editedData.email}
-                                                onChange={handleInputChange}
-                                                disabled
-                                                style={{ color: 'var(--text-secondary)', cursor: 'not-allowed' }}
-                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                                                <input
+                                                    type="email"
+                                                    name="email"
+                                                    value={editedData.email}
+                                                    onChange={handleInputChange}
+                                                    disabled
+                                                    style={{ color: 'var(--text-secondary)', cursor: 'not-allowed', flex: 1 }}
+                                                />
+                                                <button 
+                                                    type="button"
+                                                    className="action-icon-btn" 
+                                                    onClick={() => setIsEmailModalOpen(true)}
+                                                    title="E-Mail ändern"
+                                                    style={{ padding: '0.4rem', borderRadius: '0.4rem', background: 'var(--bg-secondary)' }}
+                                                >
+                                                    <Icon name="edit" width={18} height={18} />
+                                                </button>
+                                            </div>
                                         ) : (
                                             <p>{customer.email || '-'}</p>
                                         )}
@@ -788,6 +801,16 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     </ul>
                 </InfoModal>
             )}
+            <UpdateEmailModal 
+                isOpen={isEmailModalOpen} 
+                onClose={() => setIsEmailModalOpen(false)} 
+                currentEmail={customer.email || ''} 
+                onSuccess={(newEmail) => {
+                    // Die E-Mail im UI vorübergehend aktualisieren, bis die Bestätigung erfolgt
+                    // Hinweis: In Supabase bleibt sie bis zur Bestätigung die alte.
+                    // setEditedData(prev => ({ ...prev, email: newEmail }));
+                }} 
+            />
         </>
     );
 };
