@@ -2,7 +2,7 @@ import React, { FC } from 'react';
 import { User, Page, View } from '../../types';
 import Icon from '../ui/Icon';
 import OnlineStatus from './OnlineStatus';
-import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../../lib/utils';
 
 interface SidebarProps {
     user: User;

@@ -2,7 +2,7 @@ import React, { FC } from 'react';
 import { User, View } from '../../types';
 import Icon from '../ui/Icon';
 import OnlineStatus from './OnlineStatus';
-import { getInitials, getAvatarColorClass } from '../../lib/utils';
+import { getInitials, getAvatarColorClass, getLevelColor } from '../../lib/utils';
 
 interface CustomerSidebarProps {
     user: User;
@@ -21,6 +21,7 @@ interface CustomerSidebarProps {
     unreadChatCount?: number;
     hasNewNews?: boolean;
     onOpenNotifications?: () => void;
+    levels?: any[];
 }
 
 const CustomerSidebar: FC<CustomerSidebarProps> = ({
@@ -29,7 +30,8 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
     activeModules = ['news', 'documents', 'calendar', 'chat'],
     unreadChatCount = 0,
     hasNewNews = false,
-    onOpenNotifications
+    onOpenNotifications,
+    levels
 }) => {
 
     // Navigation Logik vereinheitlichen (Legacy Support für activePage prop)
@@ -125,9 +127,21 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
             <div className="sidebar-footer">
                 <div className="user-profile-container">
                     <div className="user-profile">
-                        <div className={`initials-avatar small ${getAvatarColorClass(user.name)}`}>
-                            {getInitials(user.name.split(' ')[0], user.name.split(' ')[1] || '')}
-                        </div>
+                        {(() => {
+                            const levelId = user.level_id || user.current_level_id;
+                            const levelColor = getLevelColor(levelId, levels);
+                            const firstName = user.name.split(' ')[0];
+                            const lastName = user.name.split(' ')[1] || '';
+
+                            return (
+                                <div
+                                    className={`initials-avatar small ${!levelColor ? getAvatarColorClass(user.name) : ''}`}
+                                    style={levelColor ? { backgroundColor: levelColor, color: 'white' } : {}}
+                                >
+                                    {getInitials(firstName, lastName)}
+                                </div>
+                            );
+                        })()}
                         <div className="user-info">
                             <span className="user-name">{user.name}</span>
                             <span className="user-role">Kunde</span>

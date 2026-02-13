@@ -10,6 +10,8 @@ export interface User {
     email: string;
     role: UserRole;
     customerId?: string;
+    level_id?: number;
+    current_level_id?: number;
     createdAt: Date;
     notifications_email?: boolean;
     notifications_push?: boolean;
@@ -208,4 +210,5 @@ export interface AppStatus {
     status: 'active' | 'cancelled' | 'partial';
     message: string | null;
     updated_at: string;
+    levels?: Level[];
 }
