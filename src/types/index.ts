@@ -7,6 +7,8 @@ export interface User {
     id: string;
     auth_id?: string;
     name: string;
+    vorname?: string;
+    nachname?: string;
     email: string;
     role: UserRole;
     customerId?: string;
@@ -74,8 +76,10 @@ export interface Customer {
 
     // Name handling
     name: string; // Primary display name
-    firstName?: string;
-    lastName?: string;
+    firstName?: string; // Legacy/Frontend
+    lastName?: string;  // Legacy/Frontend
+    vorname?: string;   // Backend
+    nachname?: string;  // Backend
 
     // Balance
     balance: number;

@@ -80,11 +80,31 @@ async function handleResponse(response: Response) {
     return response.json();
 }
 
+// Hilfsfunktion: Retry bei Netzwerkfehlern (z.B. net::ERR_NETWORK_CHANGED)
+const fetchWithRetry = async (url: string, options: RequestInit, retries: number = 3, delay: number = 500): Promise<Response> => {
+    try {
+        const response = await fetch(url, options);
+        return response;
+    } catch (err: any) {
+        const isNetworkError = 
+            err.message?.includes('net::ERR_NETWORK_CHANGED') || 
+            err.message?.includes('Failed to fetch') || 
+            err.name === 'TypeError';
+
+        if (retries > 0 && isNetworkError) {
+            console.warn(`Netzwerkfehler erkannt, versuche erneut (${retries} verbleibend): ${err.message}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(url, options, retries - 1, delay * 2);
+        }
+        throw err;
+    }
+};
+
 export const apiClient = {
     get: async (path: string, token: string | null) => {
         console.log(`API GET: ${API_BASE_URL}${path} (Subdomain: ${getSubdomain()})`);
 
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
             method: 'GET',
             headers: getHeaders(token),
         });
@@ -93,7 +113,7 @@ export const apiClient = {
     },
 
     post: async (path: string, data: any, token: string | null) => {
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
             method: 'POST',
             headers: getHeaders(token, true),
             body: JSON.stringify(data),
@@ -103,7 +123,7 @@ export const apiClient = {
     },
 
     put: async (path: string, data: any, token: string | null) => {
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
             method: 'PUT',
             headers: getHeaders(token, true),
             body: JSON.stringify(data),
@@ -121,7 +141,7 @@ export const apiClient = {
     },
 
     delete: async (path: string, token: string | null) => {
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
             method: 'DELETE',
             headers: getHeaders(token),
         });
@@ -142,7 +162,7 @@ export const apiClient = {
         const subdomain = getSubdomain();
         if (subdomain) headers['x-tenant-subdomain'] = subdomain;
 
-        const response = await fetch(`${API_BASE_URL}${path}`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
             method: 'POST',
             headers: headers,
             body: formData,
@@ -157,7 +177,7 @@ export const apiClient = {
         const subdomain = getSubdomain();
         if (subdomain) headers['x-tenant-subdomain'] = subdomain;
 
-        const response = await fetch(`${API_BASE_URL}/api/users/${userId}/documents`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/users/${userId}/documents`, {
             method: 'POST',
             headers: headers, // FormData sets Content-Type boundary automatically
             body: formData,
@@ -174,7 +194,7 @@ export const apiClient = {
             headers['x-tenant-subdomain'] = subdomain;
         }
 
-        const response = await fetch(`${API_BASE_URL}/api/config`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/config`, {
             method: 'GET',
             headers: headers,
         });
@@ -320,7 +340,7 @@ export const apiClient = {
         // Wir nutzen nicht die Wrapper-Funktion, weil wir einen Blob zurückbekommen wollen
         console.log(`API GET PDF: ${API_BASE_URL}/api/transactions/${transactionId}/invoice`);
 
-        const response = await fetch(`${API_BASE_URL}/api/transactions/${transactionId}/invoice`, {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/${transactionId}/invoice`, {
             method: 'GET',
             headers: getHeaders(token),
         });

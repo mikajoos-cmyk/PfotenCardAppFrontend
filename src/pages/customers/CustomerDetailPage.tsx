@@ -60,9 +60,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     const canEditCustomers = hasPermission(currentUser, 'can_edit_customers') || String(currentUser?.id) === String(customer?.id);
 
-    const nameParts = customer.name ? customer.name.split(' ') : [''];
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(' ');
+    const firstName = customer.vorname || customer.firstName || (customer.name ? customer.name.split(' ')[0] : '');
+    const lastName = customer.nachname || customer.lastName || (customer.name ? customer.name.split(' ').slice(1).join(' ') : '');
 
     // NEU: Dog-Tab Logik
     const dogs = customer.dogs || [];
@@ -107,6 +106,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     // Initialisiere mit korrekter Logik
     const [previewLevelId, setPreviewLevelId] = useState<number>(getInitialLevelId());
+    const [isSaving, setIsSaving] = useState(false);
 
     // Update wenn sich der Kunde oder der aktive Hund ändert (z.B. nach echtem Level-Up)
     useEffect(() => {
@@ -152,10 +152,15 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
     const handleCancelEdit = () => setEditingSection(null);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (isSaving) return;
+        setIsSaving(true);
+        
         const userPayload = {
             ...customer,
             name: `${editedData.firstName} ${editedData.lastName}`.trim(),
+            vorname: editedData.firstName,
+            nachname: editedData.lastName,
             // email: editedData.email, // E-Mail wird separat über UpdateEmailModal geändert
             phone: editedData.phone,
             balance: editedData.balance,
@@ -171,9 +176,28 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
             }
         }
 
-        onSave(userPayload, dogPayload).then(() => {
-            setEditingSection(null);
-        });
+        console.log('Speichere Kundendaten (Optimistic UI)...', { userPayload, dogPayload });
+        
+        // --- OPTIMISTIC UI: Bearbeitungsmodus sofort verlassen ---
+        const currentEditingSection = editingSection;
+        setEditingSection(null);
+
+        // Zurück zur Kundenliste, wenn wir Stammdaten bearbeitet haben (für Admins/Mitarbeiter)
+        if (currentEditingSection === 'personal' && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter')) {
+            setView({ page: 'customers' });
+        }
+
+        try {
+            await onSave(userPayload, dogPayload);
+            console.log('Speichern erfolgreich');
+        } catch (err: any) {
+            console.error('Speichern fehlgeschlagen:', err);
+            // Bei Fehler: Bearbeitungsmodus wiederherstellen, falls gewünscht
+            setEditingSection(currentEditingSection);
+            alert('Fehler beim Speichern: ' + (err.message || err));
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleUploadClick = () => fileInputRef.current?.click();
@@ -252,8 +276,10 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <>
                             {editingSection === 'personal' ? (
                                 <>
-                                    <button className="button button-outline" onClick={handleCancelEdit}>Abbrechen</button>
-                                    <button className="button button-primary" onClick={handleSave}>Speichern</button>
+                                    <button className="button button-outline" onClick={handleCancelEdit} disabled={isSaving}>Abbrechen</button>
+                                    <button className="button button-primary" onClick={handleSave} disabled={isSaving}>
+                                        {isSaving ? 'Speichert...' : 'Speichern'}
+                                    </button>
                                 </>
                             ) : (
                                 <>
@@ -366,8 +392,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 </div>
                             </div>
                             <div className="personal-data-fields">
-                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Vorname</label>{editingSection === 'personal' ? <input type="text" name="firstName" value={editedData.firstName} onChange={handleInputChange} disabled /> : <p>{firstName}</p>}</div></div>
-                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Nachname</label>{editingSection === 'personal' ? <input type="text" name="lastName" value={editedData.lastName} onChange={handleInputChange} disabled /> : <p>{lastName}</p>}</div></div>
+                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Vorname</label>{editingSection === 'personal' ? <input type="text" name="firstName" value={editedData.firstName} onChange={handleInputChange} /> : <p>{firstName}</p>}</div></div>
+                                <div className="data-field"><Icon name="user" /><div className="field-content"><label>Nachname</label>{editingSection === 'personal' ? <input type="text" name="lastName" value={editedData.lastName} onChange={handleInputChange} /> : <p>{lastName}</p>}</div></div>
 
                                 <div className="data-field">
                                     <Icon name="mail" />

@@ -895,6 +895,11 @@ export default function App() {
 
     const fetchAppData = async (_forceLoadingScreen: boolean = false) => {
         if (!authToken || isPreviewMode) return;
+        
+        // Kleine Verzögerung, um dem Backend Zeit zu geben, die Transaktion abzuschließen
+        // und um Race-Conditions mit dem Browser-Netzwerk-Stack zu vermeiden
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         await Promise.all([
             queryClient.invalidateQueries({ queryKey: ['user', authToken] }),
             queryClient.invalidateQueries({ queryKey: ['users', authToken] }),
@@ -1327,7 +1332,7 @@ export default function App() {
                 setLoggedInUser((prev: any) => ({ ...prev, ...userToUpdate }));
             }
             console.log('Preview-Daten erfolgreich lokal gespeichert!');
-            return;
+            return Promise.resolve();
         }
 
         const previousUsers = queryClient.getQueryData(['users', authToken]) as any[] || [];
@@ -1335,14 +1340,22 @@ export default function App() {
 
         updateUsersCache(prev => prev.map(c => {
             if (c.id === userToUpdate.id) {
+                // Wir nehmen alle Felder aus userToUpdate und mergen sie in den bestehenden Kunden.
+                // Wichtig: Wir behalten bestehende Felder wie 'auth_id', 'created_at' etc. bei.
                 const updatedC = { ...c, ...userToUpdate };
+                
                 if (dogToUpdate) {
-                    const existingDogIndex = updatedC.dogs?.findIndex((d: any) => d.id === dogToUpdate.id);
-                    if (existingDogIndex !== undefined && existingDogIndex > -1) {
-                        updatedC.dogs[existingDogIndex] = { ...updatedC.dogs[existingDogIndex], ...dogToUpdate };
-                    } else {
-                        updatedC.dogs = [dogToUpdate, ...(updatedC.dogs || [])];
+                    const dogs = Array.isArray(c.dogs) ? [...c.dogs] : [];
+                    const existingDogIndex = dogs.findIndex((d: any) => d.id === dogToUpdate.id);
+                    
+                    if (existingDogIndex !== -1) {
+                        dogs[existingDogIndex] = { ...dogs[existingDogIndex], ...dogToUpdate };
+                    } else if (dogToUpdate.name) {
+                        // Falls es ein neuer Hund ist (ohne ID, aber mit Name), fügen wir ihn temporär hinzu
+                        // (Wird nach dem echten Save durch die echten Daten ersetzt)
+                        dogs.push({ id: `temp-dog-${Date.now()}`, ...dogToUpdate });
                     }
+                    updatedC.dogs = dogs;
                 }
                 return updatedC;
             }
@@ -1350,16 +1363,44 @@ export default function App() {
         }));
 
         if (directAccessedCustomer && directAccessedCustomer.id === userToUpdate.id) {
-            setDirectAccessedCustomer((prev: any) => ({ ...prev, ...userToUpdate }));
+            setDirectAccessedCustomer((prev: any) => {
+                const updated = { ...prev, ...userToUpdate };
+                if (dogToUpdate) {
+                    const dogs = Array.isArray(prev.dogs) ? [...prev.dogs] : [];
+                    const existingDogIndex = dogs.findIndex((d: any) => d.id === dogToUpdate.id);
+                    if (existingDogIndex !== -1) {
+                        dogs[existingDogIndex] = { ...dogs[existingDogIndex], ...dogToUpdate };
+                    } else if (dogToUpdate.name) {
+                        dogs.push({ id: `temp-dog-${Date.now()}`, ...dogToUpdate });
+                    }
+                    updated.dogs = dogs;
+                }
+                return updated;
+            });
         }
 
         if (loggedInUser && loggedInUser.id === userToUpdate.id) {
-            setLoggedInUser((prev: any) => ({ ...prev, ...userToUpdate }));
+            setLoggedInUser((prev: any) => {
+                const updated = { ...prev, ...userToUpdate };
+                if (dogToUpdate) {
+                    const dogs = Array.isArray(prev.dogs) ? [...prev.dogs] : [];
+                    const existingDogIndex = dogs.findIndex((d: any) => d.id === dogToUpdate.id);
+                    if (existingDogIndex !== -1) {
+                        dogs[existingDogIndex] = { ...dogs[existingDogIndex], ...dogToUpdate };
+                    } else if (dogToUpdate.name) {
+                        dogs.push({ id: `temp-dog-${Date.now()}`, ...dogToUpdate });
+                    }
+                    updated.dogs = dogs;
+                }
+                return updated;
+            });
         }
 
         try {
             const userPayload: any = {
                 name: userToUpdate.name,
+                vorname: userToUpdate.vorname || null,
+                nachname: userToUpdate.nachname || null,
                 role: userToUpdate.role,
                 level_id: userToUpdate.level_id,
                 is_active: userToUpdate.is_active,
@@ -1402,7 +1443,7 @@ export default function App() {
             }
 
             console.log('Kundendaten erfolgreich gespeichert!');
-            fetchAppData(false);
+            await fetchAppData(false);
         } catch (error) {
             console.error("Fehler beim Speichern der Kundendaten:", error);
             queryClient.setQueryData(['users', authToken], previousUsers);
