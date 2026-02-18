@@ -15,7 +15,8 @@ interface UsersPageProps {
 }
 
 const UsersPage: FC<UsersPageProps> = ({ users, onAddUserClick, onEditUserClick, onDeleteUserClick, currentUser, levels }) => {
-    const systemUsers = users.filter(u => u.role === 'admin' || u.role === 'mitarbeiter');
+    const staffRoles = ['admin', 'mitarbeiter', 'staff', 'trainer'];
+    const systemUsers = users.filter(u => staffRoles.includes(u.role));
 
     return (
         <>
