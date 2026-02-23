@@ -70,6 +70,7 @@ export default function AppointmentsWidget() {
 
   const theme = useQueryParam('theme', 'light');
   const layout = useQueryParam('layout', 'compact');
+  const limit = parseInt(useQueryParam('limit', '5'), 10);
 
   const [data, setData] = useState<{ appointments: PublicAppointment[]; branding?: any; appointments_config?: { color_rules?: ColorRule[] } } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +95,7 @@ export default function AppointmentsWidget() {
     if (token) load();
   }, [token]);
 
-  const appointments = data?.appointments || [];
+  const appointments = (data?.appointments || []).slice(0, limit);
 
   const containerStyle: React.CSSProperties = {
     padding: layout === 'compact' ? '12px' : '20px',
