@@ -504,7 +504,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 </div>
                             </div>
                             <button className="overview-tile clickable transactions" onClick={() => setIsTxModalOpen(true)}><div className="tile-content"><span className="label">Transaktionen gesamt</span><span className="value">{customerTransactions.length}</span></div></button>
-                            <div className="overview-tile level">
+                            <div className={`overview-tile level level-${(levelsToUse.findIndex((l: any) => l.id === currentLevelId) % 5) + 1}`}>
                                 <div className="tile-content">
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <span className="label">{displayLevel?.name}</span>

@@ -23,6 +23,7 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
         currentUser.role === 'admin' ? 'all' : String(currentUser.id)
     );
     const [selectedPeriod, setSelectedPeriod] = useState<string>('');
+    const [transactionFilter, setTransactionFilter] = useState<'all' | 'bookings' | 'debits'>('all');
 
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
@@ -71,9 +72,17 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
             const month = `${year}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
             const periodMatch = (reportType === 'yearly') ? (year === selectedPeriod) : (month === selectedPeriod);
             const mitarbeiterMatch = (selectedMitarbeiter === 'all') || (String(tx.booked_by_id) === selectedMitarbeiter);
-            return periodMatch && mitarbeiterMatch;
+            
+            let transactionTypeMatch = true;
+            if (transactionFilter === 'bookings') {
+                transactionTypeMatch = tx.amount > 0;
+            } else if (transactionFilter === 'debits') {
+                transactionTypeMatch = tx.amount < 0;
+            }
+            
+            return periodMatch && mitarbeiterMatch && transactionTypeMatch;
         });
-    }, [transactions, reportType, selectedPeriod, selectedMitarbeiter]);
+    }, [transactions, reportType, selectedPeriod, selectedMitarbeiter, transactionFilter]);
 
     const revenue = filteredTransactions
         .filter(t => t.amount > 0)
@@ -297,6 +306,14 @@ const ReportsPage: FC<ReportsPageProps> = ({ transactions, customers, users, cur
 
             <div className="content-box filter-export-panel">
                 <div className="filter-controls">
+                    <div className="filter-group">
+                        <label>Transaktionsart</label>
+                        <select className="form-input" value={transactionFilter} onChange={e => setTransactionFilter(e.target.value as 'all' | 'bookings' | 'debits')}>
+                            <option value="all">Alle (Buchungen & Abbuchungen)</option>
+                            <option value="bookings">Nur Buchungen (Guthaben)</option>
+                            <option value="debits">Nur Abbuchungen (Leistungen)</option>
+                        </select>
+                    </div>
                     <div className="filter-group">
                         <label>Berichtstyp</label>
                         <select className="form-input" value={reportType} onChange={e => setReportType(e.target.value as 'monthly' | 'yearly')}>

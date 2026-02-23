@@ -25,11 +25,11 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
         notif_email_booking: user?.notif_email_booking ?? true,
         notif_email_alert: user?.notif_email_alert ?? true,
 
-        notif_push_overall: user?.notif_push_overall ?? true,
-        notif_push_chat: user?.notif_push_chat ?? true,
-        notif_push_news: user?.notif_push_news ?? true,
-        notif_push_booking: user?.notif_push_booking ?? true,
-        notif_push_alert: user?.notif_push_alert ?? true,
+        notif_push_overall: user?.notif_push_overall ?? false,
+        notif_push_chat: user?.notif_push_chat ?? false,
+        notif_push_news: user?.notif_push_news ?? false,
+        notif_push_booking: user?.notif_push_booking ?? false,
+        notif_push_alert: user?.notif_push_alert ?? false,
     });
 
     // Track if we have synced with the user prop for this open session
@@ -52,11 +52,11 @@ const NotificationSettingsModal: FC<NotificationSettingsModalProps> = ({ isOpen,
                 notif_email_booking: user.notif_email_booking ?? true,
                 notif_email_alert: user.notif_email_alert ?? true,
 
-                notif_push_overall: user.notif_push_overall ?? true,
-                notif_push_chat: user.notif_push_chat ?? true,
-                notif_push_news: user.notif_push_news ?? true,
-                notif_push_booking: user.notif_push_booking ?? true,
-                notif_push_alert: user.notif_push_alert ?? true,
+                notif_push_overall: user.notif_push_overall ?? false,
+                notif_push_chat: user.notif_push_chat ?? false,
+                notif_push_news: user.notif_push_news ?? false,
+                notif_push_booking: user.notif_push_booking ?? false,
+                notif_push_alert: user.notif_push_alert ?? false,
             });
             hasSyncedRef.current = true;
         }

@@ -35,6 +35,8 @@ import ReportsPage from './pages/reports/ReportsPage';
 import UsersPage from './pages/admin/UsersPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import { NewsPage } from './pages/NewsPage';
+import StatusWidget from './pages/widgets/StatusWidget';
+import AppointmentsWidget from './pages/widgets/AppointmentsWidget';
 import { ChatPage } from './pages/ChatPage';
 
 // NEU: Hook importieren
@@ -119,6 +121,10 @@ export default function App() {
             return { page: 'dashboard' }; // showPasswordReset state will handle rendering
         }
 
+        // Widget-Routen (ohne Layout)
+        if (path.startsWith('/widget/status/')) return { page: 'widget', subPage: 'status' } as any;
+        if (path.startsWith('/widget/appointments/')) return { page: 'widget', subPage: 'appointments' } as any;
+
         const match = path.match(/^\/customer\/([a-zA-Z0-9-]+)$/);
         if (match && match[1]) {
             const identifier = match[1];
@@ -166,6 +172,10 @@ export default function App() {
         const handlePopState = () => {
             const path = window.location.pathname;
             let newView: View = { page: 'dashboard' };
+
+            // Widget-Routen (ohne Layout)
+            if (path.startsWith('/widget/status/')) { setView({ page: 'widget', subPage: 'status' } as any); return; }
+            if (path.startsWith('/widget/appointments/')) { setView({ page: 'widget', subPage: 'appointments' } as any); return; }
 
             const match = path.match(/^\/customer\/([a-zA-Z0-9-]+)$/);
             if (match && match[1]) {
@@ -1561,6 +1571,16 @@ export default function App() {
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--background-color)' }}>
                 <LoadingSpinner message="Lade App..." />
             </div >
+        );
+    }
+
+    // --- Widget: Ohne globales Layout rendern ---
+    const isWidgetRoute = view.page === 'widget';
+    if (isWidgetRoute) {
+        return (
+            <div className="w-full h-full min-h-screen">
+                {view.subPage === 'status' ? <StatusWidget /> : <AppointmentsWidget />}
+            </div>
         );
     }
 

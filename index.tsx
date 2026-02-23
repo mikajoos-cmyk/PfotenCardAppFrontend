@@ -1342,7 +1342,7 @@ const CustomerDetailPage: FC<{
                         <div className="overview-tile-grid">
                             <div className="overview-tile balance"><div className="tile-content"><span className="label">Aktuelles Guthaben</span><span className="value">{customer.balance.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span></div></div>
                             <button className="overview-tile clickable transactions" onClick={() => setIsTxModalOpen(true)}><div className="tile-content"><span className="label">Transaktionen gesamt</span><span className="value">{customerTransactions.length}</span></div></button>
-                            <div className="overview-tile level"><div className="tile-content"><span className="label">{displayLevel?.name}</span><span className="value">{`Level ${customer.level_id || 1}`}</span></div></div>
+                            <div className={`overview-tile level level-${((customer.level_id || 1) - 1) % 5 + 1}`}><div className="tile-content"><span className="label">{displayLevel?.name}</span><span className="value">{`Level ${customer.level_id || 1}`}</span></div></div>
                         </div>
                     </div>
 

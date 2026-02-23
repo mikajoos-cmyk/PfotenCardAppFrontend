@@ -427,7 +427,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments, levels }: {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments, levels, cancelationPeriodHours }: {
     event: Appointment,
     onClose: () => void,
     onAction: (type: 'book' | 'cancel' | 'participants') => void,
@@ -441,11 +441,23 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     onDogChange: (id: number | null) => void,
     colorRules?: ColorRule[],
     allAppointments: Appointment[],
-    levels?: any[]
+    levels?: any[],
+    cancelationPeriodHours?: number
 }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
-    const isPast = new Date(event.start_time) < new Date();
+    const now = new Date();
+    const startTime = new Date(event.start_time);
+    const isPast = startTime < now;
+
+    // Stornierung prüfen
+    let canCancel = !isPast;
+    if (canCancel && cancelationPeriodHours && cancelationPeriodHours > 0) {
+        const cancelLimit = new Date(startTime.getTime() - (cancelationPeriodHours * 60 * 60 * 1000));
+        if (now > cancelLimit) {
+            canCancel = false;
+        }
+    }
     const date = new Date(event.start_time);
 
     // Header Farbe basierend auf Event-Titel oder Level-Farbe
@@ -479,6 +491,26 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                             <span style={{ fontWeight: 500 }}>{formatTime(date)}</span>
                         </div>
                     </div>
+                    {/* Hinweis zur Stornierungsfrist sichtbar beim Anmelden & in Details */}
+                    {(() => {
+                        const startTimeLocal = new Date(event.start_time);
+                        const limit = (cancelationPeriodHours && cancelationPeriodHours > 0)
+                            ? new Date(startTimeLocal.getTime() - cancelationPeriodHours * 60 * 60 * 1000)
+                            : startTimeLocal;
+                        const isExpired = new Date() > limit;
+                        return (
+                            <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: isExpired ? 'var(--brand-red)' : 'var(--text-secondary)' }}>
+                                <Icon name="info" />
+                                <span>
+                                    {isExpired ? (
+                                        <>Stornierungsfrist abgelaufen{cancelationPeriodHours && cancelationPeriodHours > 0 ? ` (${cancelationPeriodHours}h)` : ''}.</>
+                                    ) : (
+                                        <>Stornierbar bis: {formatDate(limit)} um {formatTime(limit)} {cancelationPeriodHours && cancelationPeriodHours > 0 ? `(${cancelationPeriodHours}h vorher)` : '(bis Beginn)'}.</>
+                                    )}
+                                </span>
+                            </div>
+                        );
+                    })()}
                     {event.training_type && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
@@ -643,9 +675,14 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                                         <Icon name="clock" /> Auf der Warteliste
                                     </button>
                                 )}
-                                <button className="button button-danger" onClick={() => onAction('cancel')} disabled={isPast}>
+                                <button className="button button-danger" onClick={() => onAction('cancel')} disabled={!canCancel}>
                                     <Icon name="x" /> Stornieren
                                 </button>
+                                {!canCancel && !isPast && (
+                                    <div style={{ position: 'absolute', bottom: '100%', right: 0, fontSize: '0.7rem', color: 'var(--brand-red)', width: '200px', textAlign: 'right', marginBottom: '0.5rem' }}>
+                                        Stornierungsfrist abgelaufen ({cancelationPeriodHours}h)
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <button
@@ -663,12 +700,13 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     );
 };
 
-const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser, isBlockEvent, levels }: {
+const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onRemoveParticipant, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser, isBlockEvent, levels }: {
     isOpen: boolean,
     onClose: () => void,
     bookings: Booking[],
     title: string,
     onToggleAttendance: (id: number) => void,
+    onRemoveParticipant: (id: number) => void,
     onBillParticipant?: (id: number) => Promise<void> | void,
     onBillAll?: () => Promise<void> | void,
     showBilling?: boolean,
@@ -828,6 +866,20 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                                                 {b.attended ? <><Icon name="check" /> Anwesend</> : 'Nicht anwesend'}
                                             </button>
                                         )}
+                                        {hasPermission(loggedInUser, 'can_delete_courses') && (
+                                            <button
+                                                onClick={() => {
+                                                    if (window.confirm(`${b.user?.name || 'Teilnehmer'} wirklich entfernen?`)) {
+                                                        onRemoveParticipant(b.id);
+                                                    }
+                                                }}
+                                                className="button button-small button-danger"
+                                                title="Teilnehmer entfernen"
+                                                style={{ padding: '0.25rem' }}
+                                            >
+                                                <Icon name="trash" width={16} height={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </li>
                             ))}
@@ -866,6 +918,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const colorRules = configData?.tenant?.config?.appointments?.color_rules || [];
     const defaultDuration = configData?.tenant?.config?.appointments?.default_duration || 60;
     const defaultMaxParticipants = configData?.tenant?.config?.appointments?.max_participants || 10;
+    const cancelationPeriodHours = configData?.tenant?.config?.appointments?.cancelation_period_hours || 0;
     const autoBillingEnabled = !!configData?.tenant?.config?.auto_billing_enabled;
     const autoProgressEnabled = !!configData?.tenant?.config?.auto_progress_enabled;
 
@@ -993,6 +1046,21 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     alert("Erfolgreich angemeldet!");
                 }
             } else {
+                // Zusätzliche Client-Schutzlogik: Stornierungsfrist prüfen
+                const now = new Date();
+                const startTime = new Date(event.start_time);
+                if (startTime <= now) {
+                    alert("Stornierung nicht mehr möglich: Termin hat bereits begonnen.");
+                    return;
+                }
+                if (cancelationPeriodHours && cancelationPeriodHours > 0) {
+                    const cancelLimit = new Date(startTime.getTime() - cancelationPeriodHours * 60 * 60 * 1000);
+                    if (now > cancelLimit) {
+                        alert(`Stornierung nicht mehr möglich: Stornierungsfrist abgelaufen (${cancelationPeriodHours}h).`);
+                        return;
+                    }
+                }
+
                 const result = await apiClient.cancelAppointment(event.id, token);
                 alert("Storniert.");
                 if (result.promoted_user_id) {
@@ -1036,6 +1104,24 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         } catch (e) {
             console.error(e);
             alert("Konnte Teilnehmer nicht laden.");
+        }
+    };
+
+    const handleRemoveParticipant = async (bookingId: number) => {
+        if (isPreview) {
+            setCurrentParticipants(prev => prev.filter(b => b.id !== bookingId));
+            return;
+        }
+        try {
+            await apiClient.removeParticipant(bookingId, token);
+            // Teilnehmerliste aktualisieren
+            if (currentEvent) {
+                const parts = await apiClient.getParticipants(currentEvent.id, token);
+                setCurrentParticipants(parts);
+            }
+            queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        } catch (e: any) {
+            alert(e.message || "Fehler beim Entfernen");
         }
     };
 
@@ -1379,8 +1465,20 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                 <div className="event-details">
                                                     <span className="event-title">{event.title}</span>
                                                     <div className="event-line-2">
-                                                        <span>{formatDate(date)} &bull; {formatTime(date)}</span>
-                                                        {event.location && <span className="event-location">&bull; {event.location}</span>}
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            <Icon name="calendar" style={{ width: '12px', height: '12px', opacity: 0.7 }} />
+                                                            {formatDate(date)}
+                                                        </span>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            <Icon name="clock" style={{ width: '12px', height: '12px', opacity: 0.7 }} />
+                                                            {formatTime(date)}
+                                                        </span>
+                                                        {event.location && (
+                                                            <span className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                <Icon name="map-pin" style={{ width: '12px', height: '12px', opacity: 0.7 }} />
+                                                                {event.location}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
                                                         {event.training_type && (
@@ -1537,6 +1635,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 bookings={currentParticipants}
                 title={currentApptTitle}
                 onToggleAttendance={handleToggleAttendance}
+                onRemoveParticipant={handleRemoveParticipant}
                 onBillParticipant={handleBillParticipant}
                 onBillAll={handleBillAllParticipants}
                 showBilling={autoBillingEnabled || autoProgressEnabled}
@@ -1563,6 +1662,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     colorRules={colorRules}
                     allAppointments={appointments}
                     levels={allLevels}
+                    cancelationPeriodHours={cancelationPeriodHours}
                 />
             )}
         </div>

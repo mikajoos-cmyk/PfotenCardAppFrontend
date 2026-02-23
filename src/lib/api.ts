@@ -259,6 +259,10 @@ export const apiClient = {
         return apiClient.put(`/api/bookings/${bookingId}/attendance`, {}, token);
     },
 
+    removeParticipant: async (bookingId: number, token: string | null) => {
+        return apiClient.delete(`/api/bookings/${bookingId}`, token);
+    },
+
     billBooking: async (bookingId: number, token: string | null) => {
         return apiClient.post(`/api/bookings/${bookingId}/bill`, {}, token);
     },
