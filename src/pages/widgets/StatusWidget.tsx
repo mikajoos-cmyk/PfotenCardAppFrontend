@@ -50,8 +50,6 @@ export default function StatusWidget() {
     ? 'Einschränkungen im Betrieb. Bitte Details beachten.'
     : 'Alle Stunden finden wie geplant statt.';
 
-  // Optional: dunkles Embed bekommt dunklen Seitenhintergrund, Banner bleibt wie im App‑Design
-  const pageBg = theme === 'dark' ? { backgroundColor: '#0b1220', padding: '12px' } : { padding: '12px' } as React.CSSProperties;
 
   // Icons exakt wie im App‑Banner
   const CheckIcon = () => (
@@ -71,11 +69,11 @@ export default function StatusWidget() {
   );
 
   return (
-    <div style={pageBg}>
-      {loading && <p style={{ fontSize: '14px', opacity: 0.8, color: '#94A3B8', textAlign: 'center' }}>Lade Status…</p>}
-      {error && <p style={{ fontSize: '14px', color: '#ef4444', textAlign: 'center' }}>{error}</p>}
+    <>
+      {loading && <p style={{ fontSize: '14px', opacity: 0.8, color: '#94A3B8' }}>Lade Status…</p>}
+      {error && <p style={{ fontSize: '14px', color: '#ef4444' }}>{error}</p>}
       {!loading && !error && data && (
-        <div className={bannerClass} role="alert">
+        <div className={bannerClass} role="alert" style={{ margin: 0 }}>
           {isCancelled ? <CrossIcon /> : isPartial ? <WarningIcon /> : <CheckIcon />}
           <div className="status-banner-content">
             <h4 className="status-banner-headline">{defaultMessage}</h4>
@@ -86,6 +84,6 @@ export default function StatusWidget() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

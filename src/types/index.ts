@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
-export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions' | 'impressum' | 'datenschutz' | 'agb';
-export type View = { page: Page; customerId?: string, chatPartnerId?: string, subPage?: 'detail' | 'transactions', targetAppointmentId?: number, dogId?: number };
+export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions' | 'impressum' | 'datenschutz' | 'agb' | 'widget';
+export type View = { page: Page; customerId?: string, chatPartnerId?: string, subPage?: 'detail' | 'transactions' | 'status', targetAppointmentId?: number, dogId?: number };
 
 
 export interface User {
@@ -39,6 +39,7 @@ export interface User {
         can_create_courses: boolean;
         can_edit_status: boolean;
         can_delete_customers: boolean;
+        can_delete_courses: boolean;
         can_create_messages: boolean;
     };
 }
@@ -137,6 +138,7 @@ export interface Customer {
         can_create_courses: boolean;
         can_edit_status: boolean;
         can_delete_customers: boolean;
+        can_delete_courses: boolean;
         can_create_messages: boolean;
     };
 }

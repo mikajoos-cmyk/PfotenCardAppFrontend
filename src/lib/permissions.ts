@@ -1,7 +1,7 @@
 
 import { User } from '../types';
 
-export const hasPermission = (user: User | any, permission: 'can_create_courses' | 'can_edit_status' | 'can_delete_customers' | 'can_edit_customers' | 'can_create_messages'): boolean => {
+export const hasPermission = (user: User | any, permission: 'can_create_courses' | 'can_edit_status' | 'can_delete_customers' | 'can_edit_customers' | 'can_create_messages' | 'can_delete_courses'): boolean => {
     if (!user) return false;
 
     // Admins always have all permissions
