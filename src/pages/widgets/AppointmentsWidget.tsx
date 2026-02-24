@@ -97,6 +97,32 @@ export default function AppointmentsWidget() {
 
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
+  // Auto-Höhe an den Parent per postMessage melden
+  useEffect(() => {
+    const post = () => {
+      const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'WIDGET_HEIGHT', height: h }, '*');
+      }
+    };
+    // Reagiere auf Größenänderungen
+    let ro: any = null;
+    if ((window as any).ResizeObserver) {
+      ro = new (window as any).ResizeObserver(post);
+      ro.observe(document.body);
+    }
+    const t = setInterval(post, 500);
+    window.addEventListener('load', post);
+    window.addEventListener('resize', post);
+    post();
+    return () => {
+      if (ro) ro.disconnect();
+      clearInterval(t);
+      window.removeEventListener('load', post);
+      window.removeEventListener('resize', post);
+    };
+  }, [loading, error, data, layout, limit, selectedDay, theme]);
+
   const appointments = (data?.appointments || []);
   const displayedAppointments = layout === 'calendar' ? appointments : appointments.slice(0, limit);
 
@@ -132,13 +158,15 @@ export default function AppointmentsWidget() {
     return days;
   }, [layout, appointments, limit]);
 
+  const isDark = theme === 'dark';
+  const isTransparent = theme === 'transparent';
   const containerStyle: React.CSSProperties = {
     padding: layout === 'compact' ? '12px' : '20px',
-    backgroundColor: 'transparent',
+    backgroundColor: isTransparent ? 'transparent' : (isDark ? '#0b1220' : '#ffffff'),
     fontFamily: "'Poppins', 'system-ui', sans-serif",
     lineHeight: 1.5,
     minHeight: '100%',
-    color: theme === 'dark' ? '#e2e8f0' : '#1e293b'
+    color: isTransparent ? undefined : (isDark ? '#e2e8f0' : '#1e293b')
   };
 
   const formatDate = (d: string | Date) => new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(new Date(d));
@@ -229,7 +257,7 @@ export default function AppointmentsWidget() {
                             justifyContent: 'center',
                             cursor: day.appointments.length > 0 ? 'pointer' : 'default',
                             position: 'relative',
-                            backgroundColor: theme === 'dark' ? 'transparent' : 'white',
+                            backgroundColor: theme === 'transparent' ? 'transparent' : (theme === 'dark' ? 'transparent' : 'white'),
                             padding: '2px',
                             opacity: day.date.setHours(0,0,0,0) === today.getTime() ? 1 : 0.9
                           }}

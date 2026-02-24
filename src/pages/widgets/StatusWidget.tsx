@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 
 function useQueryParam(key: string, defaultValue?: string) {
   return useMemo(() => {
@@ -38,10 +38,79 @@ export default function StatusWidget() {
     if (token) load();
   }, [token]);
 
+  // Auto-Höhe an den Parent per postMessage melden
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const post = () => {
+      const el = rootRef.current || document.querySelector('#status-widget-root') as HTMLElement | null;
+      const h = el ? Math.ceil(el.getBoundingClientRect().height) : Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'WIDGET_HEIGHT', height: h }, '*');
+      }
+    };
+    let ro: any = null;
+    if ((window as any).ResizeObserver) {
+      ro = new (window as any).ResizeObserver(post);
+      ro.observe(document.body);
+    }
+    const t = setInterval(post, 500);
+    window.addEventListener('load', post);
+    window.addEventListener('resize', post);
+    post();
+    return () => {
+      if (ro) ro.disconnect();
+      clearInterval(t);
+      window.removeEventListener('load', post);
+      window.removeEventListener('resize', post);
+    };
+  }, [loading, error, data, theme]);
+
   // Abgeleitete Flags wie im App‑Banner
   const isCancelled = (data?.status || '') === 'cancelled';
   const isPartial = (data?.status || '') === 'partial';
   const bannerClass = `status-banner ${isCancelled ? 'is-cancelled' : isPartial ? 'is-partial' : 'is-active'}`;
+
+  const isDark = theme === 'dark';
+  const isTransparent = theme === 'transparent';
+
+  // Branding-Hintergrundfarbe aus API nutzen, falls vorhanden
+  const brandingBg = data?.branding?.primary_color as string | undefined;
+
+  // Hilfsfunktion: Kontrastfarbe zu einer HEX-Farbe bestimmen (hell/dunkel)
+  const pickTextColorForBg = (hex?: string, darkFallback = '#1e293b', lightFallback = '#e2e8f0') => {
+    if (!hex) return darkFallback;
+    const m = hex.replace('#', '').match(/.{1,2}/g);
+    if (!m || m.length < 3) return darkFallback;
+    const [r, g, b] = m.map(x => parseInt(x.length === 1 ? x + x : x, 16));
+    // relative luminance
+    const [R, G, B] = [r, g, b].map(v => {
+      const c = v / 255;
+      return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    });
+    const L = 0.2126 * R + 0.7152 * G + 0.0722 * B;
+    return L > 0.5 ? darkFallback : lightFallback;
+  };
+
+  const bgColor = isTransparent
+    ? 'transparent'
+    : (theme === 'branding' && brandingBg)
+      ? brandingBg
+      : (isDark ? '#0b1220' : '#ffffff');
+
+  const fgColor = isTransparent
+    ? undefined
+    : (theme === 'branding' && brandingBg)
+      ? pickTextColorForBg(brandingBg)
+      : (isDark ? '#e2e8f0' : '#1e293b');
+
+  const containerStyle: React.CSSProperties = {
+    backgroundColor: bgColor,
+    color: fgColor,
+    padding: 0,
+    margin: 0,
+    overflow: 'hidden',
+    borderRadius: 12
+  };
 
   // Headline wie in der App
   const defaultMessage = isCancelled
@@ -69,11 +138,11 @@ export default function StatusWidget() {
   );
 
   return (
-    <>
-      {loading && <p style={{ fontSize: '14px', opacity: 0.8, color: '#94A3B8' }}>Lade Status…</p>}
-      {error && <p style={{ fontSize: '14px', color: '#ef4444' }}>{error}</p>}
+    <div id="status-widget-root" ref={rootRef} style={containerStyle}>
+      {loading && <p style={{ fontSize: '14px', opacity: 0.8, color: '#94A3B8', margin: 0, padding: '1rem' }}>Lade Status…</p>}
+      {error && <p style={{ fontSize: '14px', color: '#ef4444', margin: 0, padding: '1rem' }}>{error}</p>}
       {!loading && !error && data && (
-        <div className={bannerClass} role="alert" style={{ margin: 0 }}>
+        <div className={bannerClass} role="alert" style={{ margin: 0, borderRadius: 12 }}>
           {isCancelled ? <CrossIcon /> : isPartial ? <WarningIcon /> : <CheckIcon />}
           <div className="status-banner-content">
             <h4 className="status-banner-headline">{defaultMessage}</h4>
@@ -84,6 +153,6 @@ export default function StatusWidget() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

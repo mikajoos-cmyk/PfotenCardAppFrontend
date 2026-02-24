@@ -63,13 +63,13 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
                     return (
                         <li key={c.id} onClick={() => { setModal({ ...modal, isOpen: false }); setView({ page: 'customers', subPage: 'detail', customerId: c.auth_id || String(c.id) }); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <div 
-                                className={`avatar avatar-sm ${!levelColor ? getAvatarColorClass(c.name) : ''}`} 
+                                className={`initials-avatar small ${!levelColor ? getAvatarColorClass(c.name) : ''}`} 
                                 style={{ flexShrink: 0, ...(levelColor ? { backgroundColor: levelColor, color: 'white' } : {}) }}
                             >
                                 {getInitials(c.name)}
                             </div>
                             <div style={{ flex: 1 }}>
-                                <span>{c.name} ({firstDog?.name || '-'})</span>
+                                <span style={{ fontWeight: 500 }}>{c.name} ({firstDog?.name || '-'})</span>
                             </div>
                             <span style={{ fontWeight: 600 }}>€ {Math.floor(c.balance).toLocaleString('de-DE')}</span>
                         </li>
