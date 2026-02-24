@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 
 function useQueryParam(key: string, defaultValue?: string) {
   return useMemo(() => {
@@ -75,6 +75,7 @@ export default function AppointmentsWidget() {
   const [data, setData] = useState<{ appointments: PublicAppointment[]; branding?: any; appointments_config?: { color_rules?: ColorRule[] } } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -99,24 +100,52 @@ export default function AppointmentsWidget() {
 
   // Auto-Höhe an den Parent per postMessage melden
   useEffect(() => {
+    // Grundlegende Defaults im Iframe sicherstellen
+    try {
+      document.documentElement.style.margin = '0';
+      document.documentElement.style.height = 'auto';
+      document.body.style.margin = '0';
+      document.body.style.height = 'auto';
+      document.body.style.overflow = 'visible';
+    } catch {}
+
     const post = () => {
-      const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-      if (window.parent && window.parent !== window) {
+      const root = rootRef.current as any;
+      const candidates = [
+        document.documentElement?.scrollHeight || 0,
+        document.body?.scrollHeight || 0,
+        document.documentElement?.offsetHeight || 0,
+        document.body?.offsetHeight || 0,
+        document.documentElement?.clientHeight || 0,
+        root?.scrollHeight || 0,
+        (root?.getBoundingClientRect ? root.getBoundingClientRect().height : 0) || 0,
+      ];
+      const h = Math.ceil(Math.max(...candidates)) + 2; // kleiner Puffer gegen Rundungsfehler
+      if (window.parent && window.parent !== window && isFinite(h) && h > 0) {
         window.parent.postMessage({ type: 'WIDGET_HEIGHT', height: h }, '*');
       }
     };
+
     // Reagiere auf Größenänderungen
     let ro: any = null;
-    if ((window as any).ResizeObserver) {
-      ro = new (window as any).ResizeObserver(post);
+    const ResizeObs = (window as any).ResizeObserver;
+    if (ResizeObs) {
+      ro = new ResizeObs(post);
       ro.observe(document.body);
+      if (rootRef.current) ro.observe(rootRef.current);
+      ro.observe(document.documentElement);
     }
-    const t = setInterval(post, 500);
+    const mo = new MutationObserver(post);
+    mo.observe(document.body, { attributes: true, childList: true, subtree: true, characterData: true });
+
+    const t = setInterval(post, 700);
     window.addEventListener('load', post);
     window.addEventListener('resize', post);
     post();
+
     return () => {
       if (ro) ro.disconnect();
+      mo.disconnect();
       clearInterval(t);
       window.removeEventListener('load', post);
       window.removeEventListener('resize', post);
@@ -165,7 +194,9 @@ export default function AppointmentsWidget() {
     backgroundColor: isTransparent ? 'transparent' : (isDark ? '#0b1220' : '#ffffff'),
     fontFamily: "'Poppins', 'system-ui', sans-serif",
     lineHeight: 1.5,
-    minHeight: '100%',
+    minHeight: 'auto',
+    height: 'auto',
+    boxSizing: 'border-box',
     color: isTransparent ? undefined : (isDark ? '#e2e8f0' : '#1e293b')
   };
 
@@ -175,7 +206,7 @@ export default function AppointmentsWidget() {
   const colorRules = data?.appointments_config?.color_rules || [];
 
   return (
-    <div style={containerStyle}>
+    <div ref={rootRef} style={containerStyle}>
       {/* Header wie in der App (schlicht) */}
       {data?.branding?.school_name && (
         <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: theme === 'dark' ? '#94a3b8' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -303,7 +334,7 @@ export default function AppointmentsWidget() {
       )}
 
       {!loading && !error && layout !== 'calendar' && (
-        <ul className="event-list-styled">
+        <ul className="event-list-styled" style={{ overflow: 'visible' }}>
           {displayedAppointments.map((a) => {
             const color = getCategoryColor(a, colorRules);
             const capacityKnown = typeof a.max_participants === 'number';
