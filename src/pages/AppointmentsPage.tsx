@@ -72,7 +72,178 @@ const getCategoryColor = (event: Appointment, colorRules?: ColorRule[]): string 
 
 // --- MODALS ---
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean }) => {
+const TemplateSelectionModal = ({ isOpen, onClose, onSelect, allAppointments, isDarkMode, colorRules }: { isOpen: boolean, onClose: () => void, onSelect: (appointment: Appointment) => void, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[] }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [timeFilter, setTimeFilter] = useState<'future' | 'past'>('future');
+
+    if (!isOpen) return null;
+
+    const now = new Date();
+
+    // Gruppiere Termine nach Titel, um Duplikate in der Vorlagenliste zu vermeiden
+    const filteredAppointments = allAppointments
+        .filter(a => {
+            const matchesSearch = a.title?.toLowerCase().includes(searchTerm.toLowerCase()) || a.location?.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesSearch) return false;
+
+            const startTime = new Date(a.start_time).getTime();
+            if (timeFilter === 'future') {
+                return startTime >= now.getTime();
+            } else {
+                return startTime < now.getTime();
+            }
+        })
+        .sort((a, b) => {
+            const timeA = new Date(a.start_time).getTime();
+            const timeB = new Date(b.start_time).getTime();
+            
+            if (timeFilter === 'future') {
+                // Aufsteigend
+                return timeA - timeB;
+            } else {
+                // Absteigend
+                return timeB - timeA;
+            }
+        });
+
+    // Nur eindeutige Vorlagen basierend auf Titel + Beschreibung + Ort (vereinfacht)
+    const uniqueTemplates: Appointment[] = [];
+    const seen = new Set();
+    for (const a of filteredAppointments) {
+        const key = `${a.title}-${a.description}-${a.location}-${a.training_type_id}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueTemplates.push(a);
+        }
+    }
+
+    return (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+            <div className="modal-content" style={{ maxWidth: '700px' }}>
+                <div className="modal-header green">
+                    <h2>Vorlage auswählen</h2>
+                    <button className="close-button" onClick={onClose}><Icon name="x" /></button>
+                </div>
+                <div className="modal-body">
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Nach Titel oder Ort suchen..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
+                        <button
+                            className={`button ${timeFilter === 'future' ? 'button-primary' : 'button-outline'}`}
+                            style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                            onClick={() => setTimeFilter('future')}
+                        >
+                            Zukünftig
+                        </button>
+                        <button
+                            className={`button ${timeFilter === 'past' ? 'button-primary' : 'button-outline'}`}
+                            style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                            onClick={() => setTimeFilter('past')}
+                        >
+                            Vergangen
+                        </button>
+                    </div>
+
+                    <div className="event-list-container" style={{ maxHeight: '500px', overflowY: 'auto', marginTop: '1rem', paddingRight: '0.5rem' }}>
+                        {uniqueTemplates.length === 0 ? (
+                            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Keine Vorlagen gefunden.</p>
+                        ) : (
+                            <ul className="event-list-styled">
+                                {uniqueTemplates.map(a => {
+                                    const date = new Date(a.start_time);
+                                    const eventColor = getCategoryColor(a, colorRules);
+                                    
+                                    return (
+                                        <li
+                                            key={a.id}
+                                            className="event-item-styled template-item"
+                                            onClick={() => onSelect(a)}
+                                            style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer', marginBottom: '0.75rem' }}
+                                        >
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 0,
+                                                bottom: 0,
+                                                width: '12px',
+                                                backgroundColor: eventColor
+                                            }} />
+                                            
+                                            <div className="event-details" style={{ paddingLeft: '1rem' }}>
+                                                <span className="event-title" style={{ fontSize: '1rem', fontWeight: 600 }}>{a.title}</span>
+                                                <div className="event-line-2" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <Icon name="calendar" size={12} style={{ opacity: 0.7 }} />
+                                                        {formatDate(date)}
+                                                    </span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <Icon name="clock" size={12} style={{ opacity: 0.7 }} />
+                                                        {formatTime(date)}
+                                                    </span>
+                                                    {a.location && (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            <Icon name="map-pin" size={12} style={{ opacity: 0.7 }} />
+                                                            {a.location}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                
+                                                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {a.training_type && (
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--brand-orange)', background: 'var(--bg-accent-orange)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--warning-color-light)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                            <Icon name="activity" size={10} />
+                                                            {a.training_type.name}
+                                                        </div>
+                                                    )}
+                                                    {a.trainer && (
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-card)', padding: '0.1rem 0.5rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                                                            <Icon name="user" size={10} />
+                                                            {a.trainer.name}
+                                                        </div>
+                                                    )}
+                                                    {a.is_open_for_all ? (
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--brand-green)', background: 'var(--bg-accent-success)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--success-color-light)' }}>
+                                                            Alle dürfen kommen
+                                                        </div>
+                                                    ) : a.target_levels?.map((lvl: any) => (
+                                                        <div key={lvl.id} style={{ fontSize: '0.7rem', color: 'var(--primary-color)', background: 'var(--bg-accent)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600 }}>
+                                                            {lvl.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                
+                                                {a.description && (
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.5rem', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                        {a.description}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+                <div className="modal-footer">
+                    <button onClick={onClose} className="button button-outline">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[] }) => {
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -208,6 +379,54 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                     <button className="close-button" onClick={onClose}><Icon name="x" /></button>
                 </div>
                 <div className="modal-body">
+                    {!initialData && (
+                        <div style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+                            <button
+                                type="button"
+                                className="button button-outline w-full"
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
+                                onClick={() => setIsTemplateModalOpen(true)}
+                            >
+                                <Icon name="copy" size={16} /> Vorlage auswählen
+                            </button>
+                        </div>
+                    )}
+
+                    <TemplateSelectionModal
+                        isOpen={isTemplateModalOpen}
+                        onClose={() => setIsTemplateModalOpen(false)}
+                        allAppointments={allAppointments}
+                        isDarkMode={isDarkMode}
+                        colorRules={colorRules}
+                        onSelect={(template) => {
+                            const start = new Date(template.start_time);
+                            const end = new Date(template.end_time);
+                            const dur = Math.round((end.getTime() - start.getTime()) / 60000);
+
+                            setFormData(prev => {
+                                return {
+                                    ...prev,
+                                    title: template.title || '',
+                                    description: template.description || '',
+                                    // Datum wird nicht automatisch übernommen
+                                    start_time: start.toTimeString().slice(0, 5),
+                                    duration: dur,
+                                    end_time: end.toTimeString().slice(0, 5),
+                                    location: template.location || '',
+                                    max_participants: template.max_participants || 10,
+                                    trainer_id: template.trainer_id?.toString() || '',
+                                    training_type_id: template.training_type_id?.toString() || '',
+                                    target_level_ids: (template.target_levels && template.target_levels.length > 0)
+                                        ? template.target_levels.map((l: any) => l.id)
+                                        : (template.target_level_ids || []),
+                                    price: template.price || null,
+                                    is_open_for_all: template.is_open_for_all || false,
+                                };
+                            });
+                            setIsTemplateModalOpen(false);
+                        }}
+                    />
+
                     <form onSubmit={handleSubmit} className="form-grid-single">
                         <div className="form-group"><label>Titel</label><input required className="form-input" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="z.B. Welpen-Spielstunde" /></div>
 
@@ -956,6 +1175,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [currentParticipants, setCurrentParticipants] = useState<Booking[]>([]);
     const [currentApptTitle, setCurrentApptTitle] = useState('');
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
+    const [billingResults, setBillingResults] = useState<{ successCount: number, errors: any[] } | null>(null);
     const [currentEvent, setCurrentEvent] = useState<Appointment | null>(null);
 
     // Detail Modal State
@@ -1173,23 +1394,10 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
 
             const successCount = results.filter((r: any) => r.status === 'success').length;
             const errors = results.filter((r: any) => r.status === 'error');
-            const errorCount = errors.length;
-
-            let msg = `${successCount} Teilnehmer erfolgreich verarbeitet.`;
-            if (errorCount > 0) {
-                msg += `\n\nFehler bei ${errorCount} Teilnehmer(n):`;
-                // Zeige die ersten paar Fehlermeldungen an
-                errors.slice(0, 5).forEach((err: any) => {
-                    // Falls der User im Resultat enthalten ist (Backend müsste das ggf. mitsenden oder wir suchen in currentParticipants)
-                    const participant = currentParticipants.find(p => p.id === err.booking_id);
-                    const name = participant?.user?.name || `ID ${err.booking_id}`;
-                    msg += `\n• ${name}: ${err.detail || 'Unbekannter Fehler'}`;
-                });
-                if (errorCount > 5) {
-                    msg += `\n... und ${errorCount - 5} weitere.`;
-                }
-            }
-            alert(msg);
+            
+            setBillingResults({ successCount, errors });
+            setIsBillingModalOpen(true);
+            setParticipantsOpen(false);
             queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e: any) {
             alert(e.message || "Fehler bei der Sammel-Aktion");
@@ -1605,6 +1813,46 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 </div>
             )}
 
+            {isBillingModalOpen && billingResults && (
+                <InfoModal
+                    title="Ergebnis der Sammel-Abrechnung"
+                    onClose={() => setIsBillingModalOpen(false)}
+                    color={billingResults.errors.length > 0 ? 'orange' : 'green'}
+                >
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 font-semibold text-lg">
+                            <Icon name={billingResults.errors.length === 0 ? "check-circle" : "info"} 
+                                  style={{ color: billingResults.errors.length === 0 ? 'var(--brand-green)' : 'var(--brand-orange)' }} />
+                            <span>{billingResults.successCount} Teilnehmer erfolgreich verarbeitet.</span>
+                        </div>
+
+                        {billingResults.errors.length > 0 && (
+                            <div className="mt-4">
+                                <h4 className="text-sm font-bold mb-2 text-danger">Fehlgeschlagen ({billingResults.errors.length}):</h4>
+                                <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                                    {billingResults.errors.map((err, idx) => {
+                                        const participant = currentParticipants.find(p => p.id === err.booking_id);
+                                        const name = participant?.user?.name || `Teilnehmer ID ${err.booking_id}`;
+                                        return (
+                                            <li key={idx} className="text-sm bg-red-50 p-2 rounded border border-red-100 flex flex-col">
+                                                <span className="font-semibold">{name}</span>
+                                                <span className="text-xs text-red-600">{err.detail || 'Unbekannter Fehler'}</span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        )}
+                        
+                        {billingResults.errors.length === 0 && (
+                            <p className="text-sm text-gray-600">
+                                Alle bestätigten Teilnehmer wurden erfolgreich abgerechnet bzw. der Fortschritt wurde eingetragen.
+                            </p>
+                        )}
+                    </div>
+                </InfoModal>
+            )}
+
             {isStatusModalOpen && onUpdateStatus && (
                 <LiveStatusModal
                     currentStatus={appStatus || null}
@@ -1627,6 +1875,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     defaultMaxParticipants={defaultMaxParticipants}
                     allAppointments={appointments}
                     isDarkMode={isDarkMode}
+                    colorRules={colorRules}
                 />
             )}
             <ParticipantsModal
