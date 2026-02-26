@@ -1578,7 +1578,7 @@ export default function App() {
     const isWidgetRoute = view.page === 'widget';
     if (isWidgetRoute) {
         return (
-            <div className="w-full h-full min-h-screen">
+            <div className="widget-root">
                 {view.subPage === 'status' ? <StatusWidget /> : <AppointmentsWidget />}
             </div>
         );

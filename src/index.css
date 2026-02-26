@@ -3187,6 +3187,21 @@ input:checked+.slider:before {
 }
 
 /* Wochen-Header */
+/* Widget-spezifische Overrides */
+.widget-root {
+    width: 100%;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible !important;
+}
+
+html:has(.widget-root),
+body:has(.widget-root) {
+    overflow: auto !important;
+    position: static !important;
+    height: auto !important;
+}
+
 .week-header {
     font-size: 1rem;
     font-weight: 600;

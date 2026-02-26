@@ -69,6 +69,7 @@ export default function AppointmentsWidget() {
   const token = pathMatch ? decodeURIComponent(pathMatch[1]) : '';
 
   const theme = useQueryParam('theme', 'light');
+  const itemTheme = useQueryParam('itemTheme', 'light');
   const layout = useQueryParam('layout', 'detailed');
   const limit = parseInt(useQueryParam('limit', '5'), 10);
 
@@ -100,13 +101,27 @@ export default function AppointmentsWidget() {
 
   // Auto-Höhe an den Parent per postMessage melden
   useEffect(() => {
-    // Grundlegende Defaults im Iframe sicherstellen
+    // Grundlegende Defaults im Iframe sicherstellen und überschreiben der globalen App-Styles
     try {
       document.documentElement.style.margin = '0';
       document.documentElement.style.height = 'auto';
+      document.documentElement.style.overflowY = 'auto'; // Erzwingt Scrollbar
+      
       document.body.style.margin = '0';
       document.body.style.height = 'auto';
-      document.body.style.overflow = 'visible';
+      document.body.style.overflowY = 'auto'; // Erzwingt Scrollbar
+      
+      const brandingColor = data?.branding?.primary_color || '#22C55E';
+      const bgColor = theme === 'transparent' ? 'transparent' : (theme === 'branding' ? brandingColor : (theme === 'dark' ? '#0b1220' : '#ffffff'));
+      document.body.style.backgroundColor = bgColor;
+
+      // Globales React Root-Element entsperren, falls dieses overflow: hidden hat
+      const rootEl = document.getElementById('root');
+      if (rootEl) {
+        rootEl.style.height = 'auto';
+        rootEl.style.minHeight = '100vh';
+        rootEl.style.overflow = 'visible';
+      }
     } catch {}
 
     const post = () => {
@@ -189,15 +204,32 @@ export default function AppointmentsWidget() {
 
   const isDark = theme === 'dark';
   const isTransparent = theme === 'transparent';
+  const isBranding = theme === 'branding';
+  const brandingColor = data?.branding?.primary_color || '#22C55E';
+
+  // Hilfsfunktion für die Textfarbe basierend auf dem itemTheme
+  const getItemTextColor = () => {
+    if (itemTheme === 'dark') return '#e2e8f0';
+    if (itemTheme === 'light') return '#1e293b';
+    // Bei transparent: Falls das Haupt-Theme dunkel oder Branding ist, eher hellen Text, sonst dunklen
+    if (itemTheme === 'transparent') {
+      if (isDark || isBranding) return '#ffffff';
+      return '#1e293b';
+    }
+    return '#1e293b';
+  };
+
+  const itemTextColor = getItemTextColor();
+  
   const containerStyle: React.CSSProperties = {
     padding: layout === 'compact' ? '12px' : '20px',
-    backgroundColor: isTransparent ? 'transparent' : (isDark ? '#0b1220' : '#ffffff'),
+    backgroundColor: isTransparent ? 'transparent' : (isBranding ? brandingColor : (isDark ? '#0b1220' : '#ffffff')),
     fontFamily: "'Poppins', 'system-ui', sans-serif",
     lineHeight: 1.5,
     minHeight: 'auto',
     height: 'auto',
     boxSizing: 'border-box',
-    color: isTransparent ? undefined : (isDark ? '#e2e8f0' : '#1e293b')
+    color: isTransparent ? undefined : (isBranding ? '#ffffff' : (isDark ? '#e2e8f0' : '#1e293b'))
   };
 
   const formatDate = (d: string | Date) => new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(new Date(d));
@@ -280,7 +312,7 @@ export default function AppointmentsWidget() {
                           style={{
                             aspectRatio: '1',
                             border: '1px solid',
-                            borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                            borderColor: itemTheme === 'dark' ? '#334155' : (itemTheme === 'transparent' ? 'rgba(148, 163, 184, 0.2)' : '#e2e8f0'),
                             borderRadius: '6px',
                             display: 'flex',
                             flexDirection: 'column',
@@ -288,7 +320,8 @@ export default function AppointmentsWidget() {
                             justifyContent: 'center',
                             cursor: day.appointments.length > 0 ? 'pointer' : 'default',
                             position: 'relative',
-                            backgroundColor: theme === 'transparent' ? 'transparent' : (theme === 'dark' ? 'transparent' : 'white'),
+                            backgroundColor: itemTheme === 'transparent' ? 'transparent' : (itemTheme === 'dark' ? '#1e293b' : '#ffffff'),
+                            color: itemTextColor,
                             padding: '2px',
                             opacity: day.date.setHours(0,0,0,0) === today.getTime() ? 1 : 0.9
                           }}
@@ -347,7 +380,10 @@ export default function AppointmentsWidget() {
                 overflow: 'hidden',
                 padding: layout === 'compact' ? '0.75rem 0.75rem 0.75rem 2rem' : undefined,
                 marginBottom: layout === 'compact' ? '0.5rem' : undefined,
-                gap: layout === 'compact' ? '0.5rem' : undefined
+                gap: layout === 'compact' ? '0.5rem' : undefined,
+                backgroundColor: itemTheme === 'transparent' ? 'transparent' : (itemTheme === 'dark' ? '#1e293b' : '#ffffff'),
+                borderColor: itemTheme === 'dark' ? '#334155' : '#e2e8f0',
+                color: itemTextColor
               }}>
                 {/* Linker Farbbalken wie in der App */}
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: layout === 'compact' ? '12px' : '24px', backgroundColor: color }} />
@@ -355,7 +391,8 @@ export default function AppointmentsWidget() {
                 <div className="event-details">
                   <span className="event-title" style={{ 
                     fontSize: layout === 'compact' ? '0.9rem' : undefined,
-                    marginBottom: layout === 'compact' ? '0.1rem' : undefined
+                    marginBottom: layout === 'compact' ? '0.1rem' : undefined,
+                    color: 'inherit'
                   }}>{a.title}</span>
                   {/* Badges analog zur App: Trainingstyp und ggf. Level */}
                   {layout !== 'compact' && (
@@ -381,7 +418,8 @@ export default function AppointmentsWidget() {
                   )}
                   <div className="event-line-2" style={{ 
                     fontSize: layout === 'compact' ? '0.75rem' : undefined,
-                    gap: layout === 'compact' ? '0.4rem' : undefined
+                    gap: layout === 'compact' ? '0.4rem' : undefined,
+                    color: 'inherit'
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -443,12 +481,13 @@ export default function AppointmentsWidget() {
                   <li key={a.id} className="event-item-styled" style={{ 
                     position: 'relative', 
                     overflow: 'hidden',
-                    backgroundColor: theme === 'dark' ? '#0b1220' : undefined,
-                    borderColor: theme === 'dark' ? '#334155' : undefined,
+                    backgroundColor: itemTheme === 'transparent' ? 'transparent' : (itemTheme === 'dark' ? '#1e293b' : '#ffffff'),
+                    borderColor: itemTheme === 'dark' ? '#334155' : '#e2e8f0',
+                    color: itemTextColor
                   }}>
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '24px', backgroundColor: color }} />
                     <div className="event-details">
-                      <span className="event-title" style={{ color: theme === 'dark' ? '#f1f5f9' : undefined }}>{a.title}</span>
+                      <span className="event-title" style={{ color: 'inherit' }}>{a.title}</span>
                       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                         {a.training_type && (
                           <div style={{ fontSize: '0.7rem', color: 'var(--brand-orange)', background: 'var(--bg-accent-orange)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--warning-color-light)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
@@ -462,7 +501,7 @@ export default function AppointmentsWidget() {
                           </div>
                         ))}
                       </div>
-                      <div className="event-line-2" style={{ color: theme === 'dark' ? '#94a3b8' : undefined }}>
+                      <div className="event-line-2" style={{ color: 'inherit', opacity: 0.8 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                           {formatTime(a.start_time)}

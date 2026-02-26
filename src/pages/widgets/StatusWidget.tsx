@@ -97,6 +97,15 @@ export default function StatusWidget() {
       ? brandingBg
       : (isDark ? '#0b1220' : '#ffffff');
 
+  // NEU HINZUFÜGEN: Zwingt den Body-Background dazu, sich an das Theme anzupassen
+  useEffect(() => {
+    try {
+      document.documentElement.style.margin = '0';
+      document.body.style.margin = '0';
+      document.body.style.backgroundColor = bgColor;
+    } catch {}
+  }, [bgColor]);
+
   const fgColor = isTransparent
     ? undefined
     : (theme === 'branding' && brandingBg)
