@@ -73,8 +73,8 @@ export default function StatusWidget() {
   const isDark = theme === 'dark';
   const isTransparent = theme === 'transparent';
 
-  // Branding-Hintergrundfarbe aus API nutzen, falls vorhanden
-  const brandingBg = data?.branding?.primary_color as string | undefined;
+  // Branding-Hintergrundfarbe aus API nutzen, falls vorhanden (App-Hintergrund statt Primärfarbe)
+  const brandingBg = (data?.branding?.background_color as string | undefined) || (data?.branding?.primary_color as string | undefined);
 
   // Hilfsfunktion: Kontrastfarbe zu einer HEX-Farbe bestimmen (hell/dunkel)
   const pickTextColorForBg = (hex?: string, darkFallback = '#1e293b', lightFallback = '#e2e8f0') => {

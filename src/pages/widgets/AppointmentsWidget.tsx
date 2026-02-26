@@ -112,7 +112,8 @@ export default function AppointmentsWidget() {
       document.body.style.overflowY = 'auto'; // Erzwingt Scrollbar
       
       const brandingColor = data?.branding?.primary_color || '#22C55E';
-      const bgColor = theme === 'transparent' ? 'transparent' : (theme === 'branding' ? brandingColor : (theme === 'dark' ? '#0b1220' : '#ffffff'));
+      const brandingBgColor = data?.branding?.background_color || brandingColor;
+      const bgColor = theme === 'transparent' ? 'transparent' : (theme === 'branding' ? brandingBgColor : (theme === 'dark' ? '#0b1220' : '#ffffff'));
       document.body.style.backgroundColor = bgColor;
 
       // Globales React Root-Element entsperren, falls dieses overflow: hidden hat
@@ -206,6 +207,7 @@ export default function AppointmentsWidget() {
   const isTransparent = theme === 'transparent';
   const isBranding = theme === 'branding';
   const brandingColor = data?.branding?.primary_color || '#22C55E';
+  const brandingBgColor = data?.branding?.background_color || brandingColor;
 
   // Hilfsfunktion für die Textfarbe basierend auf dem itemTheme
   const getItemTextColor = () => {
@@ -223,7 +225,7 @@ export default function AppointmentsWidget() {
   
   const containerStyle: React.CSSProperties = {
     padding: layout === 'compact' ? '12px' : '20px',
-    backgroundColor: isTransparent ? 'transparent' : (isBranding ? brandingColor : (isDark ? '#0b1220' : '#ffffff')),
+    backgroundColor: isTransparent ? 'transparent' : (isBranding ? brandingBgColor : (isDark ? '#0b1220' : '#ffffff')),
     fontFamily: "'Poppins', 'system-ui', sans-serif",
     lineHeight: 1.5,
     minHeight: 'auto',
