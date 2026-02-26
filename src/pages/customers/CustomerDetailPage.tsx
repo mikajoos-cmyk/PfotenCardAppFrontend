@@ -325,24 +325,50 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     <div className="content-box">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)', marginBottom: '1rem' }}>
                             <h2>Persönliche Daten</h2>
-                            <div className="dog-tabs" style={{ display: 'flex', gap: '0.25rem' }}>
+                            <div className="dog-tabs" style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                                 {dogs.map((d: any) => (
-                                    <button
-                                        key={d.id}
-                                        className={`tab-button ${activeDogId === d.id ? 'active' : ''}`}
-                                        onClick={() => setActiveDogId(d.id)}
-                                        style={{
-                                            padding: '0.4rem 0.8rem',
-                                            fontSize: '0.8rem',
-                                            borderRadius: '0.5rem',
-                                            border: '1px solid var(--border-color)',
-                                            background: activeDogId === d.id ? 'var(--primary-color)' : 'transparent',
-                                            color: activeDogId === d.id ? 'white' : 'var(--text-primary)',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        {d.name}
-                                    </button>
+                                    <div key={d.id} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                        <button
+                                            className={`tab-button ${activeDogId === d.id ? 'active' : ''}`}
+                                            onClick={() => setActiveDogId(d.id)}
+                                            style={{
+                                                padding: '0.4rem 0.8rem',
+                                                paddingRight: (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') ? '2rem' : '0.8rem',
+                                                fontSize: '0.8rem',
+                                                borderRadius: '0.5rem',
+                                                border: '1px solid var(--border-color)',
+                                                background: activeDogId === d.id ? 'var(--primary-color)' : 'transparent',
+                                                color: activeDogId === d.id ? 'white' : 'var(--text-primary)',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {d.name}
+                                        </button>
+                                        {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                            <button
+                                                className="delete-dog-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setDeletingDog(d);
+                                                }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    right: '0.4rem',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    color: activeDogId === d.id ? 'rgba(255,255,255,0.8)' : 'var(--brand-red)',
+                                                    cursor: 'pointer',
+                                                    padding: '0.2rem',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                                title="Hund löschen"
+                                            >
+                                                <Icon name="trash" width={14} height={14} />
+                                            </button>
+                                        )}
+                                    </div>
                                 ))}
                                 <button
                                     className="tab-button"

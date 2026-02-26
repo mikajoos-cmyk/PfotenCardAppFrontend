@@ -65,6 +65,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
     const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
     const [selectableUsers, setSelectableUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [conversationSearchTerm, setConversationSearchTerm] = useState('');
     const [loadingUsers, setLoadingUsers] = useState(false);
 
     // Responsive Detection
@@ -366,6 +367,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
         return groups;
     }, [messages]);
 
+    // --- FILTER CONVERSATIONS ---
+    const filteredConversations = useMemo(() => {
+        if (!conversationSearchTerm.trim()) return conversations;
+        return conversations.filter(conv => 
+            conv.user.name.toLowerCase().includes(conversationSearchTerm.toLowerCase())
+        );
+    }, [conversations, conversationSearchTerm]);
+
     // --- HELPER: Nachricht rendern ---
     const renderMessageContent = (msg: ChatMessage, isMe: boolean) => {
         if (msg.file_url) {
@@ -523,14 +532,36 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                         </button>
                     </div>
 
+                    <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', flexShrink: 0 }}>
+                        <div style={{ position: 'relative' }}>
+                            <Icon name="search" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: 'var(--text-light)', pointerEvents: 'none' }} />
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Chats durchsuchen..."
+                                value={conversationSearchTerm}
+                                onChange={e => setConversationSearchTerm(e.target.value)}
+                                style={{ paddingLeft: '34px', height: '36px', fontSize: '0.9rem', width: '100%', borderRadius: '0.75rem' }}
+                            />
+                            {conversationSearchTerm && (
+                                <button 
+                                    onClick={() => setConversationSearchTerm('')}
+                                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-light)', display: 'flex' }}
+                                >
+                                    <Icon name="x" style={{ width: '14px', height: '14px' }} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
                     <div style={{ overflowY: 'auto', flex: 1 }}>
-                        {conversations.length === 0 ? (
+                        {filteredConversations.length === 0 ? (
                             <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                <p style={{ marginBottom: '0.5rem' }}>Keine aktiven Chats.</p>
-                                <button className="button-as-link" onClick={handleOpenNewChatModal}>Jetzt starten</button>
+                                <p style={{ marginBottom: '0.5rem' }}>{conversationSearchTerm ? 'Keine Chats gefunden.' : 'Keine aktiven Chats.'}</p>
+                                {!conversationSearchTerm && <button className="button-as-link" onClick={handleOpenNewChatModal}>Jetzt starten</button>}
                             </div>
                         ) : (
-                            conversations.map(conv => {
+                            filteredConversations.map(conv => {
                                 const isSelected = selectedUser?.id === conv.user.id;
                                 const nameParts = conv.user.name.split(' ');
                                 const firstName = nameParts[0];
