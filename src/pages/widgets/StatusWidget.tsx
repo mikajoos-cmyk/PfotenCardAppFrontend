@@ -101,8 +101,25 @@ export default function StatusWidget() {
   useEffect(() => {
     try {
       document.documentElement.style.margin = '0';
+      document.documentElement.style.height = 'auto';
+      document.documentElement.style.overflowY = 'auto'; 
+      document.documentElement.style.position = 'static'; // <--- NEU
+      
       document.body.style.margin = '0';
+      document.body.style.height = 'auto';
+      document.body.style.overflowY = 'auto'; 
+      document.body.style.position = 'static'; // <--- NEU
+      
       document.body.style.backgroundColor = bgColor;
+
+      // Globales React Root-Element entsperren
+      const rootEl = document.getElementById('root');
+      if (rootEl) {
+        rootEl.style.height = 'auto';
+        rootEl.style.minHeight = '100vh';
+        rootEl.style.overflow = 'visible';
+        rootEl.style.position = 'static'; // <--- NEU
+      }
     } catch {}
   }, [bgColor]);
 
@@ -147,7 +164,7 @@ export default function StatusWidget() {
   );
 
   return (
-    <div id="status-widget-root" ref={rootRef} style={containerStyle}>
+    <div id="status-widget-root" className="widget-root" ref={rootRef} style={containerStyle}>
       {loading && <p style={{ fontSize: '14px', opacity: 0.8, color: '#94A3B8', margin: 0, padding: '1rem' }}>Lade Status…</p>}
       {error && <p style={{ fontSize: '14px', color: '#ef4444', margin: 0, padding: '1rem' }}>{error}</p>}
       {!loading && !error && data && (

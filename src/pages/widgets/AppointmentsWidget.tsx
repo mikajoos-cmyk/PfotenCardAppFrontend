@@ -106,10 +106,12 @@ export default function AppointmentsWidget() {
       document.documentElement.style.margin = '0';
       document.documentElement.style.height = 'auto';
       document.documentElement.style.overflowY = 'auto'; // Erzwingt Scrollbar
+      document.documentElement.style.position = 'static'; // <--- NEU
       
       document.body.style.margin = '0';
       document.body.style.height = 'auto';
       document.body.style.overflowY = 'auto'; // Erzwingt Scrollbar
+      document.body.style.position = 'static'; // <--- NEU
       
       const brandingColor = data?.branding?.primary_color || '#22C55E';
       const brandingBgColor = data?.branding?.background_color || brandingColor;
@@ -122,6 +124,7 @@ export default function AppointmentsWidget() {
         rootEl.style.height = 'auto';
         rootEl.style.minHeight = '100vh';
         rootEl.style.overflow = 'visible';
+        rootEl.style.position = 'static'; // <--- NEU
       }
     } catch {}
 
@@ -240,7 +243,7 @@ export default function AppointmentsWidget() {
   const colorRules = data?.appointments_config?.color_rules || [];
 
   return (
-    <div ref={rootRef} style={containerStyle}>
+    <div className="widget-root" ref={rootRef} style={containerStyle}>
       {/* Header wie in der App (schlicht) */}
       {data?.branding?.school_name && (
         <h2 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 600, color: theme === 'dark' ? '#94a3b8' : 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

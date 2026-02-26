@@ -3195,8 +3195,10 @@ input:checked+.slider:before {
     overflow: visible !important;
 }
 
+/* NEU: #root:has(.widget-root) hinzugefügt */
 html:has(.widget-root),
-body:has(.widget-root) {
+body:has(.widget-root),
+#root:has(.widget-root) {
     overflow: auto !important;
     position: static !important;
     height: auto !important;
