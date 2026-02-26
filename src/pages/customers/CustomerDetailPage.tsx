@@ -102,11 +102,60 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
     const [deletingDocument, setDeletingDocument] = useState<DocumentFile | null>(null);
     const [isTxModalOpen, setIsTxModalOpen] = useState(false);
     const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [isAppointmentsModalOpen, setIsAppointmentsModalOpen] = useState(false);
+    const [customerBookings, setCustomerBookings] = useState<any[]>([]);
+    const [isLoadingBookings, setIsLoadingBookings] = useState(false);
     const [canShare, setCanShare] = useState(false);
+
+    // Hilfsfunktionen für das Modal (kopiert von AppointmentsPage)
+    const formatDate = (date: Date) => new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(date);
+    const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(date);
+    
+    const getCategoryColor = (event: any, colorRules?: any[]): string => {
+        if (colorRules && colorRules.length > 0) {
+            const serviceRule = colorRules.find(r => r.type === 'service' && r.target_ids.includes(event.training_type_id || -1));
+            if (serviceRule) return serviceRule.color;
+            if (event.target_levels && event.target_levels.length > 0) {
+                const levelIds = event.target_levels.map((l: any) => l.id);
+                const levelRule = colorRules.find(r => {
+                    if (r.type !== 'level') return false;
+                    return r.match_all ? r.target_ids.every((id: any) => levelIds.includes(id)) : r.target_ids.some((id: any) => levelIds.includes(id));
+                });
+                if (levelRule) return levelRule.color;
+            }
+        }
+        const t = (event.title || "").toLowerCase();
+        if (t.includes('welpe')) return 'orchid';
+        if (t.includes('grund') || t.includes('basis') || t.includes('level 2')) return 'limegreen';
+        if (t.includes('fort') || t.includes('level 3')) return 'skyblue';
+        if (t.includes('master') || t.includes('level 4')) return 'peru';
+        if (t.includes('prüfung')) return 'tomato';
+        if (t.includes('theorie') || t.includes('vortrag')) return 'khaki';
+        if (t.includes('workshop') || t.includes('special')) return 'darkkhaki';
+        return 'gold';
+    };
 
     // Initialisiere mit korrekter Logik
     const [previewLevelId, setPreviewLevelId] = useState<number>(getInitialLevelId());
     const [isSaving, setIsSaving] = useState(false);
+
+    const fetchCustomerBookings = async () => {
+        setIsLoadingBookings(true);
+        try {
+            const bookings = await apiClient.getUserBookings(customer.id, authToken);
+            setCustomerBookings(bookings);
+        } catch (error) {
+            console.error("Fehler beim Laden der Buchungen:", error);
+        } finally {
+            setIsLoadingBookings(false);
+        }
+    };
+
+    useEffect(() => {
+        if (isAppointmentsModalOpen) {
+            fetchCustomerBookings();
+        }
+    }, [isAppointmentsModalOpen]);
 
     // Update wenn sich der Kunde oder der aktive Hund ändert (z.B. nach echtem Level-Up)
     useEffect(() => {
@@ -751,6 +800,16 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             <li><span className="label">Kunde seit</span><span className="value">{new Date(customer.customer_since as any).toLocaleDateString('de-DE')}</span></li>
                             <li><span className="label">Kundennummer</span><span className="value">{customer.id || '-'}</span></li>
                         </ul>
+                        {editingSection === null && (currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                            <button 
+                                className="button button-secondary" 
+                                onClick={() => setIsAppointmentsModalOpen(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', marginTop: '1rem', justifyContent: 'center' }}
+                            >
+                                <Icon name="calendar" width={18} height={18} />
+                                Gebuchte Termine
+                            </button>
+                        )}
                     </div>
                     <div className="side-card qr-code-container">
                         <h2>QR-Code</h2>
@@ -868,6 +927,21 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                     </ul>
                 </InfoModal>
             )}
+            {isAppointmentsModalOpen && (
+                <CustomerAppointmentsModal
+                    isOpen={isAppointmentsModalOpen}
+                    onClose={() => setIsAppointmentsModalOpen(false)}
+                    bookings={customerBookings}
+                    isLoading={isLoadingBookings}
+                    isDarkMode={isDarkMode}
+                    firstName={firstName}
+                    lastName={lastName}
+                    formatDate={formatDate}
+                    formatTime={formatTime}
+                    getCategoryColor={getCategoryColor}
+                    colorRules={levelsToUse} // Wir nutzen hier die Levels als ColorRules (vereinfacht) oder falls vorhanden echte ColorRules
+                />
+            )}
             <UpdateEmailModal 
                 isOpen={isEmailModalOpen} 
                 onClose={() => {
@@ -881,6 +955,174 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                 }} 
             />
         </>
+    );
+};
+
+const CustomerAppointmentsModal = ({ 
+    isOpen, onClose, bookings, isLoading, isDarkMode, firstName, lastName, formatDate, formatTime, getCategoryColor, colorRules 
+}: { 
+    isOpen: boolean, onClose: () => void, bookings: any[], isLoading: boolean, isDarkMode?: boolean, firstName: string, lastName: string, formatDate: any, formatTime: any, getCategoryColor: any, colorRules?: any[] 
+}) => {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [timeFilter, setTimeFilter] = useState<'future' | 'past'>('future');
+
+    if (!isOpen) return null;
+
+    const now = new Date();
+
+    const filteredBookings = (bookings || [])
+        .filter(b => {
+            const a = b.appointment;
+            if (!a) return false;
+            const matchesSearch = a.title?.toLowerCase().includes(searchTerm.toLowerCase()) || a.location?.toLowerCase().includes(searchTerm.toLowerCase());
+            if (!matchesSearch) return false;
+
+            const startTime = new Date(a.start_time).getTime();
+            if (timeFilter === 'future') {
+                return startTime >= now.getTime();
+            } else {
+                return startTime < now.getTime();
+            }
+        })
+        .sort((a, b) => {
+            const timeA = new Date(a.appointment.start_time).getTime();
+            const timeB = new Date(b.appointment.start_time).getTime();
+            
+            if (timeFilter === 'future') {
+                return timeA - timeB;
+            } else {
+                return timeB - timeA;
+            }
+        });
+
+    return (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+            <div className="modal-content" style={{ maxWidth: '700px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                <div className="modal-header blue">
+                    <div>
+                        <h2 style={{ margin: 0 }}>Gebuchte Termine</h2>
+                        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9 }}>
+                            {firstName} {lastName}
+                        </p>
+                    </div>
+                    <button className="close-button" onClick={onClose} aria-label="Schließen">
+                        <Icon name="x" />
+                    </button>
+                </div>
+
+                <div className="modal-body" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Nach Titel oder Ort suchen..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
+                        <button
+                            className={`button ${timeFilter === 'future' ? 'button-primary' : 'button-outline'}`}
+                            style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                            onClick={() => setTimeFilter('future')}
+                        >
+                            Anstehend
+                        </button>
+                        <button
+                            className={`button ${timeFilter === 'past' ? 'button-primary' : 'button-outline'}`}
+                            style={{ borderRadius: '20px', padding: '0.4rem 1rem', fontSize: '0.9rem' }}
+                            onClick={() => setTimeFilter('past')}
+                        >
+                            Vergangen
+                        </button>
+                    </div>
+
+                    <div className="event-list-container" style={{ maxHeight: '500px', overflowY: 'auto', marginTop: '1rem', paddingRight: '0.5rem' }}>
+                        {isLoading ? (
+                            <div style={{ textAlign: 'center', padding: '3rem' }}>
+                                <div className="loading-spinner"></div>
+                                <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Lade Termine...</p>
+                            </div>
+                        ) : filteredBookings.length > 0 ? (
+                            <ul className="event-list-styled">
+                                {filteredBookings.map((booking) => {
+                                    const a = booking.appointment;
+                                    const date = new Date(a.start_time);
+                                    const eventColor = getCategoryColor(a, colorRules);
+                                    
+                                    return (
+                                        <li
+                                            key={booking.id}
+                                            className="event-item-styled template-item"
+                                            style={{ position: 'relative', overflow: 'hidden', cursor: 'default', marginBottom: '0.75rem' }}
+                                        >
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 0,
+                                                bottom: 0,
+                                                width: '12px',
+                                                backgroundColor: eventColor
+                                            }} />
+                                            
+                                            <div className="event-details" style={{ paddingLeft: '1rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <span className="event-title" style={{ fontSize: '1rem', fontWeight: 600 }}>{a.title}</span>
+                                                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                        <div className={`status-badge ${booking.status === 'confirmed' ? 'status-confirmed' : 'status-waitlist'}`} style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                                                            {booking.status === 'confirmed' ? 'Bestätigt' : 'Warteliste'}
+                                                        </div>
+                                                        {booking.attended && (
+                                                            <div className="status-badge status-attended" style={{ fontSize: '0.65rem', padding: '1px 6px', background: 'var(--brand-green)', color: 'white' }}>
+                                                                Teilgenommen
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="event-line-2" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <Icon name="calendar" size={12} style={{ opacity: 0.7 }} />
+                                                        {formatDate(date)}
+                                                    </span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        <Icon name="clock" size={12} style={{ opacity: 0.7 }} />
+                                                        {formatTime(date)}
+                                                    </span>
+                                                    {a.location && (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            <Icon name="map-pin" size={12} style={{ opacity: 0.7 }} />
+                                                            {a.location}
+                                                        </span>
+                                                    )}
+                                                    {booking.dog && (
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            <Icon name="dog" size={12} style={{ opacity: 0.7 }} />
+                                                            {booking.dog.name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        ) : (
+                            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--bg-secondary)', borderRadius: '12px' }}>
+                                <Icon name="calendar" width={48} height={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                                <p style={{ color: 'var(--text-secondary)' }}>Keine Buchungen für diesen Zeitraum gefunden.</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button className="button button-secondary" onClick={onClose}>Schließen</button>
+                </div>
+            </div>
+        </div>
     );
 };
 

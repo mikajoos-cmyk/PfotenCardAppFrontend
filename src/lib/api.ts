@@ -234,6 +234,10 @@ export const apiClient = {
         return apiClient.get('/api/users/me/bookings', token);
     },
 
+    getUserBookings: async (userId: string | number, token: string | null) => {
+        return apiClient.get(`/api/users/${userId}/bookings`, token);
+    },
+
     createAppointment: async (data: any, token: string | null) => {
         return apiClient.post('/api/appointments', data, token);
     },
@@ -394,6 +398,7 @@ export interface Booking {
     attended: boolean;
     user?: any; // User object embedded
     dog?: any; // Dog object embedded
+    appointment?: Appointment; // NEU
     is_billed: boolean; // NEU
     created_at: string;
 }

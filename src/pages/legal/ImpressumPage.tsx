@@ -6,9 +6,11 @@ import Icon from '../../components/ui/Icon';
 interface ImpressumPageProps {
     onBack?: () => void;
     showBack?: boolean;
+    legalSettings?: any;
+    schoolName?: string;
 }
 
-export function ImpressumPage({ onBack, showBack = true }: ImpressumPageProps) {
+export function ImpressumPage({ onBack, showBack = true, legalSettings, schoolName }: ImpressumPageProps) {
     useEffect(() => {
         window.scrollTo(0, 0);
     }, []);
@@ -39,54 +41,57 @@ export function ImpressumPage({ onBack, showBack = true }: ImpressumPageProps) {
                     </div>
 
                     <div className="bg-card">
-                        <h2>Angaben gemäß § 5 TMG</h2>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
-                                <Building2 size={24} className="text-primary" style={{ marginTop: '0.25rem' }} />
-                                <div>
-                                    <h3>Firmenanschrift</h3>
-                                    <p>
-                                        Pfotencard GmbH<br />
-                                        Musterstraße 123<br />
-                                        12345 Musterstadt<br />
-                                        Deutschland
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'start', gap: '1rem' }}>
-                                <Mail size={24} className="text-primary" style={{ marginTop: '0.25rem' }} />
-                                <div>
-                                    <h3>Kontakt</h3>
-                                    <p>
-                                        E-Mail: <a href="mailto:info@pfotencard.de">info@pfotencard.de</a><br />
-                                        Telefon: <a href="tel:+491234567890">+49 123 456 7890</a>
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-card">
-                        <h2>Vertreten durch</h2>
-                        <p>Geschäftsführer: Max Mustermann</p>
-                    </div>
-
-                    <div className="bg-card">
-                        <h2>Registereintrag</h2>
+                        <h2>Anbieter der Inhalte</h2>
                         <p>
-                            Eintragung im Handelsregister<br />
-                            Registergericht: Amtsgericht Musterstadt<br />
-                            Registernummer: HRB 12345
+                            Anbieter der Inhalte und vertraglicher Ansprechpartner für das Hundetraining gemäß § 5 DDG:
+                        </p>
+                        <p style={{ marginTop: '1rem' }}>
+                            <strong>{legalSettings?.legal_form === 'individual' ? (legalSettings?.owner_name || legalSettings?.company_name || schoolName) : (legalSettings?.company_name || schoolName)}</strong><br />
+                            {legalSettings?.street} {legalSettings?.house_number}<br />
+                            {legalSettings?.zip_code} {legalSettings?.city}
                         </p>
                     </div>
 
                     <div className="bg-card">
-                        <h2>Umsatzsteuer-ID</h2>
+                        <h2>Vertreten durch</h2>
+                        <p>{legalSettings?.legal_form === 'individual' ? (legalSettings?.owner_name) : (legalSettings?.representative)}</p>
+                    </div>
+
+                    <div className="bg-card">
+                        <h2>Kontakt</h2>
                         <p>
-                            Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:<br />
-                            DE123456789
+                            Telefon: {legalSettings?.phone}<br />
+                            E-Mail: {legalSettings?.email_public}
+                        </p>
+                    </div>
+
+                    {legalSettings?.has_vat_id && (
+                        <div className="bg-card">
+                            <h2>Umsatzsteuer-ID</h2>
+                            <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:</p>
+                            <p>{legalSettings?.vat_id}</p>
+                        </div>
+                    )}
+
+                    {legalSettings?.supervisory_authority && (
+                        <div className="bg-card">
+                            <h2>Aufsichtsbehörde</h2>
+                            <p>(Erlaubnis nach § 11 Tierschutzgesetz)</p>
+                            <p>{legalSettings?.supervisory_authority}</p>
+                        </div>
+                    )}
+
+                    <div className="bg-card">
+                        <h2>Technische Bereitstellung und Plattformbetrieb</h2>
+                        <p>Diese App wird technisch bereitgestellt von:</p>
+                        <p style={{ marginTop: '1rem' }}>
+                            <strong>[Ihr Firmenname / Ihr Name]</strong><br />
+                            [Ihre Straße und Hausnummer]<br />
+                            [Ihre PLZ und Ort]<br />
+                            E-Mail: [Ihre Support-E-Mail]
+                        </p>
+                        <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                            (Hinweis: Der Plattformbetreiber ist nicht Vertragspartner für das Hundetraining.)
                         </p>
                     </div>
                 </motion.div>

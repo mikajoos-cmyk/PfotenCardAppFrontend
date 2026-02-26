@@ -1773,10 +1773,22 @@ export default function App() {
         }
 
         if (view.page === 'impressum') {
-            return <ImpressumPage onBack={() => handleSetView({ page: 'dashboard' })} />;
+            return (
+                <ImpressumPage
+                    onBack={() => handleSetView({ page: 'dashboard' })}
+                    legalSettings={appConfigData?.tenant?.config?.legal_settings}
+                    schoolName={schoolName}
+                />
+            );
         }
         if (view.page === 'datenschutz') {
-            return <DatenschutzPage onBack={() => handleSetView({ page: 'dashboard' })} />;
+            return (
+                <DatenschutzPage
+                    onBack={() => handleSetView({ page: 'dashboard' })}
+                    legalSettings={appConfigData?.tenant?.config?.legal_settings}
+                    schoolName={schoolName}
+                />
+            );
         }
         if (view.page === 'agb') {
             return <AGBPage onBack={() => handleSetView({ page: 'dashboard' })} />;
