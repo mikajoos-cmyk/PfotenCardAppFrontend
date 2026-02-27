@@ -65,11 +65,21 @@ export function ImpressumPage({ onBack, showBack = true, legalSettings, schoolNa
                         </p>
                     </div>
 
-                    {legalSettings?.has_vat_id && (
+                    {(legalSettings?.registry_court || legalSettings?.registry_number) && (
+                        <div className="bg-card">
+                            <h2>Handelsregister</h2>
+                            <p>
+                                {legalSettings?.registry_court && <span>Registergericht: {legalSettings.registry_court}<br /></span>}
+                                {legalSettings?.registry_number && <span>Registernummer: {legalSettings.registry_number}</span>}
+                            </p>
+                        </div>
+                    )}
+
+                    {legalSettings?.has_vat_id && legalSettings?.vat_id && (
                         <div className="bg-card">
                             <h2>Umsatzsteuer-ID</h2>
                             <p>Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:</p>
-                            <p>{legalSettings?.vat_id}</p>
+                            <p>{legalSettings.vat_id}</p>
                         </div>
                     )}
 
