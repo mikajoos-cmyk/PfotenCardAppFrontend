@@ -277,6 +277,9 @@ export const apiClient = {
     grantAllParticipants: async (appointmentId: number, token: string | null) => {
         return apiClient.post(`/api/appointments/${appointmentId}/grant-progress`, {}, token);
     },
+    unbillAllParticipants: async (appointmentId: number, token: string | null) => {
+        return apiClient.post(`/api/appointments/${appointmentId}/unbill-all`, {}, token);
+    },
 
     // --- NEWS ---
     getNews: async (token: string | null) => {
