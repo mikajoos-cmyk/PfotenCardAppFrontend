@@ -360,7 +360,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
         }
 
         // Falls "custom" im Location-Feld steht, aber kein Name eingegeben wurde, Validierung abfangen
-        if (formData.location === 'custom') {
+        if (formData.location === ' ' || formData.location === '') {
             alert("Bitte geben Sie einen Namen für den Ort ein.");
             return;
         }
@@ -371,7 +371,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
             start_time: start.toISOString(),
             end_time: end.toISOString(),
             is_open_for_all: formData.is_open_for_all,
-            location: formData.location,
+            location: formData.location.trim(),
             max_participants: Number(formData.max_participants),
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
             training_type_id: formData.training_type_id ? Number(formData.training_type_id) : null,
@@ -588,11 +588,11 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                 <>
                                         <select 
                                         className="form-input" 
-                                        value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : (formData.location ? 'custom' : '')} 
+                                        value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : (formData.location === undefined || formData.location === '' ? '' : 'custom')} 
                                         onChange={e => {
                                             const val = e.target.value;
                                             if (val === 'custom') {
-                                                setFormData({ ...formData, location: 'custom' });
+                                                setFormData({ ...formData, location: ' ' }); // Use a space as a temporary marker for custom input
                                             } else {
                                                 setFormData({ ...formData, location: val });
                                             }
@@ -605,11 +605,11 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                         ))}
                                         <option value="custom">-- Anderen Ort eingeben --</option>
                                     </select>
-                                    {formData.location === 'custom' && (
+                                    {(!locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) && formData.location !== '' && formData.location !== undefined) && (
                                         <input 
                                             className="form-input" 
                                             style={{ marginTop: '0.5rem' }}
-                                            value={formData.location === 'custom' ? '' : formData.location} 
+                                            value={formData.location === ' ' ? '' : formData.location} 
                                             onChange={e => setFormData({ ...formData, location: e.target.value })} 
                                             placeholder="Name des Ortes eingeben..." 
                                             autoFocus
@@ -860,6 +860,19 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                     })()}
                     {event.location && (() => {
                         const matchedLocation = locations?.find(l => l.google_maps_link === event.location || l.name === event.location);
+                        
+                        // Wenn es kein gematchter Ort aus der Datenbank ist, zeigen wir KEINE Karte an
+                        if (!matchedLocation) {
+                            return (
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                                        <Icon name="mapPin" />
+                                        <span style={{ fontWeight: 600 }}>{event.location}</span>
+                                    </div>
+                                </div>
+                            );
+                        }
+
                         const mapsLink = matchedLocation?.google_maps_link || (event.location.startsWith('http') ? event.location : null);
                         const locationName = matchedLocation?.name || event.location;
                         
