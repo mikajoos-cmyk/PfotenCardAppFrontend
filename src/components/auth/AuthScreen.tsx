@@ -41,7 +41,7 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
 
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
-                email,
+                email: email.toLowerCase(),
                 password,
             });
 
@@ -115,7 +115,7 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
 
             // 2. Supabase Auth Registrierung (Löst E-Mail-Versand aus!)
             const { data: authData, error: authError } = await supabase.auth.signUp({
-                email,
+                email: email.toLowerCase(),
                 password,
                 options: {
                     emailRedirectTo: redirectUrl,

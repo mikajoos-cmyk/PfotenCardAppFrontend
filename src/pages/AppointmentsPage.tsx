@@ -28,7 +28,14 @@ const MOCK_APPOINTMENTS: any[] = [
 // --- HILFSFUNKTIONEN ---
 const formatDate = (date: Date) => new Intl.DateTimeFormat('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }).format(date);
 const formatTime = (date: Date) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(date);
+const formatPrice = (price: number | string | null | undefined) => {
+    if (price === null || price === undefined || price === '') return '';
+    const num = typeof price === 'string' ? parseFloat(price) : price;
+    if (isNaN(num)) return '';
+    return num % 1 === 0 ? num.toFixed(0) : num.toFixed(2);
+};
 import { getInitials, getAvatarColorClass, getLevelColor } from '../lib/utils';
+import { extractCoordinates, openLocationInApp } from '../lib/mapUtils';
 
 // Farben basierend auf Keywords
 // Farben basierend auf Level oder Keywords
@@ -242,7 +249,7 @@ const TemplateSelectionModal = ({ isOpen, onClose, onSelect, allAppointments, is
     );
 };
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[] }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules, locations }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[], locations?: any[] }) => {
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
@@ -256,7 +263,8 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
         trainer_id: '',
         training_type_id: '',
         target_level_ids: [] as number[],
-        price: null as number | null, // NEU
+        price: null as number | null, // Einzelpreis (wird an API gesendet)
+        group_price: null as number | null, // NEU: Gesamtpreis für alle Termine der Gruppe
         is_open_for_all: false,
         is_recurring: false,
         recurrence_pattern: 'weekly',
@@ -296,7 +304,8 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 target_level_ids: (initialData.target_levels && initialData.target_levels.length > 0)
                     ? initialData.target_levels.map((l: any) => l.id)
                     : (initialData.target_level_ids || []),
-                price: initialData.price || null, // NEU
+                price: initialData.price || null, 
+                group_price: initialData.block_id ? (allAppointments.filter(a => a.block_id === initialData.block_id).reduce((sum, a) => sum + (a.price || 0), 0) || null) : null,
                 is_open_for_all: initialData.is_open_for_all || false,
                 is_recurring: !!initialData.block_id, // NEU: Wenn Block, dann als wiederkehrend anzeigen
                 recurrence_pattern: 'weekly', // Standard, da wir das Pattern nicht im Model speichern (nur als Gruppe)
@@ -317,7 +326,8 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 trainer_id: '',
                 training_type_id: '',
                 target_level_ids: [],
-                price: null, // NEU
+                price: null, 
+                group_price: null,
                 is_open_for_all: false,
                 is_recurring: false,
                 recurrence_pattern: 'weekly',
@@ -341,6 +351,20 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 
         const start = new Date(`${formData.date}T${formData.start_time}`);
         const end = new Date(`${formData.date}T${formData.end_time}`);
+
+        // Preisberechnung: Wenn Gruppenpreis gesetzt ist, Einzelpreis überschreiben
+        let finalPrice = formData.price ? Number(formData.price) : null;
+        if ((formData.is_recurring || formData.is_block) && formData.group_price) {
+            const count = Number(formData.end_after_count) || 1;
+            finalPrice = Number((Number(formData.group_price) / count).toFixed(2));
+        }
+
+        // Falls "custom" im Location-Feld steht, aber kein Name eingegeben wurde, Validierung abfangen
+        if (formData.location === 'custom') {
+            alert("Bitte geben Sie einen Namen für den Ort ein.");
+            return;
+        }
+
         onSave({
             title: formData.title,
             description: formData.description,
@@ -351,7 +375,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
             max_participants: Number(formData.max_participants),
             trainer_id: formData.trainer_id ? Number(formData.trainer_id) : null,
             training_type_id: formData.training_type_id ? Number(formData.training_type_id) : null,
-            price: formData.price ? Number(formData.price) : null, // NEU
+            price: finalPrice,
             target_level_ids: formData.is_open_for_all ? allLevels.map(l => l.id) : formData.target_level_ids,
             ...(formData.is_recurring && !initialData ? {
                 recurrence_pattern: formData.recurrence_pattern,
@@ -476,12 +500,12 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                     <select className="form-input" value={formData.training_type_id} onChange={e => setFormData({ ...formData, training_type_id: e.target.value })}>
                                         <option value="">Leistung wählen...</option>
                                         {allServices.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name} ({s.default_price}€)</option>
+                                            <option key={s.id} value={s.id}>{s.name} ({formatPrice(s.default_price)}€)</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div style={{ flex: 2 }}>
-                                    <label>Indiv. Preis (€)</label>
+                                    <label>{(formData.is_recurring || formData.is_block) ? 'Preis pro Termin (€)' : 'Indiv. Preis (€)'}</label>
                                     <input
                                         type="number"
                                         step="0.50"
@@ -491,6 +515,29 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                         onChange={e => setFormData({ ...formData, price: e.target.value ? parseFloat(e.target.value) : null })}
                                     />
                                 </div>
+                            </div>
+                        )}
+
+                        {(formData.is_recurring || formData.is_block) && (
+                            <div className="form-group" style={{ background: 'var(--bg-accent)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                                <label style={{ fontWeight: 'bold', color: 'var(--brand-green)' }}>Gesamtpreis für alle {formData.end_after_count} Termine zusammen (€)</label>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                    Wenn Sie hier einen Preis eingeben, wird dieser automatisch auf alle Termine der Gruppe aufgeteilt.
+                                </p>
+                                <input
+                                    type="number"
+                                    step="0.50"
+                                    className="form-input"
+                                    style={{ borderColor: formData.group_price ? 'var(--brand-green)' : 'var(--border-color)' }}
+                                    placeholder="z.B. 150.00"
+                                    value={formData.group_price || ''}
+                                    onChange={e => setFormData({ ...formData, group_price: e.target.value ? parseFloat(e.target.value) : null })}
+                                />
+                                {formData.group_price && (
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--brand-green)', marginTop: '0.25rem' }}>
+                                        Entspricht {formatPrice(formData.group_price / (Number(formData.end_after_count) || 1))}€ pro Termin.
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -535,7 +582,51 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                             </div>
                         )}
 
-                        <div className="form-group"><label>Ort</label><input className="form-input" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Hundeplatz / Online" /></div>
+                        <div className="form-group">
+                            <label>Ort</label>
+                            {locations && locations.length > 0 ? (
+                                <>
+                                        <select 
+                                        className="form-input" 
+                                        value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : (formData.location ? 'custom' : '')} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            if (val === 'custom') {
+                                                setFormData({ ...formData, location: 'custom' });
+                                            } else {
+                                                setFormData({ ...formData, location: val });
+                                            }
+                                        }}
+                                        required
+                                    >
+                                        <option value="">Ort wählen...</option>
+                                        {locations.map((loc: any) => (
+                                            <option key={loc.id} value={loc.google_maps_link || loc.name}>{loc.name}</option>
+                                        ))}
+                                        <option value="custom">-- Anderen Ort eingeben --</option>
+                                    </select>
+                                    {formData.location === 'custom' && (
+                                        <input 
+                                            className="form-input" 
+                                            style={{ marginTop: '0.5rem' }}
+                                            value={formData.location === 'custom' ? '' : formData.location} 
+                                            onChange={e => setFormData({ ...formData, location: e.target.value })} 
+                                            placeholder="Name des Ortes eingeben..." 
+                                            autoFocus
+                                            required
+                                        />
+                                    )}
+                                </>
+                            ) : (
+                                <input 
+                                    className="form-input" 
+                                    value={formData.location} 
+                                    onChange={e => setFormData({ ...formData, location: e.target.value })} 
+                                    placeholder="Hundeplatz / Online" 
+                                    required
+                                />
+                            )}
+                        </div>
                         <div className="form-group"><label>Beschreibung</label><textarea className="form-input" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." /></div>
 
                         {/* NEU: Wiederkehrer-Logik auch beim Editieren anzeigen, wenn es ein Block-Kurs ist */}
@@ -646,7 +737,7 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
 };
 
 // Update: Eigenes Modal-Layout für bessere Button-Positionierung
-const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments, levels, cancelationPeriodHours }: {
+const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked, bookingStatus, onNotify, dogs, selectedDogId, onDogChange, colorRules, allAppointments, levels, cancelationPeriodHours, locations }: {
     event: Appointment,
     onClose: () => void,
     onAction: (type: 'book' | 'cancel' | 'participants') => void,
@@ -661,7 +752,8 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     colorRules?: ColorRule[],
     allAppointments: Appointment[],
     levels?: any[],
-    cancelationPeriodHours?: number
+    cancelationPeriodHours?: number,
+    locations?: any[]
 }) => {
     if (!event) return null;
     const isFull = (event.participants_count || 0) >= event.max_participants;
@@ -730,26 +822,123 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                             </div>
                         );
                     })()}
-                    {event.training_type && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                                <Icon name="activity" style={{ color: 'var(--brand-orange)' }} />
-                                <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
+                    {event.training_type && (() => {
+                        const groupEvents = event.block_id ? allAppointments.filter(a => a.block_id === event.block_id) : [];
+                        const isPartofGroup = groupEvents.length > 1;
+                        const totalPrice = groupEvents.reduce((sum, a) => sum + (a.price || a.training_type?.default_price || 0), 0);
+                        const individualPrice = event.price ?? event.training_type.default_price;
+
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                                        <Icon name="activity" style={{ color: 'var(--brand-orange)' }} />
+                                        <span style={{ fontWeight: 600, color: 'var(--brand-orange)' }}>Leistung: {event.training_type.name}</span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-accent-success)', padding: '0.5rem 1rem', borderRadius: '12px', border: '2px solid var(--brand-green)' }}>
+                                            <Icon name="euro" width={20} height={20} style={{ color: 'var(--brand-green)' }} />
+                                            <span style={{ fontWeight: 800, color: 'var(--brand-green)', fontSize: '1.5rem' }}>
+                                                {isPartofGroup ? formatPrice(totalPrice) : formatPrice(individualPrice)}€
+                                            </span>
+                                        </div>
+                                        {isPartofGroup && (
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--brand-green)', fontWeight: 600, marginTop: '0.25rem' }}>
+                                                Gesamtpreis für alle {groupEvents.length} Termine
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                {isPartofGroup && (
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', alignSelf: 'flex-end' }}>
+                                        Einzeltermin: {formatPrice(individualPrice)}€
+                                    </div>
+                                )}
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-accent-success)', padding: '0.5rem 1rem', borderRadius: '12px', border: '2px solid var(--brand-green)' }}>
-                                <Icon name="euro" width={20} height={20} style={{ color: 'var(--brand-green)' }} />
-                                <span style={{ fontWeight: 800, color: 'var(--brand-green)', fontSize: '1.5rem' }}>
-                                    {event.price ?? event.training_type.default_price}€
-                                </span>
+                        );
+                    })()}
+                    {event.location && (() => {
+                        const matchedLocation = locations?.find(l => l.google_maps_link === event.location || l.name === event.location);
+                        const mapsLink = matchedLocation?.google_maps_link || (event.location.startsWith('http') ? event.location : null);
+                        const locationName = matchedLocation?.name || event.location;
+                        
+                        // Versuche, den Ort für das Google Maps Embed zu extrahieren
+                        const coords = matchedLocation?.lat && matchedLocation?.lng 
+                            ? { lat: matchedLocation.lat, lng: matchedLocation.lng }
+                            : (mapsLink ? extractCoordinates(mapsLink) : null);
+                        
+                        // Wenn wir Koordinaten haben, nutzen wir diese für ein präziseres Embed
+                        // Falls nicht, nutzen wir den Link oder Namen als Fallback-Suche
+                        // WICHTIG: Google Maps Kurzlinks (maps.app.goo.gl) funktionieren NICHT direkt im Iframe (CORS/Redirect)
+                        // Wenn es ein Kurzlink ist und wir KEINE Koordinaten haben, nutzen wir den Namen zur Suche.
+                        const isShortUrl = mapsLink ? mapsLink.includes('maps.app.goo.gl') || mapsLink.includes('goo.gl/maps') : false;
+                        const searchParam = coords ? `${coords.lat},${coords.lng}` : (isShortUrl ? locationName : (mapsLink || locationName));
+                        const encodedLocation = encodeURIComponent(searchParam);
+                        
+                        // Einfache Search URL für Iframes (funktioniert meistens auch ohne Key für einfache Suche)
+                        const simpleEmbedUrl = `https://maps.google.com/maps?q=${encodedLocation}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+
+                        return (
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '0.75rem' }}>
+                                    <Icon name="mapPin" />
+                                    <span style={{ fontWeight: 600 }}>{locationName}</span>
+                                </div>
+                                
+                                <div style={{ 
+                                    width: '100%', 
+                                    height: '220px', 
+                                    borderRadius: '16px', 
+                                    overflow: 'hidden', 
+                                    border: '1px solid var(--border-color)',
+                                    marginBottom: '0.75rem',
+                                    position: 'relative',
+                                    backgroundColor: 'var(--bg-accent)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                }}>
+                                    <iframe 
+                                        width="100%" 
+                                        height="100%" 
+                                        frameBorder="0" 
+                                        style={{ border: 0 }} 
+                                        src={simpleEmbedUrl} 
+                                        allowFullScreen
+                                        title="Standort Karte"
+                                    ></iframe>
+                                </div>
+
+                                {mapsLink && (
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            openLocationInApp(mapsLink);
+                                        }}
+                                        style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.6rem', 
+                                            padding: '0.75rem 1rem',
+                                            backgroundColor: '#007AFF',
+                                            borderRadius: '12px',
+                                            color: 'white',
+                                            textDecoration: 'none',
+                                            fontSize: '1rem',
+                                            fontWeight: 600,
+                                            border: 'none',
+                                            width: '100%',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 4px 10px rgba(0, 122, 255, 0.3)'
+                                        }}
+                                    >
+                                        <Icon name="map" size={18} />
+                                        In Navigations-App öffnen
+                                    </button>
+                                )}
                             </div>
-                        </div>
-                    )}
-                    {event.location && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                            <Icon name="mapPin" />
-                            <span>{event.location}</span>
-                        </div>
-                    )}
+                        );
+                    })()}
 
                     <h4 style={{ fontSize: '0.9rem', textTransform: 'uppercase', color: 'var(--text-light)', marginBottom: '0.5rem' }}>Beschreibung</h4>
                     <p style={{ lineHeight: '1.6', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
@@ -1140,6 +1329,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const cancelationPeriodHours = configData?.tenant?.config?.appointments?.cancelation_period_hours || 0;
     const autoBillingEnabled = !!configData?.tenant?.config?.auto_billing_enabled;
     const autoProgressEnabled = !!configData?.tenant?.config?.auto_progress_enabled;
+    const locations = configData?.tenant?.config?.appointments?.locations || [];
 
     // 3. MITARBEITER (Trainer)
     const { data: staffData } = useStaff(token);
@@ -1684,17 +1874,27 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                                                         {event.location && (
                                                             <span className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                                                                 <Icon name="map-pin" style={{ width: '12px', height: '12px', opacity: 0.7 }} />
-                                                                {event.location}
+                                                                {locations?.find(l => l.google_maps_link === event.location || l.name === event.location)?.name || event.location}
                                                             </span>
                                                         )}
                                                     </div>
                                                     <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
-                                                        {event.training_type && (
-                                                            <div style={{ fontSize: '0.7rem', color: 'var(--brand-orange)', background: 'var(--bg-accent-orange)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--warning-color-light)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                                                <Icon name="activity" style={{ width: '10px', height: '10px' }} />
-                                                                {event.training_type.name}
-                                                            </div>
-                                                        )}
+                                                        {event.training_type && (() => {
+                                                            const groupEvents = event.block_id ? appointments.filter(a => a.block_id === event.block_id) : [];
+                                                            const isPartofGroup = groupEvents.length > 1;
+                                                            const totalPrice = groupEvents.reduce((sum, a) => sum + (a.price || a.training_type?.default_price || 0), 0);
+                                                            const individualPrice = event.price ?? event.training_type.default_price;
+
+                                                            return (
+                                                                <div style={{ fontSize: '0.7rem', color: 'var(--brand-orange)', background: 'var(--bg-accent-orange)', padding: '0.1rem 0.5rem', borderRadius: '10px', fontWeight: 600, border: '1px solid var(--warning-color-light)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                                    <Icon name="activity" style={{ width: '10px', height: '10px' }} />
+                                                                    {event.training_type.name} 
+                                                                    <span style={{ marginLeft: '0.2rem', paddingLeft: '0.2rem', borderLeft: '1px solid var(--brand-orange-light)' }}>
+                                                                        {isPartofGroup ? `${formatPrice(totalPrice)}€ (Kurs)` : `${formatPrice(individualPrice)}€`}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                         {event.trainer && (
                                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-card)', padding: '0.1rem 0.5rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                                                                 <Icon name="user" style={{ width: '10px', height: '10px' }} />
@@ -1876,6 +2076,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     allAppointments={appointments}
                     isDarkMode={isDarkMode}
                     colorRules={colorRules}
+                    locations={locations}
                 />
             )}
             <ParticipantsModal
@@ -1912,6 +2113,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     allAppointments={appointments}
                     levels={allLevels}
                     cancelationPeriodHours={cancelationPeriodHours}
+                    locations={locations}
                 />
             )}
         </div>
