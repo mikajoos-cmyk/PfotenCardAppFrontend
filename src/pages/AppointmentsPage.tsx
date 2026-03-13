@@ -1108,15 +1108,15 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
     );
 };
 
-const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onRemoveParticipant, onBillParticipant, onBillAll, showBilling, showProgress, loggedInUser, isBlockEvent, levels }: {
+const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendance, onRemoveParticipant, onBillAll, onUnbillAll, showBilling, showProgress, loggedInUser, isBlockEvent, levels }: {
     isOpen: boolean,
     onClose: () => void,
     bookings: Booking[],
     title: string,
     onToggleAttendance: (id: number) => void,
     onRemoveParticipant: (id: number) => void,
-    onBillParticipant?: (id: number) => Promise<void> | void,
     onBillAll?: () => Promise<void> | void,
+    onUnbillAll?: () => Promise<void> | void,
     showBilling?: boolean,
     showProgress?: boolean,
     loggedInUser: any,
@@ -1128,19 +1128,6 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
 
     const isBilledForUI = (b: Booking) => {
         return isBlockEvent ? locallyBilled.has(b.id) : !!b.is_billed;
-    };
-
-    const handleBillOne = async (id: number) => {
-        if (onBillParticipant) {
-            await onBillParticipant(id);
-            if (isBlockEvent) {
-                setLocallyBilled(prev => {
-                    const next = new Set(prev);
-                    next.add(id);
-                    return next;
-                });
-            }
-        }
     };
 
     const handleBillAllLocal = async () => {
@@ -1187,21 +1174,35 @@ const ParticipantsModal = ({ isOpen, onClose, bookings, title, onToggleAttendanc
                     </button>
                 </div>
 
-                {activeTab === 'confirmed' && confirmedList.length > 0 && (showBilling || showProgress) && onBillAll && (
-                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                {activeTab === 'confirmed' && confirmedList.length > 0 && (showBilling || showProgress) && (onBillAll || onUnbillAll) && (
+                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', alignItems: 'center' }}>
                         {confirmedList.some(b => !isBilledForUI(b)) ? (
-                            <button onClick={handleBillAllLocal} className="button button-primary button-small">
-                                <Icon name={showBilling ? "euro" : "check-circle"} />
-                                {showBilling && showProgress
-                                    ? ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Abrechnen & Fortschritt`
-                                    : showBilling
-                                        ? ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Abrechnen`
-                                        : ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Fortschritte erteilen`}
-                            </button>
+                            onBillAll && (
+                                <button onClick={handleBillAllLocal} className="button button-primary button-small">
+                                    <Icon name={showBilling ? "euro" : "check-circle"} />
+                                    {showBilling && showProgress
+                                        ? ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Abrechnen & Fortschritt`
+                                        : showBilling
+                                            ? ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Abrechnen`
+                                            : ` ${confirmedList.filter(b => !isBilledForUI(b)).length} Fortschritte erteilen`}
+                                </button>
+                            )
                         ) : (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--brand-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Icon name="check-circle" /> Alle abgerechnet
-                            </span>
+                            <>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--brand-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Icon name="check-circle" /> Alle abgerechnet
+                                </span>
+                                {onUnbillAll && (
+                                    <button 
+                                        onClick={onUnbillAll} 
+                                        className="button button-small" 
+                                        style={{ backgroundColor: 'var(--bg-gray)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                                        title="Abrechnung rückgängig machen"
+                                    >
+                                        <Icon name="rotate-ccw" width={14} height={14} /> Rückgängig
+                                    </button>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -1536,23 +1537,6 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         }
     };
 
-    const handleBillParticipant = async (bookingId: number) => {
-        const booking = currentParticipants.find(b => b.id === bookingId);
-        const isVip = booking?.user?.is_vip;
-        const confirmMsg = isVip 
-            ? "Dieser Kunde ist VIP. Es wird kein Guthaben abgezogen, nur der Fortschritt eingetragen. Fortfahren?"
-            : "Guthaben für diesen Termin jetzt abziehen?";
-
-        if (!confirm(confirmMsg)) return;
-        try {
-            await apiClient.billBooking(bookingId, token);
-            alert(isVip ? "Fortschritt erfolgreich eingetragen." : "Abrechnung erfolgreich.");
-            queryClient.invalidateQueries({ queryKey: ['appointments'] });
-        } catch (e: any) {
-            alert(e.message || "Fehler bei der Abrechnung");
-        }
-    };
-
     const handleBillAllParticipants = async () => {
         const confirmedList = currentParticipants.filter(b => b.status === 'confirmed');
         if (confirmedList.length === 0) {
@@ -1563,12 +1547,12 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
         const vipCount = confirmedList.filter(b => b.user?.is_vip).length;
         const regularCount = confirmedList.length - vipCount;
         
-        let confirmMsg = `Möchtest du wirklich alle ${confirmedList.length} Teilnehmer gleichzeitig abrechnen?`;
+        let confirmMsg = `Möchtest du wirklich ALLE ${confirmedList.length} bestätigten Teilnehmer dieses Termins gleichzeitig abrechnen?`;
         if (vipCount > 0) {
-            confirmMsg = `Möchtest du wirklich alle ${confirmedList.length} Teilnehmer abrechnen?\n(${regularCount} reguläre Abrechnungen, ${vipCount} VIP-Fortschritte ohne Abzug)`;
+            confirmMsg = `Möchtest du wirklich alle ${confirmedList.length} Teilnehmer abrechnen?\n\n- ${regularCount} reguläre Abrechnungen (Guthabenabzug)\n- ${vipCount} VIP-Teilnehmer (nur Fortschritt)\n\nDies kann nicht direkt rückgängig gemacht werden.`;
         }
 
-        if (!confirm(confirmMsg)) return;
+        if (!window.confirm(confirmMsg)) return;
 
         const apptId = confirmedList[0]?.appointment_id;
         if (!apptId) return;
@@ -1591,6 +1575,32 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             queryClient.invalidateQueries({ queryKey: ['appointments'] });
         } catch (e: any) {
             alert(e.message || "Fehler bei der Sammel-Aktion");
+        }
+    };
+
+    const handleUnbillAllParticipants = async () => {
+        const confirmedList = currentParticipants.filter(b => b.status === 'confirmed');
+        if (confirmedList.length === 0) return;
+
+        const apptId = confirmedList[0]?.appointment_id;
+        if (!apptId) return;
+
+        if (!confirm("Möchtest du die Abrechnung und Fortschrittseintragung für ALLE Teilnehmer dieses Termins wirklich rückgängig machen?")) {
+            return;
+        }
+
+        try {
+            await apiClient.unbillAllParticipants(apptId, token);
+            alert("Abrechnung wurde für alle Teilnehmer rückgängig gemacht.");
+            
+            // Teilnehmer neu laden
+            if (currentEvent) {
+                const parts = await apiClient.getParticipants(currentEvent.id, token);
+                setCurrentParticipants(parts);
+            }
+            queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        } catch (e: any) {
+            alert(e.message || "Fehler beim Rückgängigmachen");
         }
     };
 
@@ -2086,8 +2096,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 title={currentApptTitle}
                 onToggleAttendance={handleToggleAttendance}
                 onRemoveParticipant={handleRemoveParticipant}
-                onBillParticipant={handleBillParticipant}
                 onBillAll={handleBillAllParticipants}
+                onUnbillAll={handleUnbillAllParticipants}
                 showBilling={autoBillingEnabled || autoProgressEnabled}
                 showProgress={autoProgressEnabled}
                 loggedInUser={user}
