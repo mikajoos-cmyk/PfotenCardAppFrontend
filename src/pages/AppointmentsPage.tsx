@@ -249,8 +249,15 @@ const TemplateSelectionModal = ({ isOpen, onClose, onSelect, allAppointments, is
     );
 };
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules, locations }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[], locations?: any[] }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules, locations, token }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[], locations?: any[], token: string | null }) => {
+    const queryClient = useQueryClient();
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [isAddLocationOpen, setIsAddLocationOpen] = useState(false);
+    const [newLocName, setNewLocName] = useState('');
+    const [newLocLink, setNewLocLink] = useState('');
+    const [newLocSaveGlobal, setNewLocSaveGlobal] = useState(false);
+    const [isSavingLoc, setIsSavingLoc] = useState(false);
+
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -339,6 +346,67 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
     }, [initialData, isOpen, defaultDuration, defaultMaxParticipants]);
 
     if (!isOpen) return null;
+
+    const handleSaveLocation = async () => {
+        if (!newLocName) {
+            alert('Bitte geben Sie einen Namen für den Ort ein.');
+            return;
+        }
+
+        setIsSavingLoc(true);
+        try {
+            let lat = null;
+            let lng = null;
+            if (newLocLink) {
+                const coords = extractCoordinates(newLocLink);
+                if (coords) {
+                    lat = parseFloat(coords.lat);
+                    lng = parseFloat(coords.lng);
+                }
+            }
+
+            const newLoc = {
+                id: Date.now(),
+                name: newLocName,
+                google_maps_link: newLocLink,
+                lat: lat,
+                lng: lng
+            };
+
+            if (newLocSaveGlobal) {
+                // In DB speichern
+                const currentConfig = await apiClient.getConfig();
+                const currentLocations = currentConfig?.tenant?.config?.appointments?.locations || [];
+                
+                const updatedConfig = {
+                    config: {
+                        ...currentConfig.tenant.config,
+                        appointments: {
+                            ...currentConfig.tenant.config.appointments,
+                            locations: [...currentLocations, newLoc]
+                        }
+                    }
+                };
+
+                await apiClient.put('/api/settings', updatedConfig, token);
+                await queryClient.invalidateQueries({ queryKey: ['config'] });
+            }
+
+            // In jedem Fall im Formular setzen
+            setFormData({ ...formData, location: newLocLink || newLocName });
+            
+            // Reset & Close
+            setNewLocName('');
+            setNewLocLink('');
+            setNewLocSaveGlobal(false);
+            setIsAddLocationOpen(false);
+        } catch (error) {
+            console.error('Error saving location:', error);
+            alert('Fehler beim Speichern des Ortes.');
+        } finally {
+            setIsSavingLoc(false);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -586,25 +654,37 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                             <label>Ort</label>
                             {locations && locations.length > 0 ? (
                                 <>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         <select 
-                                        className="form-input" 
-                                        value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : (formData.location ? 'custom' : '')} 
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            if (val === 'custom') {
-                                                setFormData({ ...formData, location: 'custom' });
-                                            } else {
-                                                setFormData({ ...formData, location: val });
-                                            }
-                                        }}
-                                        required
-                                    >
-                                        <option value="">Ort wählen...</option>
-                                        {locations.map((loc: any) => (
-                                            <option key={loc.id} value={loc.google_maps_link || loc.name}>{loc.name}</option>
-                                        ))}
-                                        <option value="custom">-- Anderen Ort eingeben --</option>
-                                    </select>
+                                            className="form-input" 
+                                            style={{ flex: 1 }}
+                                            value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : (formData.location ? 'custom' : '')} 
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === 'custom') {
+                                                    setFormData({ ...formData, location: 'custom' });
+                                                } else {
+                                                    setFormData({ ...formData, location: val });
+                                                }
+                                            }}
+                                            required
+                                        >
+                                            <option value="">Ort wählen...</option>
+                                            {locations.map((loc: any) => (
+                                                <option key={loc.id} value={loc.google_maps_link || loc.name}>{loc.name}</option>
+                                            ))}
+                                            <option value="custom">-- Anderen Ort eingeben --</option>
+                                        </select>
+                                        <button 
+                                            type="button"
+                                            className="button button-icon"
+                                            onClick={() => setIsAddLocationOpen(true)}
+                                            title="Neuen Ort hinzufügen"
+                                            style={{ padding: '0.5rem', minWidth: 'auto' }}
+                                        >
+                                            <Icon name="plus" size={18} />
+                                        </button>
+                                    </div>
                                     {formData.location === 'custom' && (
                                         <input 
                                             className="form-input" 
@@ -618,13 +698,25 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                     )}
                                 </>
                             ) : (
-                                <input 
-                                    className="form-input" 
-                                    value={formData.location} 
-                                    onChange={e => setFormData({ ...formData, location: e.target.value })} 
-                                    placeholder="Hundeplatz / Online" 
-                                    required
-                                />
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ flex: 1 }}
+                                        value={formData.location} 
+                                        onChange={e => setFormData({ ...formData, location: e.target.value })} 
+                                        placeholder="Hundeplatz / Online" 
+                                        required
+                                    />
+                                    <button 
+                                        type="button"
+                                        className="button button-icon"
+                                        onClick={() => setIsAddLocationOpen(true)}
+                                        title="Neuen Ort hinzufügen"
+                                        style={{ padding: '0.5rem', minWidth: 'auto' }}
+                                    >
+                                        <Icon name="plus" size={18} />
+                                    </button>
+                                </div>
                             )}
                         </div>
                         <div className="form-group"><label>Beschreibung</label><textarea className="form-input" rows={3} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Details..." /></div>
@@ -731,7 +823,77 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                         </div>
                     </form>
                 </div >
-            </div >
+            </div>
+            
+            {/* NEU: Modal zum Hinzufügen eines Ortes */}
+            {isAddLocationOpen && (
+                <div className="modal-overlay" style={{ zIndex: 2100 }}>
+                    <div className="modal-content" style={{ maxWidth: '450px', width: '90%' }}>
+                        <div className="modal-header">
+                            <h2>Neuen Ort hinzufügen</h2>
+                            <button className="close-button" onClick={() => setIsAddLocationOpen(false)}>
+                                <Icon name="x" />
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label>Name des Ortes</label>
+                                <input 
+                                    className="form-input" 
+                                    value={newLocName} 
+                                    onChange={e => setNewLocName(e.target.value)} 
+                                    placeholder="z.B. Trainingsgelände Wald" 
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Google Maps Link (optional)</label>
+                                <input 
+                                    className="form-input" 
+                                    value={newLocLink} 
+                                    onChange={e => setNewLocLink(e.target.value)} 
+                                    placeholder="https://maps.google.com/..." 
+                                />
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                    Koordinaten werden automatisch extrahiert, falls vorhanden.
+                                </p>
+                            </div>
+                            
+                            <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', background: 'var(--bg-accent)', padding: '0.75rem', borderRadius: '8px' }}>
+                                <label style={{ margin: 0, fontSize: '0.9rem' }}>
+                                    In den Einstellungen speichern? <br/>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Dann für alle Termine verfügbar.</span>
+                                </label>
+                                <label className="switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={newLocSaveGlobal}
+                                        onChange={e => setNewLocSaveGlobal(e.target.checked)}
+                                    />
+                                    <span className="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button 
+                                type="button" 
+                                onClick={() => setIsAddLocationOpen(false)} 
+                                className="button button-outline"
+                                disabled={isSavingLoc}
+                            >
+                                Abbrechen
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={handleSaveLocation} 
+                                className="button button-primary"
+                                disabled={isSavingLoc || !newLocName}
+                            >
+                                {isSavingLoc ? 'Speichert...' : 'Übernehmen'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
@@ -2087,6 +2249,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     isDarkMode={isDarkMode}
                     colorRules={colorRules}
                     locations={locations}
+                    token={token}
                 />
             )}
             <ParticipantsModal
