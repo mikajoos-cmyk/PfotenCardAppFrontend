@@ -249,7 +249,7 @@ const TemplateSelectionModal = ({ isOpen, onClose, onSelect, allAppointments, is
     );
 };
 
-const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules, locations, token }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[], locations?: any[], token: string | null }) => {
+const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allServices, initialData, showLeistung, defaultDuration, defaultMaxParticipants, allAppointments, isDarkMode, colorRules, locations, token, autoBillingEnabled, autoProgressEnabled }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void, allLevels: any[], staffUsers: any[], allServices: any[], initialData?: Appointment | null, showLeistung?: boolean, defaultDuration: number, defaultMaxParticipants: number, allAppointments: Appointment[], isDarkMode?: boolean, colorRules?: ColorRule[], locations?: any[], token: string | null, autoBillingEnabled?: boolean, autoProgressEnabled?: boolean }) => {
     const queryClient = useQueryClient();
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [isAddLocationOpen, setIsAddLocationOpen] = useState(false);
@@ -365,32 +365,57 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                 }
             }
 
-            const newLoc = {
+            const newLoc: any = {
                 id: Date.now(),
                 name: newLocName,
-                google_maps_link: newLocLink,
+                google_maps_link: newLocLink || '',
                 lat: lat,
-                lng: lng
+                lng: lng,
+                is_public: newLocSaveGlobal // Speichern ob öffentlich oder nur für diesen Termin
             };
 
-            if (newLocSaveGlobal) {
-                // In DB speichern
-                const currentConfig = await apiClient.getConfig();
-                const currentLocations = currentConfig?.tenant?.config?.appointments?.locations || [];
-                
-                const updatedConfig = {
-                    config: {
-                        ...currentConfig.tenant.config,
-                        appointments: {
-                            ...currentConfig.tenant.config.appointments,
-                            locations: [...currentLocations, newLoc]
-                        }
-                    }
-                };
+            // IMMER in der DB speichern
+            const currentConfig = await apiClient.getConfig();
+            const currentLocations = currentConfig?.tenant?.config?.appointments?.locations || [];
+            
+            const updatedConfig = {
+                ...currentConfig.tenant.config,
+                appointments: {
+                    ...currentConfig.tenant.config.appointments,
+                    locations: [...currentLocations, newLoc]
+                }
+            };
 
-                await apiClient.put('/api/settings', updatedConfig, token);
-                await queryClient.invalidateQueries({ queryKey: ['config'] });
-            }
+            // Wir schicken nur das config Objekt an /api/settings? 
+            // Halt, main.py erwartet schemas.SettingsUpdate.
+            // Ich muss das richtige Format schicken.
+            
+            const settingsData = {
+                school_name: currentConfig.tenant.name,
+                primary_color: currentConfig.tenant.config.branding.primary_color,
+                secondary_color: currentConfig.tenant.config.branding.secondary_color,
+                background_color: currentConfig.tenant.config.branding.background_color,
+                sidebar_color: currentConfig.tenant.config.branding.sidebar_color,
+                level_term: currentConfig.tenant.config.wording.level,
+                vip_term: currentConfig.tenant.config.wording.vip,
+                services: currentConfig.training_types.map((s: any) => ({
+                    id: s.id,
+                    name: s.name,
+                    category: s.category,
+                    price: s.default_price,
+                    rank_order: s.rank_order
+                })),
+                levels: currentConfig.levels.map((l: any) => ({
+                    id: l.id,
+                    name: l.name,
+                    rank_order: l.rank_order,
+                    color: l.color
+                })),
+                appointments: updatedConfig.appointments
+            };
+
+            await apiClient.put('/api/settings', settingsData, token);
+            await queryClient.invalidateQueries({ queryKey: ['config'] });
 
             // In jedem Fall im Formular setzen
             setFormData({ ...formData, location: newLocLink || newLocName });
@@ -412,7 +437,9 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
         e.preventDefault();
 
         // Validierung: Wenn Dropdown für Leistung sichtbar ist (Automatisierung aktiv), muss eine gewählt sein.
-        if (showLeistung && !formData.training_type_id) {
+        // Nur Pflicht wenn Automatisierung aktiv
+        const isAutomationActive = (typeof autoBillingEnabled !== 'undefined' && autoBillingEnabled) || (typeof autoProgressEnabled !== 'undefined' && autoProgressEnabled);
+        if (isAutomationActive && !formData.training_type_id) {
             alert("Bitte wählen Sie eine Leistung aus (erforderlich für die aktive Automatisierung).");
             return;
         }
@@ -427,9 +454,9 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
             finalPrice = Number((Number(formData.group_price) / count).toFixed(2));
         }
 
-        // Falls "custom" im Location-Feld steht, aber kein Name eingegeben wurde, Validierung abfangen
-        if (formData.location === 'custom') {
-            alert("Bitte geben Sie einen Namen für den Ort ein.");
+        // Falls kein Ort aus dem Dropdown gewählt wurde und das manuelle Feld leer ist
+        if (!formData.location) {
+            alert("Bitte geben Sie einen Ort für den Termin ein.");
             return;
         }
 
@@ -658,22 +685,17 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                         <select 
                                             className="form-input" 
                                             style={{ flex: 1 }}
-                                            value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : (formData.location ? 'custom' : '')} 
+                                            value={locations.some(l => l.google_maps_link === formData.location || l.name === formData.location) ? formData.location : ''} 
                                             onChange={e => {
                                                 const val = e.target.value;
-                                                if (val === 'custom') {
-                                                    setFormData({ ...formData, location: 'custom' });
-                                                } else {
-                                                    setFormData({ ...formData, location: val });
-                                                }
+                                                setFormData({ ...formData, location: val });
                                             }}
-                                            required
+                                            required={!formData.location}
                                         >
-                                            <option value="">Ort wählen...</option>
-                                            {locations.map((loc: any) => (
+                                            <option value="">Ort eingeben...</option>
+                                            {locations.filter((loc: any) => loc.is_public !== false || (loc.google_maps_link === formData.location || loc.name === formData.location)).map((loc: any) => (
                                                 <option key={loc.id} value={loc.google_maps_link || loc.name}>{loc.name}</option>
                                             ))}
-                                            <option value="custom">-- Anderen Ort eingeben --</option>
                                         </select>
                                         <button 
                                             type="button"
@@ -685,13 +707,13 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                             <Icon name="plus" size={18} />
                                         </button>
                                     </div>
-                                    {formData.location === 'custom' && (
+                                    {(!locations.some(l => l.google_maps_link === formData.location || l.name === formData.location)) && (
                                         <input 
                                             className="form-input" 
                                             style={{ marginTop: '0.5rem' }}
-                                            value={formData.location === 'custom' ? '' : formData.location} 
+                                            value={formData.location} 
                                             onChange={e => setFormData({ ...formData, location: e.target.value })} 
-                                            placeholder="Name des Ortes eingeben..." 
+                                            placeholder="Name des Ortes / Link eingeben..." 
                                             autoFocus
                                             required
                                         />
@@ -853,9 +875,21 @@ const AppointmentModal = ({ isOpen, onClose, onSave, allLevels, staffUsers, allS
                                     onChange={e => setNewLocLink(e.target.value)} 
                                     placeholder="https://maps.google.com/..." 
                                 />
-                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                                    Koordinaten werden automatisch extrahiert, falls vorhanden.
-                                </p>
+                                {newLocLink && (() => {
+                                    const coords = extractCoordinates(newLocLink);
+                                    if (coords) {
+                                        return (
+                                            <p style={{ fontSize: '0.75rem', color: 'var(--brand-green)', marginTop: '0.25rem', fontWeight: 600 }}>
+                                                ✓ Koordinaten extrahiert: {coords.lat}, {coords.lng}
+                                            </p>
+                                        );
+                                    }
+                                    return (
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                            Koordinaten werden automatisch extrahiert, falls vorhanden.
+                                        </p>
+                                    );
+                                })()}
                             </div>
                             
                             <div className="form-group" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem', background: 'var(--bg-accent)', padding: '0.75rem', borderRadius: '8px' }}>
@@ -1030,12 +1064,48 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
                             ? { lat: matchedLocation.lat, lng: matchedLocation.lng }
                             : (mapsLink ? extractCoordinates(mapsLink) : null);
                         
+                        // Wenn keine Koordinaten vorhanden sind, zeigen wir keine Karte an (nur Name/Text)
+                        if (!coords) {
+                            return (
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '0.75rem' }}>
+                                        <Icon name="mapPin" />
+                                        <span style={{ fontWeight: 600 }}>{locationName}</span>
+                                    </div>
+                                    {mapsLink && (
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openLocationInApp(mapsLink);
+                                            }}
+                                            style={{ 
+                                                display: 'inline-flex', 
+                                                alignItems: 'center', 
+                                                gap: '0.6rem', 
+                                                padding: '0.75rem 1rem',
+                                                backgroundColor: '#007AFF',
+                                                borderRadius: '12px',
+                                                color: 'white',
+                                                textDecoration: 'none',
+                                                fontSize: '1rem',
+                                                fontWeight: 600,
+                                                border: 'none',
+                                                width: '100%',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                boxShadow: '0 4px 10px rgba(0, 122, 255, 0.3)'
+                                            }}
+                                        >
+                                            <Icon name="map" size={18} />
+                                            In Navigations-App öffnen
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        }
+                        
                         // Wenn wir Koordinaten haben, nutzen wir diese für ein präziseres Embed
-                        // Falls nicht, nutzen wir den Link oder Namen als Fallback-Suche
-                        // WICHTIG: Google Maps Kurzlinks (maps.app.goo.gl) funktionieren NICHT direkt im Iframe (CORS/Redirect)
-                        // Wenn es ein Kurzlink ist und wir KEINE Koordinaten haben, nutzen wir den Namen zur Suche.
-                        const isShortUrl = mapsLink ? mapsLink.includes('maps.app.goo.gl') || mapsLink.includes('goo.gl/maps') : false;
-                        const searchParam = coords ? `${coords.lat},${coords.lng}` : (isShortUrl ? locationName : (mapsLink || locationName));
+                        const searchParam = `${coords.lat},${coords.lng}`;
                         const encodedLocation = encodeURIComponent(searchParam);
                         
                         // Einfache Search URL für Iframes (funktioniert meistens auch ohne Key für einfache Suche)
@@ -2242,7 +2312,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     staffUsers={staffUsers}
                     allServices={allServices}
                     initialData={editingEvent}
-                    showLeistung={autoBillingEnabled || autoProgressEnabled} // Nur anzeigen wenn einer der beiden an ist
+                    showLeistung={true} // IMMER anzeigen, da für Abrechnung wichtig
                     defaultDuration={defaultDuration}
                     defaultMaxParticipants={defaultMaxParticipants}
                     allAppointments={appointments}
@@ -2250,6 +2320,8 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     colorRules={colorRules}
                     locations={locations}
                     token={token}
+                    autoBillingEnabled={autoBillingEnabled}
+                    autoProgressEnabled={autoProgressEnabled}
                 />
             )}
             <ParticipantsModal
@@ -2261,7 +2333,7 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 onRemoveParticipant={handleRemoveParticipant}
                 onBillAll={handleBillAllParticipants}
                 onUnbillAll={handleUnbillAllParticipants}
-                showBilling={autoBillingEnabled || autoProgressEnabled}
+                showBilling={true} // Abrechnung immer ermöglichen
                 showProgress={autoProgressEnabled}
                 loggedInUser={user}
                 isBlockEvent={!!currentEvent?.block_id}
