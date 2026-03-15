@@ -1684,11 +1684,18 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
             if (type === 'book') {
                 const response = await apiClient.bookAppointment(event.id, token, selectedDogId || undefined);
                 // API sollte das Booking-Objekt zurückgeben
+                let msg = "";
                 if (response.status === 'waitlist') {
-                    alert("Du wurdest auf die Warteliste gesetzt! Wir informieren dich, sobald ein Platz frei wird.");
+                    msg = "Du wurdest auf die Warteliste gesetzt! Wir informieren dich, sobald ein Platz frei wird.";
                 } else {
-                    alert("Erfolgreich angemeldet!");
+                    msg = "Erfolgreich angemeldet!";
                 }
+
+                if (response.warning) {
+                    msg += "\n\nHinweis: " + response.warning;
+                }
+                
+                alert(msg);
             } else {
                 // Zusätzliche Client-Schutzlogik: Stornierungsfrist prüfen
                 const now = new Date();

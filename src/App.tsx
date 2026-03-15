@@ -35,6 +35,7 @@ import ReportsPage from './pages/reports/ReportsPage';
 import UsersPage from './pages/admin/UsersPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import { NewsPage } from './pages/NewsPage';
+import HomeworkPage from './pages/HomeworkPage';
 import StatusWidget from './pages/widgets/StatusWidget';
 import AppointmentsWidget from './pages/widgets/AppointmentsWidget';
 import { ChatPage } from './pages/ChatPage';
@@ -1588,6 +1589,9 @@ export default function App() {
     const renderContent = () => {
         if (view.page === 'news') {
             return <NewsPage user={loggedInUser} token={authToken} targetAppointmentId={view.targetAppointmentId} isPreviewMode={isPreviewMode} />;
+        }
+        if (view.page === 'homework') {
+            return <HomeworkPage currentUser={loggedInUser} token={authToken} />;
         }
         if (view.page === 'chat') {
             return <ChatPage 

@@ -132,6 +132,16 @@ export const apiClient = {
         return handleResponse(response);
     },
 
+    patch: async (path: string, data: any, token: string | null) => {
+        const response = await fetchWithRetry(`${API_BASE_URL}${path}`, {
+            method: 'PATCH',
+            headers: getHeaders(token, true),
+            body: JSON.stringify(data),
+        });
+
+        return handleResponse(response);
+    },
+
     setVipStatus: async (userId: string, isVip: boolean, token: string | null) => {
         return apiClient.put(`/api/users/${userId}/vip`, { is_vip: isVip }, token);
     },
@@ -153,9 +163,13 @@ export const apiClient = {
         return apiClient.put(`/api/appointments/${appointmentId}`, data, token);
     },
 
-    upload: async (path: string, file: File, token: string | null) => {
+    upload: async (path: string, files: File | File[], token: string | null) => {
         const formData = new FormData();
-        formData.append("upload_file", file);
+        if (Array.isArray(files)) {
+            files.forEach(file => formData.append("files", file));
+        } else {
+            formData.append("files", files);
+        }
 
         const headers: any = {};
         if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -340,6 +354,39 @@ export const apiClient = {
 
     updateAppStatus: async (data: { status: string, message: string }, token: string | null) => {
         return apiClient.put('/api/status', data, token);
+    },
+
+    // --- HAUSAUFGABEN ---
+    getHomeworkTemplates: async (token: string | null) => {
+        return apiClient.get('/api/homework/templates', token);
+    },
+
+    createHomeworkTemplate: async (data: any, token: string | null) => {
+        return apiClient.post('/api/homework/templates', data, token);
+    },
+
+    updateHomeworkTemplate: async (templateId: number, data: any, token: string | null) => {
+        return apiClient.put(`/api/homework/templates/${templateId}`, data, token);
+    },
+
+    deleteHomeworkTemplate: async (templateId: number, token: string | null) => {
+        return apiClient.delete(`/api/homework/templates/${templateId}`, token);
+    },
+
+    assignHomework: async (data: any, token: string | null) => {
+        return apiClient.post('/api/homework/assign', data, token);
+    },
+
+    getUserHomework: async (userId: number | string, token: string | null) => {
+        return apiClient.get(`/api/homework/user/${userId}`, token);
+    },
+
+    completeHomework: async (assignmentId: number, data: { client_feedback?: string }, token: string | null) => {
+        return apiClient.patch(`/api/homework/${assignmentId}/complete`, data, token);
+    },
+
+    uploadHomeworkFiles: async (files: File | File[], token: string | null) => {
+        return apiClient.upload('/api/homework/upload', files, token);
     },
 
     createTopUpIntent: async (data: { amount: number, bonus: number }, token: string | null) => {

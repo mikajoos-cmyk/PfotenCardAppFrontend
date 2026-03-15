@@ -622,10 +622,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({ user, token, setView, isPrev
                                 height: '60px',
                                 flexShrink: 0
                             }}>
-                                <button className="button-icon" onClick={handleBackToList} style={{ display: isDesktop ? 'none' : 'flex', color: isDesktop ? 'var(--text-primary)' : 'var(--sidebar-text)' }}>
+                                <button className="button-icon" onClick={handleBackToList} style={{ display: isDesktop ? 'none' : 'flex', color: isDesktop ? 'var(--text-primary)' : 'var(--sidebar-text)', background: 'none', border: 'none', boxShadow: 'none' }}>
                                     <Icon name="arrow-left" />
                                 </button>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, cursor: 'pointer' }} onClick={navigateToCustomerProfile}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); navigateToCustomerProfile(); }}>
                                     {(() => {
                                         const firstName = selectedUser.name.split(' ')[0];
                                         const lastName = selectedUser.name.split(' ').slice(1).join(' ');

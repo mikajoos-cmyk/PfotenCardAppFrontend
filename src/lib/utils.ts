@@ -64,7 +64,7 @@ export const getProgressForLevel = (customer: any, levelId: number, dynamicLevel
 
     // Split requirements into exam and non-exam
     const isExamCategory = (cat: string) => {
-        const normalized = (cat || '').trim().toLowerCase();
+        const normalized = String(cat || '').trim().toLowerCase();
         return ['exam', 'examination', 'prüfung', 'pruefung'].includes(normalized);
     };
 

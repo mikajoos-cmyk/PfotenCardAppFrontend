@@ -7,6 +7,7 @@ import InfoModal from '../components/modals/InfoModal'; // Importieren
 import { getInitials, getAvatarColorClass, getLevelColor } from '../lib/utils';
 import { getFullImageUrl } from '../App';
 import TopUpModal from '../components/modals/TopUpModal'; // NEU
+import { useHomework } from '../hooks/queries/useHomework';
 import { Wallet } from 'lucide-react'; // NEU
 
 interface DashboardPageProps {
@@ -24,6 +25,10 @@ interface DashboardPageProps {
 }
 
 const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, currentUser, onKpiClick, setView, appStatus, token, fetchAppData, balanceConfig, activeModules, levels }) => {
+    // Hausaufgaben Hook
+    const { userHomework } = useHomework(token);
+    const homework = userHomework(currentUser.id);
+    const openHomeworkCount = homework.data?.filter((hw: any) => !hw.is_completed).length || 0;
     // State für das Modal
     const [modal, setModal] = useState<{ isOpen: boolean; title: string; content: React.ReactNode; color: string; }>({
         isOpen: false, title: '', content: null, color: 'blue'
@@ -132,6 +137,26 @@ const DashboardPage: FC<DashboardPageProps> = ({ customers, transactions, curren
             {activeModules?.includes('status_display') && (
                 <LiveStatusBanner statusData={appStatus || null} />
             )}
+
+            {(currentUser.role === 'customer' || currentUser.role === 'kunde') && activeModules?.includes('homework') && openHomeworkCount > 0 && (
+                <div 
+                    className="content-box mb-4 clickable" 
+                    style={{ borderLeft: '4px solid var(--brand-blue)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}
+                    onClick={() => setView({ page: 'homework' })}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div className="p-2 rounded-full" style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--brand-blue)' }}>
+                            <Icon name="calendar" />
+                        </div>
+                        <div>
+                            <h3 className="m-0 text-lg">Dein Trainingsplan</h3>
+                            <p className="m-0 text-sm text-gray-500">Du hast <strong>{openHomeworkCount}</strong> offene Hausaufgaben.</p>
+                        </div>
+                    </div>
+                    <Icon name="arrowRight" />
+                </div>
+            )}
+
             <div className="kpi-grid">
                 <KpiCard
                     title="Kunden gesamt"

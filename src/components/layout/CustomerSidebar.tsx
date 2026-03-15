@@ -27,7 +27,7 @@ interface CustomerSidebarProps {
 const CustomerSidebar: FC<CustomerSidebarProps> = ({
     user, onLogout, setSidebarOpen, view, setView, activePage, setPage, schoolName = 'PfotenCard', logoUrl,
     isPreviewMode, onToggleRole,
-    activeModules = ['news', 'documents', 'calendar', 'chat'],
+    activeModules = ['news', 'documents', 'calendar', 'chat', 'homework'],
     unreadChatCount = 0,
     hasNewNews = false,
     onOpenNotifications,
@@ -73,6 +73,12 @@ const CustomerSidebar: FC<CustomerSidebarProps> = ({
                     <a href="#" className={`nav-link ${currentId === 'appointments' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNav('appointments'); }}>
                         <Icon name="calendar" />
                         <span>Termine</span>
+                    </a>
+                )}
+                {activeModules.includes('homework') && (
+                    <a href="#" className={`nav-link ${currentId === 'homework' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); handleNav('homework'); }}>
+                        <Icon name="calendar" />
+                        <span>Trainingsplan</span>
                     </a>
                 )}
                 {activeModules.includes('news') && (
