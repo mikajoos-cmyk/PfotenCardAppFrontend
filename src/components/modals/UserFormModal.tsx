@@ -1,18 +1,6 @@
 import React, { FC, useState, useEffect } from 'react';
 import { User, UserRole } from '../../types';
 import Icon from '../ui/Icon';
-import { PasswordInput } from '../ui/PasswordInput';
-import { BaseModal } from '../ui/BaseModal';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "../ui/select";
 
 interface UserFormModalProps {
     user: User | null;
@@ -25,6 +13,7 @@ const UserFormModal: FC<UserFormModalProps> = ({ user, onClose, onSave }) => {
     const [email, setEmail] = useState(user?.email || '');
     const [role, setRole] = useState<UserRole>(user?.role || 'mitarbeiter');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
@@ -41,7 +30,8 @@ const UserFormModal: FC<UserFormModalProps> = ({ user, onClose, onSave }) => {
         }
     }, [user]);
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
         if (!name || !email) {
             alert("Name und E-Mail sind Pflichtfelder.");
             return;
@@ -61,72 +51,116 @@ const UserFormModal: FC<UserFormModalProps> = ({ user, onClose, onSave }) => {
     };
 
     return (
-        <BaseModal
-            isOpen={true}
-            onClose={(open) => !open && onClose()}
-            title={user ? 'Benutzer bearbeiten' : 'Mitarbeiter einladen'}
-            footer={
-                <div className="flex justify-end gap-2 w-full">
-                    <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-                    <Button onClick={handleSubmit} isLoading={isSubmitting}>
-                        {user ? 'Speichern' : 'Einladung senden'}
-                    </Button>
-                </div>
-            }
-        >
-            <div className="space-y-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="userName">Name</Label>
-                    <Input
-                        id="userName"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        placeholder="Max Mustermann"
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="userEmail">E-Mail</Label>
-                    <Input
-                        id="userEmail"
-                        type="email"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        placeholder="mitarbeiter@hundeschule.de"
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="userRole">Rolle</Label>
-                    <Select value={role} onValueChange={(val: UserRole) => setRole(val)}>
-                        <SelectTrigger id="userRole">
-                            <SelectValue placeholder="Rolle wählen" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="mitarbeiter">Mitarbeiter (Eingeschränkt)</SelectItem>
-                            <SelectItem value="admin">Administrator (Vollzugriff)</SelectItem>
-                        </SelectContent>
-                    </Select>
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                <div className="modal-header blue">
+                    <h2>{user ? 'Benutzer bearbeiten' : 'Mitarbeiter einladen'}</h2>
+                    <button className="close-button" onClick={onClose}>
+                        <Icon name="x" />
+                    </button>
                 </div>
 
-                {user ? (
-                    <div className="mt-4 pt-4 border-t">
-                        <PasswordInput
-                            label="Passwort ändern (leer lassen zum Beibehalten)"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            placeholder="Neues Passwort"
-                        />
-                    </div>
-                ) : (
-                    <div className="bg-blue-50 text-blue-800 p-4 rounded-md text-sm border border-blue-100 flex gap-3 items-start mt-4">
-                        <Icon name="mail" width={20} height={20} className="shrink-0 mt-0.5" />
-                        <div>
-                            <strong>Einladung per E-Mail</strong>
-                            <p className="mt-1 opacity-90">Der Benutzer erhält einen Link, um seine E-Mail zu bestätigen und ein eigenes Passwort festzulegen.</p>
+                <div className="modal-body">
+                    <form id="user-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>Name des Mitarbeiters *</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="Max Mustermann"
+                                required
+                            />
                         </div>
-                    </div>
-                )}
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>E-Mail-Adresse *</label>
+                            <input
+                                type="email"
+                                className="form-input"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                placeholder="mitarbeiter@hundeschule.de"
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label>Rolle & Berechtigungen *</label>
+                            <select
+                                className="form-input"
+                                value={role}
+                                onChange={e => setRole(e.target.value as UserRole)}
+                                required
+                            >
+                                <option value="mitarbeiter">Mitarbeiter (Eingeschränkter Zugriff)</option>
+                                <option value="admin">Administrator (Vollzugriff)</option>
+                            </select>
+                        </div>
+
+                        {user ? (
+                            <div className="form-group" style={{ marginTop: '0.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)', marginBottom: 0 }}>
+                                <label>Passwort ändern (leer lassen zum Beibehalten)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        className="form-input"
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        placeholder="Neues Passwort eingeben"
+                                        style={{ paddingRight: '2.5rem' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{
+                                            position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)',
+                                            background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer',
+                                            padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}
+                                        title={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                                    >
+                                        <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{
+                                backgroundColor: 'var(--bg-accent-blue)',
+                                padding: '1rem',
+                                borderRadius: '0.75rem',
+                                border: '1px solid var(--border-color)',
+                                display: 'flex',
+                                gap: '1rem',
+                                alignItems: 'flex-start',
+                                marginTop: '0.5rem'
+                            }}>
+                                <div style={{ backgroundColor: 'white', color: 'var(--brand-blue)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <Icon name="mail" size={16} />
+                                </div>
+                                <div>
+                                    <strong style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--text-primary)', fontSize: '0.95rem' }}>Einladung per E-Mail</strong>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                        Der Benutzer erhält automatisch einen Link, um seine E-Mail-Adresse zu bestätigen und ein eigenes Passwort festzulegen.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </form>
+                </div>
+
+                <div className="modal-footer">
+                    <button type="button" className="button button-outline" onClick={onClose}>
+                        Abbrechen
+                    </button>
+                    <button type="submit" form="user-form" className="button button-primary" disabled={isSubmitting}>
+                        {isSubmitting ? 'Speichert...' : (user ? 'Speichern' : 'Einladung senden')}
+                    </button>
+                </div>
             </div>
-        </BaseModal>
+        </div>
     );
 };
 

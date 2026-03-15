@@ -1,9 +1,5 @@
-
 import React, { FC, useState } from 'react';
-import { BaseModal } from "@/components/ui/BaseModal";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import Icon from '../ui/Icon';
 
 interface AddCustomerModalProps {
     onClose: () => void;
@@ -22,7 +18,8 @@ const AddCustomerModal: FC<AddCustomerModalProps> = ({ onClose, onAddCustomer })
     const [dogBirthDate, setDogBirthDate] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         if (!firstName || !lastName || !dogName) {
             alert("Bitte alle Pflichtfelder (Vorname, Nachname, Hundename) ausfüllen.");
             return;
@@ -37,75 +34,118 @@ const AddCustomerModal: FC<AddCustomerModalProps> = ({ onClose, onAddCustomer })
     };
 
     return (
-        <BaseModal
-            isOpen={true}
-            onClose={(open) => !open && onClose()}
-            title="Neuen Kunden anlegen"
-            footer={
-                <div className="flex justify-between w-full">
-                    {page === 1 ? (
-                        <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-                    ) : (
-                        <Button variant="outline" onClick={() => setPage(1)}>Zurück</Button>
-                    )}
-                    {page === 1 ? (
-                        <Button onClick={() => setPage(2)}>Weiter</Button>
-                    ) : (
-                        <Button onClick={handleSubmit} isLoading={isSubmitting}>Kunden anlegen</Button>
-                    )}
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
+                <div className="modal-header green">
+                    <h2>Neuen Kunden anlegen</h2>
+                    <button className="close-button" onClick={onClose}>
+                        <Icon name="x" />
+                    </button>
                 </div>
-            }
-        >
-            <div className="flex items-center justify-center mb-6">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${page >= 1 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>1</div>
-                <div className="w-12 h-1 bg-muted mx-2">
-                    <div className={`h-full bg-primary transition-all ${page >= 2 ? 'w-full' : 'w-0'}`}></div>
-                </div>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${page >= 2 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>2</div>
-            </div>
 
-            {page === 1 ? (
-                <div className="grid gap-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="firstName">Vorname *</Label>
-                            <Input id="firstName" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                <div className="modal-body">
+                    {/* Stepper Indicator */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
+                        <div style={{
+                            width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold',
+                            backgroundColor: page >= 1 ? 'var(--brand-green)' : 'var(--background-secondary)',
+                            color: page >= 1 ? 'white' : 'var(--text-secondary)',
+                            transition: 'all 0.3s ease'
+                        }}>
+                            1
                         </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="lastName">Nachname *</Label>
-                            <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} />
+                        <div style={{ width: '80px', height: '4px', backgroundColor: 'var(--background-secondary)', margin: '0 0.5rem', position: 'relative', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{
+                                position: 'absolute', top: 0, left: 0, height: '100%', backgroundColor: 'var(--brand-green)',
+                                transition: 'width 0.3s ease', width: page >= 2 ? '100%' : '0%'
+                            }}></div>
+                        </div>
+                        <div style={{
+                            width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold',
+                            backgroundColor: page >= 2 ? 'var(--brand-green)' : 'var(--background-secondary)',
+                            color: page >= 2 ? 'white' : 'var(--text-secondary)',
+                            transition: 'all 0.3s ease'
+                        }}>
+                            2
                         </div>
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">E-Mail</Label>
-                        <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="phone">Telefon</Label>
-                        <Input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} />
-                    </div>
+
+                    <form id="add-customer-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        {page === 1 ? (
+                            <div style={{ animation: 'slideIn 0.2s ease-out' }}>
+                                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>1. Persönliche Daten</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>Vorname *</label>
+                                        <input type="text" className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>Nachname *</label>
+                                        <input type="text" className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
+                                    </div>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                                    <label>E-Mail-Adresse</label>
+                                    <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="kunde@beispiel.de" />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Telefonnummer</label>
+                                    <input type="tel" className="form-input" value={phone} onChange={e => setPhone(e.target.value)} />
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ animation: 'slideIn 0.2s ease-out' }}>
+                                <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', color: 'var(--text-primary)' }}>2. Hunde-Daten</h3>
+                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                                    <label>Name des Hundes *</label>
+                                    <input type="text" className="form-input" value={dogName} onChange={e => setDogName(e.target.value)} required autoFocus />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                                    <label>Rasse (Optional)</label>
+                                    <input type="text" className="form-input" value={dogBreed} onChange={e => setDogBreed(e.target.value)} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                                    <label>Geburtsdatum (Optional)</label>
+                                    <input type="date" className="form-input" value={dogBirthDate} onChange={e => setDogBirthDate(e.target.value)} />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label>Chipnummer (Optional)</label>
+                                    <input type="text" className="form-input" value={chip} onChange={e => setChip(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </form>
                 </div>
-            ) : (
-                <div className="grid gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="dogName">Name des Hundes *</Label>
-                        <Input id="dogName" value={dogName} onChange={e => setDogName(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="dogBreed">Rasse</Label>
-                        <Input id="dogBreed" value={dogBreed} onChange={e => setDogBreed(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="dogBirthDate">Geburtsdatum</Label>
-                        <Input id="dogBirthDate" type="date" value={dogBirthDate} onChange={e => setDogBirthDate(e.target.value)} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="chip">Chipnummer</Label>
-                        <Input id="chip" value={chip} onChange={e => setChip(e.target.value)} />
-                    </div>
+
+                <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+                    {page === 1 ? (
+                        <button type="button" className="button button-outline" onClick={onClose}>
+                            Abbrechen
+                        </button>
+                    ) : (
+                        <button type="button" className="button button-outline" onClick={() => setPage(1)}>
+                            Zurück
+                        </button>
+                    )}
+
+                    {page === 1 ? (
+                        <button type="button" className="button button-primary" onClick={() => {
+                            if(!firstName || !lastName) {
+                                alert("Bitte Vor- und Nachnamen ausfüllen.");
+                                return;
+                            }
+                            setPage(2);
+                        }}>
+                            Weiter zu Hunde-Daten
+                        </button>
+                    ) : (
+                        <button type="submit" form="add-customer-form" className="button button-primary" disabled={isSubmitting || !dogName}>
+                            {isSubmitting ? 'Wird angelegt...' : 'Kunde anlegen'}
+                        </button>
+                    )}
                 </div>
-            )}
-        </BaseModal>
+            </div>
+        </div>
     );
 };
 
