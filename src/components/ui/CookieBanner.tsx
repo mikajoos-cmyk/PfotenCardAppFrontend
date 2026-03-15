@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
-export function CookieBanner() {
+export function CookieBanner({ onAccept }: { onAccept?: () => void }) {
     const [isVisible, setIsVisible] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
 
@@ -19,6 +19,7 @@ export function CookieBanner() {
         setIsVisible(false);
         // Event auslösen, damit Stripe geladen werden kann
         window.dispatchEvent(new Event('cookie-consent-updated'));
+        if (onAccept) onAccept();
     };
 
     if (!isVisible) return null;

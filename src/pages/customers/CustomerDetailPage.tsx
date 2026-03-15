@@ -960,7 +960,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 </button>
                             )}
                         </h2>
-                        {homework.isLoading ? <LoadingSpinner /> : (
+                        {homework.isLoading ? <LoadingSpinner message="Hausaufgaben werden geladen..." /> : (
                             <TooltipProvider>
                                 <ul className="document-list">
                                     {homework.data?.length > 0 ? homework.data.map((hw: any) => (
@@ -990,7 +990,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                                 <Icon name={getFileIcon(hw.file_name)} size={16} />
                                                             </a>
                                                         </TooltipTrigger>
-                                                        <TooltipContent>
+                                                        <TooltipContent aria-label={hw.file_name || 'Datei öffnen'}>
                                                             <p>{hw.file_name || 'Datei öffnen'}</p>
                                                         </TooltipContent>
                                                     </Tooltip>
@@ -1002,7 +1002,7 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                                 <Icon name={getFileIcon(att.file_name, att.type)} size={16} />
                                                             </a>
                                                         </TooltipTrigger>
-                                                        <TooltipContent>
+                                                        <TooltipContent aria-label={att.file_name || 'Datei öffnen'}>
                                                             <p>{att.file_name || 'Datei öffnen'}</p>
                                                         </TooltipContent>
                                                     </Tooltip>

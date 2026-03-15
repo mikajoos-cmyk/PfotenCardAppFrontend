@@ -258,7 +258,7 @@ const HomeworkManagement: FC<HomeworkManagementProps> = ({ token }) => {
                             </form>
                         </div>
                         <div className="modal-footer">
-                            <button type="button" className="button button-outline" onClick={() => setIsHomeworkModalOpen(false)}>Abbrechen</button>
+                            <button type="button" className="button button-outline" onClick={() => setIsModalOpen(false)}>Abbrechen</button>
                             <button type="submit" form="homework-template-form" className="button button-primary" disabled={createTemplate.isPending || updateTemplate.isPending || isUploading}>
                                 {createTemplate.isPending || updateTemplate.isPending ? 'Speichert...' : 'Vorlage speichern'}
                             </button>

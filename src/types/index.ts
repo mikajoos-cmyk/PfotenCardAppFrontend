@@ -1,5 +1,5 @@
 export type UserRole = 'admin' | 'mitarbeiter' | 'customer' | 'kunde';
-export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions' | 'impressum' | 'datenschutz' | 'agb' | 'widget';
+export type Page = 'dashboard' | 'customers' | 'reports' | 'users' | 'appointments' | 'news' | 'chat' | 'transactions' | 'impressum' | 'datenschutz' | 'agb' | 'widget' | 'homework';
 export type View = { page: Page; customerId?: string, chatPartnerId?: string, subPage?: 'detail' | 'transactions' | 'status', targetAppointmentId?: number, dogId?: number };
 
 
@@ -61,6 +61,13 @@ export interface Appointment {
     end_time: string;
     location?: string;
     max_participants: number;
+    trainer_id?: number;
+    training_type_id?: number;
+    target_levels?: Level[];
+    target_level_ids?: number[];
+    price?: number | null;
+    block_id?: string | number | null;
+    is_open_for_all?: boolean;
 }
 
 export interface Level {

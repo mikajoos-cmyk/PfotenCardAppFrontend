@@ -656,7 +656,7 @@ export default function AppointmentModal({
                                 {/* Anzeige der Block-Termine im Editier-Modus */}
                                 {initialData && initialData.block_id && allAppointments && (
                                     <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-accent-blue)', borderRadius: '0.75rem', border: '1px solid var(--text-accent-blue)' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 600, color: 'var(--brand-blue)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <label style={{ display: 'flex', marginBottom: '0.75rem', fontWeight: 600, color: 'var(--brand-blue)', alignItems: 'center', gap: '0.5rem' }}>
                                             <Icon name="layers" size={18} />
                                             Alle Termine in diesem Block:
                                         </label>
