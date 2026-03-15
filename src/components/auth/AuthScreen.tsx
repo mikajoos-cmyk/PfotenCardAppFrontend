@@ -2,7 +2,7 @@
 import React, { FC, FormEvent, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { apiClient } from '../../lib/api';
-import PasswordInput from '../ui/PasswordInput';
+import { PasswordInput } from '../ui/PasswordInput';
 import Icon from '../ui/Icon';
 
 interface AuthScreenProps {

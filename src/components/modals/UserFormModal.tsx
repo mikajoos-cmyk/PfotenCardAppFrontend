@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { User, UserRole } from '../../types';
 import Icon from '../ui/Icon';
-import PasswordInput from '../ui/PasswordInput';
+import { PasswordInput } from '../ui/PasswordInput';
 
 interface UserFormModalProps {
     user: User | null;

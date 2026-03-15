@@ -1,5 +1,10 @@
-// src/lib/utils.ts
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 import { LEVEL_REQUIREMENTS, DOGLICENSE_PREREQS, LEVELS } from './constants';
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
 
 export const getInitials = (firstName: string, lastName: string = '') => {
     const first = firstName ? firstName.charAt(0) : '';
@@ -171,9 +176,6 @@ export const isDarkColor = (hexColor: string) => {
     return luminance <= 0.5;
 };
 
-export function cn(...classes: (string | undefined | null | false)[]) {
-    return classes.filter(Boolean).join(' ');
-}
 
 export const formatDateDE = (value: string | Date | number | null | undefined): string => {
     if (value === null || value === undefined || value === '') return '-';

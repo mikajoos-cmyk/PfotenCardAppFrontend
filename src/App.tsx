@@ -4,16 +4,10 @@ import { supabase } from './lib/supabase';
 import { apiClient, getSubdomain } from './lib/api';
 import { User, View } from './types';
 
-import './status-tabs.css';
-
-// Components
-import LoadingSpinner from './components/ui/LoadingSpinner';
+import { PasswordInput } from './components/ui/PasswordInput';
 import Icon from './components/ui/Icon';
-import { isDarkColor, getAdjustedColor, getContrastColor } from './lib/utils';
-import Sidebar from './components/layout/Sidebar';
-import CustomerSidebar from './components/layout/CustomerSidebar';
-import AuthScreen from './components/auth/AuthScreen';
-import PasswordInput from './components/ui/PasswordInput';
+import { getAdjustedColor, getContrastColor, isDarkColor } from './lib/utils';
+
 
 // Modals
 import InfoModal from './components/modals/InfoModal';
@@ -26,6 +20,7 @@ import DeleteDogModal from './components/modals/DeleteDogModal';
 import NotificationSettingsModal from './components/modals/NotificationSettingsModal';
 
 // Pages
+import AuthScreen from './components/auth/AuthScreen';
 import DashboardPage from './pages/DashboardPage';
 import CustomerListPage from './pages/customers/CustomerListPage';
 import CustomerDetailPage from './pages/customers/CustomerDetailPage';
@@ -39,6 +34,8 @@ import HomeworkPage from './pages/HomeworkPage';
 import StatusWidget from './pages/widgets/StatusWidget';
 import AppointmentsWidget from './pages/widgets/AppointmentsWidget';
 import { ChatPage } from './pages/ChatPage';
+import Sidebar from './components/layout/Sidebar';
+import CustomerSidebar from './components/layout/CustomerSidebar';
 
 // NEU: Hook importieren
 import { useVisualViewport } from './hooks/useVisualViewport';
@@ -53,6 +50,7 @@ import { ImpressumPage } from './pages/legal/ImpressumPage';
 import { DatenschutzPage } from './pages/legal/DatenschutzPage';
 import { AGBPage } from './pages/legal/AGBPage';
 import { CookieBanner } from './components/ui/CookieBanner';
+import LoadingSpinner from './components/ui/LoadingSpinner';
 import { ContextHelp } from './components/ui/ContextHelp'; // Importieren
 import PWAInstallPrompt from './components/ui/PWAInstallPrompt';
 

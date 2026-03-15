@@ -1,5 +1,77 @@
-:root {
-    /* Brand Colors from Design */
+@import "tailwindcss";
+@import "./status-tabs.css";
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: "DM Sans", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+
+  --color-border: var(--border-color);
+  --color-input: var(--border-color);
+  --color-ring: var(--primary-color);
+  --color-background: var(--background-color);
+  --color-foreground: var(--text-primary);
+
+  --color-primary: var(--primary-color);
+  --color-primary-foreground: hsl(0, 0%, 100%);
+
+  --color-secondary: var(--sidebar-bg);
+  --color-secondary-foreground: hsl(0, 0%, 100%);
+
+  --color-tertiary: hsl(216, 80%, 35%);
+  --color-tertiary-foreground: hsl(0, 0%, 100%);
+
+  --color-neutral: hsl(0, 0%, 98%);
+  --color-neutral-foreground: var(--text-primary);
+
+  --color-success: hsl(142, 72%, 35%);
+  --color-warning: hsl(24, 92%, 50%);
+
+  --color-accent: hsl(24, 92%, 58%);
+  --color-accent-foreground: hsl(0, 0%, 100%);
+
+  --color-muted: hsl(210, 10%, 95%);
+  --color-muted-foreground: var(--text-secondary);
+
+  --color-destructive: hsl(0, 84%, 60%);
+  --color-destructive-foreground: hsl(0, 0%, 100%);
+
+  --color-popover: var(--card-background);
+  --color-popover-foreground: var(--text-primary);
+
+  --color-card: var(--card-background);
+  --color-card-foreground: var(--text-primary);
+
+  --radius-lg: 0.75rem;
+  --radius-md: 0.5rem;
+  --radius-sm: 0.25rem;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+@layer base {
+  :root {
+    /* Alte Brand Colors behalten für Rückwärtskompatibilität */
     --brand-green: #22C55E;
     --primary-color: #22C55E;
     --brand-orange: #F97316;
@@ -9,43 +81,28 @@
 
     /* Fallback, falls JS nicht lädt */
     --app-height: 100dvh;
-    /* Tailwind red-500 */
     --sidebar-bg: #1E293B;
-    /* slate-900 */
     --sidebar-text: #94A3B8;
-    /* slate-400 */
     --sidebar-text-hover: #ffffff;
     --sidebar-active-bg: var(--primary-color);
 
     /* UI Colors */
     --background-color: #F8FAFC;
-    /* slate-50 */
     --card-background: #ffffff;
     --text-primary: #0F172A;
-    /* slate-950 */
     --text-secondary: #64748B;
-    /* slate-500 */
     --text-light: #94A3B8;
-    /* slate-400 */
     --border-color: #E2E8F0;
-    /* slate-200 */
     --shadow-color: rgba(149, 157, 165, 0.1);
     --danger-bg-light: #FEE2E2;
-    /* red-100 */
 
     /* Level Progress Colors */
     --level-completed-bg: #F0FDF4;
-    /* green-50 */
     --level-completed-text: #166534;
-    /* green-800 */
     --level-active-bg: #F0FDF4;
-    /* green-50 */
     --level-active-text: #166534;
-    /* green-800 */
     --level-locked-bg: #FEF2F2;
-    /* rose-50 */
     --level-locked-text: #991B1B;
-    /* rose-900 */
     --level-1-color: #9333EA;
     --level-1-color-bg: #F5F3FF;
     --level-2-color: #16A34A;
@@ -56,6 +113,11 @@
     --level-4-color-bg: #FFFBEB;
     --level-5-color: #A16207;
     --level-5-color-bg: #FEFCE8;
+  }
+
+  * {
+    @apply border-border;
+  }
 }
 
 * {

@@ -1,6 +1,15 @@
 
 import React, { FC, useState } from 'react';
-import Icon from '../ui/Icon';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface AddCustomerModalProps {
     onClose: () => void;
@@ -28,51 +37,78 @@ const AddCustomerModal: FC<AddCustomerModalProps> = ({ onClose, onAddCustomer })
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <div className="modal-header green">
-                    <h2>Neuen Kunden anlegen</h2>
-                    <button className="close-button" onClick={onClose}><Icon name="x" /></button>
-                </div>
-                <div className="modal-body">
-                    <div className="progress-bar-container">
-                        <div className={`progress-step ${page >= 1 ? 'active' : ''}`}>1</div>
-                        <div className="progress-line"></div>
-                        <div className={`progress-step ${page >= 2 ? 'active' : ''}`}>2</div>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>Neuen Kunden anlegen</DialogTitle>
+                </DialogHeader>
+
+                <div className="py-4">
+                    <div className="flex items-center justify-center mb-6">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${page >= 1 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>1</div>
+                        <div className="w-12 h-1 bg-muted mx-2">
+                            <div className={`h-full bg-primary transition-all ${page >= 2 ? 'w-full' : 'w-0'}`}></div>
+                        </div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${page >= 2 ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}`}>2</div>
                     </div>
 
                     {page === 1 ? (
-                        <>
-                            <div className="form-group row">
-                                <div><label>Vorname *</label><input type="text" className="form-input" value={firstName} onChange={e => setFirstName(e.target.value)} /></div>
-                                <div><label>Nachname *</label><input type="text" className="form-input" value={lastName} onChange={e => setLastName(e.target.value)} /></div>
+                        <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="firstName">Vorname *</Label>
+                                    <Input id="firstName" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="lastName">Nachname *</Label>
+                                    <Input id="lastName" value={lastName} onChange={e => setLastName(e.target.value)} />
+                                </div>
                             </div>
-                            <div className="form-group"><label>E-Mail</label><input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} /></div>
-                            <div className="form-group"><label>Telefon</label><input type="tel" className="form-input" value={phone} onChange={e => setPhone(e.target.value)} /></div>
-                        </>
+                            <div className="grid gap-2">
+                                <Label htmlFor="email">E-Mail</Label>
+                                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="phone">Telefon</Label>
+                                <Input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} />
+                            </div>
+                        </div>
                     ) : (
-                        <>
-                            <div className="form-group"><label>Name des Hundes *</label><input type="text" className="form-input" value={dogName} onChange={e => setDogName(e.target.value)} /></div>
-                            <div className="form-group"><label>Rasse</label><input type="text" className="form-input" value={dogBreed} onChange={e => setDogBreed(e.target.value)} /></div>
-                            <div className="form-group"><label>Geburtsdatum</label><input type="date" className="form-input" value={dogBirthDate} onChange={e => setDogBirthDate(e.target.value)} /></div>
-                            <div className="form-group"><label>Chipnummer</label><input type="text" className="form-input" value={chip} onChange={e => setChip(e.target.value)} /></div>
-                        </>
+                        <div className="grid gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="dogName">Name des Hundes *</Label>
+                                <Input id="dogName" value={dogName} onChange={e => setDogName(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="dogBreed">Rasse</Label>
+                                <Input id="dogBreed" value={dogBreed} onChange={e => setDogBreed(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="dogBirthDate">Geburtsdatum</Label>
+                                <Input id="dogBirthDate" type="date" value={dogBirthDate} onChange={e => setDogBirthDate(e.target.value)} />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="chip">Chipnummer</Label>
+                                <Input id="chip" value={chip} onChange={e => setChip(e.target.value)} />
+                            </div>
+                        </div>
                     )}
                 </div>
-                <div className="modal-footer">
+
+                <DialogFooter className="flex justify-between sm:justify-between">
                     {page === 1 ? (
-                        <button className="button button-outline" onClick={onClose}>Abbrechen</button>
+                        <Button variant="outline" onClick={onClose}>Abbrechen</Button>
                     ) : (
-                        <button className="button button-outline" onClick={() => setPage(1)}>Zurück</button>
+                        <Button variant="outline" onClick={() => setPage(1)}>Zurück</Button>
                     )}
                     {page === 1 ? (
-                        <button className="button button-primary" onClick={() => setPage(2)}>Weiter</button>
+                        <Button onClick={() => setPage(2)}>Weiter</Button>
                     ) : (
-                        <button className="button button-primary" onClick={handleSubmit}>Kunden anlegen</button>
+                        <Button onClick={handleSubmit}>Kunden anlegen</Button>
                     )}
-                </div>
-            </div>
-        </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 };
 
