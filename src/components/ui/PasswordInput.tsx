@@ -7,37 +7,41 @@ import { cn } from "@/lib/utils"
 export interface PasswordInputProps
     extends React.InputHTMLAttributes<HTMLInputElement> {
     error?: string;
+    label?: string;
 }
 
 const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
-    ({ className, ...props }, ref) => {
+    ({ className, label, required, ...props }, ref) => {
         const [showPassword, setShowPassword] = useState(false)
 
         return (
-            <div className="relative">
-                <Input
-                    type={showPassword ? "text" : "password"}
-                    className={cn("pr-10", className)}
-                    ref={ref}
-                    {...props}
-                />
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-muted-foreground hover:text-foreground"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    tabIndex={-1}
-                >
-                    {showPassword ? (
-                        <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                        <Eye className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    <span className="sr-only">
-                        {showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
-                    </span>
-                </Button>
+            <div className="form-group">
+                {label && <label>{label}</label>}
+                <div className="relative">
+                    <input
+                        type={showPassword ? "text" : "password"}
+                        className={cn("form-input", "pr-12", className)}
+                        ref={ref}
+                        required={required}
+                        {...props}
+                    />
+                    <button
+                        type="button"
+                        className="password-toggle-btn"
+                        style={{ top: '50%', transform: 'translateY(-50%)' }}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        tabIndex={-1}
+                    >
+                        {showPassword ? (
+                            <EyeOff className="h-5 w-5" aria-hidden="true" />
+                        ) : (
+                            <Eye className="h-5 w-5" aria-hidden="true" />
+                        )}
+                        <span className="sr-only">
+                            {showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                        </span>
+                    </button>
+                </div>
             </div>
         )
     }

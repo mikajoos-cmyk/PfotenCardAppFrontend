@@ -1426,8 +1426,14 @@ const CustomerDetailPage: FC<{
                     <div className="side-card">
                         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             Dokumentenverwaltung
-                            <button onClick={handleUploadClick} className="button-as-link" aria-label="Dokument hochladen">
-                                + Hochladen
+                            <button 
+                                onClick={handleUploadClick} 
+                                className="button-as-link" 
+                                aria-label="Dokument hochladen"
+                                style={{ color: 'var(--primary-color)', padding: '4px' }}
+                                title="Dokument hochladen"
+                            >
+                                <Icon name="plus" size={20} />
                             </button>
                             <input
                                 type="file"

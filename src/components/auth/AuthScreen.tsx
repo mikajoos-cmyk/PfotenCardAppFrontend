@@ -295,8 +295,8 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
 
                                 {view === 'register' && (
                                     <>
-                                        <div className="form-group"><label>Ihr Name</label><input type="text" className="form-input" value={name} onChange={e => setName(e.target.value)} required /></div>
-                                        <div className="form-group"><label>Hundename</label><input type="text" className="form-input" value={dogName} onChange={e => setDogName(e.target.value)} required /></div>
+                                        <div className="form-group"><label>Ihr Name</label><input type="text" className="form-input" placeholder="Ihr Name" value={name} onChange={e => setName(e.target.value)} required /></div>
+                                        <div className="form-group"><label>Hundename</label><input type="text" className="form-input" placeholder="Hundename" value={dogName} onChange={e => setDogName(e.target.value)} required /></div>
 
                                         <div className="form-group checkbox-group" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.85rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
                                             <input type="checkbox" required id="legal-check" style={{ width: 'auto', marginTop: '0.2rem' }} />
@@ -310,12 +310,13 @@ const AuthScreen: FC<AuthScreenProps> = ({ onLoginStart, onLoginEnd, onLoginSucc
 
                                 <div className="form-group">
                                     <label>E-Mail</label>
-                                    <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
+                                    <input type="email" className="form-input" placeholder="E-Mail" value={email} onChange={e => setEmail(e.target.value)} required />
                                 </div>
 
                                 {view !== 'forgot' && (
                                     <PasswordInput
                                         label="Passwort"
+                                        placeholder="Passwort"
                                         value={password}
                                         onChange={e => setPassword(e.target.value)}
                                         required

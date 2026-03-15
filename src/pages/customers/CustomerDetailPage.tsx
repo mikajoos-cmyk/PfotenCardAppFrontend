@@ -13,6 +13,31 @@ import DocumentViewerModal from '../../components/modals/DocumentViewerModal';
 import DeleteDocumentModal from '../../components/modals/DeleteDocumentModal';
 import UpdateEmailModal from '../../components/modals/UpdateEmailModal';
 
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "../../components/ui/tooltip";
+
+const getFileIcon = (fileName: string, type?: string) => {
+    if (type === 'video') return 'video';
+    if (type === 'image') return 'image';
+    
+    const extension = fileName?.split('.').pop()?.toLowerCase();
+    switch (extension) {
+        case 'pdf': return 'file-text';
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif': return 'image';
+        case 'mp4':
+        case 'mov':
+        case 'avi': return 'video';
+        default: return 'file';
+    }
+};
+
 interface CustomerDetailPageProps {
     customer: any;
     transactions: any[];
@@ -916,65 +941,101 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             Trainingsplan
                             {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
-                                <button onClick={() => setIsHomeworkModalOpen(true)} className="button-as-link">
-                                    + Zuweisen
+                                <button 
+                                    onClick={() => setIsHomeworkModalOpen(true)} 
+                                    className="button-as-link"
+                                    style={{ color: 'var(--primary-color)', padding: '4px' }}
+                                    title="Hausaufgabe zuweisen"
+                                >
+                                    <Icon name="plus" size={20} />
+                                </button>
+                            )}
+                            {(currentUser.role === 'customer' || currentUser.role === 'kunde') && (
+                                <button 
+                                    onClick={() => setView({ page: 'homework' })} 
+                                    className="button button-primary"
+                                    style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }}
+                                >
+                                    Alle ansehen
                                 </button>
                             )}
                         </h2>
                         {homework.isLoading ? <LoadingSpinner /> : (
-                            <ul className="document-list">
-                                {homework.data?.length > 0 ? homework.data.map((hw: any) => (
-                                    <li key={hw.id} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <Icon name={hw.is_completed ? "check" : "calendar"} style={{ color: hw.is_completed ? 'var(--brand-green)' : 'var(--text-secondary)' }} />
-                                                <span style={{ fontWeight: 500 }}>{hw.title}</span>
+                            <TooltipProvider>
+                                <ul className="document-list">
+                                    {homework.data?.length > 0 ? homework.data.map((hw: any) => (
+                                        <li key={hw.id} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                                            <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <Icon name={hw.is_completed ? "check" : "calendar"} style={{ color: hw.is_completed ? 'var(--brand-green)' : 'var(--text-secondary)' }} />
+                                                    <span style={{ fontWeight: 500 }}>{hw.title}</span>
+                                                </div>
+                                                {hw.is_completed && <span className="badge badge-green">Erledigt</span>}
                                             </div>
-                                            {hw.is_completed && <span className="badge badge-green">Erledigt</span>}
-                                        </div>
-                                        {hw.description && (
-                                            <div className="text-sm text-gray-600 mt-1" style={{ paddingLeft: '1.75rem' }}>
-                                                {hw.description}
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'flex', gap: '0.5rem', paddingLeft: '1.75rem', marginTop: '0.25rem' }}>
-                                            {hw.video_url && (
-                                                <a href={hw.video_url} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-blue-500 hover:underline">
-                                                    <Icon name="video" size={12} /> Video
-                                                </a>
+                                            {hw.description && (
+                                                <div className="text-sm text-gray-600 mt-1" style={{ paddingLeft: '1.75rem' }}>
+                                                    {hw.description}
+                                                </div>
                                             )}
-                                            {hw.file_url && (
-                                                <a href={hw.file_url} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-blue-500 hover:underline">
-                                                    <Icon name="file-text" size={12} /> {hw.file_name || 'Datei'}
-                                                </a>
-                                            )}
-                                            {hw.attachments?.map((att: any, idx: number) => (
-                                                <a key={idx} href={att.file_url} target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 text-blue-500 hover:underline">
-                                                    <Icon name={att.type === 'video' ? 'video' : 'file-text'} size={12} /> {att.file_name || 'Datei'}
-                                                </a>
-                                            ))}
-                                        </div>
-                                        {hw.client_feedback && (
-                                            <div className="text-sm italic text-gray-500 mt-1" style={{ paddingLeft: '1.75rem', borderLeft: '2px solid #eee' }}>
-                                                "{hw.client_feedback}"
+                                            <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '1.75rem', marginTop: '0.25rem' }}>
+                                                {hw.video_url && (
+                                                    <a href={hw.video_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
+                                                        <Icon name="video" size={16} />
+                                                    </a>
+                                                )}
+                                                {hw.file_url && (
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <a href={hw.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
+                                                                <Icon name={getFileIcon(hw.file_name)} size={16} />
+                                                            </a>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{hw.file_name || 'Datei öffnen'}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                )}
+                                                {hw.attachments?.map((att: any, idx: number) => (
+                                                    <Tooltip key={idx}>
+                                                        <TooltipTrigger asChild>
+                                                            <a href={att.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
+                                                                <Icon name={getFileIcon(att.file_name, att.type)} size={16} />
+                                                            </a>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{att.file_name || 'Datei öffnen'}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                ))}
                                             </div>
-                                        )}
-                                        <div className="text-xs text-gray-400" style={{ paddingLeft: '1.75rem' }}>
-                                            Zugewiesen am {new Date(hw.created_at).toLocaleDateString('de-DE')}
-                                        </div>
-                                    </li>
-                                )) : (
-                                    <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Keine Hausaufgaben zugewiesen.</p>
-                                )}
-                            </ul>
+                                            {hw.client_feedback && (
+                                                <div className="text-sm italic text-gray-500 mt-1" style={{ paddingLeft: '1.75rem', borderLeft: '2px solid #eee' }}>
+                                                    "{hw.client_feedback}"
+                                                </div>
+                                            )}
+                                            <div className="text-xs text-gray-400" style={{ paddingLeft: '1.75rem' }}>
+                                                Zugewiesen am {new Date(hw.created_at).toLocaleDateString('de-DE')}
+                                            </div>
+                                        </li>
+                                    )) : (
+                                        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Keine Hausaufgaben zugewiesen.</p>
+                                    )}
+                                </ul>
+                            </TooltipProvider>
                         )}
                     </div>
 
                     <div className="side-card">
                         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             Dokumentenverwaltung
-                            <button onClick={handleUploadClick} className="button-as-link" aria-label="Dokument hochladen">
-                                + Hochladen
+                            <button 
+                                onClick={handleUploadClick} 
+                                className="button-as-link" 
+                                aria-label="Dokument hochladen"
+                                style={{ color: 'var(--primary-color)', padding: '4px' }}
+                                title="Dokument hochladen"
+                            >
+                                <Icon name="plus" size={20} />
                             </button>
                             <input
                                 type="file"
@@ -1129,14 +1190,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                         <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
                                             <div className="form-group">
                                                 <label className="form-label">Titel der Übung</label>
-                                                <div className="form-input bg-gray-50/50 flex items-center min-h-[46px] text-gray-900 font-medium">
+                                                <div className="form-input bg-transparent border-gray-200/50 flex items-center min-h-[46px] text-gray-900 font-medium">
                                                     {selectedTemplate.title}
                                                 </div>
                                             </div>
 
                                             <div className="form-group">
                                                 <label className="form-label">Beschreibung / Anleitung</label>
-                                                <div className="form-input bg-gray-50/50 min-h-[120px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+                                                <div className="form-input bg-transparent border-gray-200/50 min-h-[120px] text-gray-600 leading-relaxed whitespace-pre-wrap">
                                                     {selectedTemplate.description || 'Keine Beschreibung vorhanden.'}
                                                 </div>
                                             </div>
@@ -1145,10 +1206,10 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                 <div className="form-group">
                                                     <label className="form-label">Video-Link (YouTube / Vimeo)</label>
                                                     <div className="relative">
-                                                        <div className="absolute left-3 top-3 text-gray-400">
+                                                        <div className="absolute left-3 top-[14px] text-gray-400">
                                                             <Icon name="video" size={18} />
                                                         </div>
-                                                        <div className="form-input pl-10 bg-gray-50/50 flex items-center min-h-[46px] text-blue-600 truncate">
+                                                        <div className="form-input pl-11 bg-transparent border-gray-200/50 flex items-center min-h-[46px] text-blue-600 truncate">
                                                             {selectedTemplate.video_url}
                                                         </div>
                                                     </div>
@@ -1158,18 +1219,18 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             {(selectedTemplate.file_url || (selectedTemplate.attachments && selectedTemplate.attachments.length > 0)) && (
                                                 <div className="form-group">
                                                     <label className="form-label">Datei-Anhänge (PDF / PPTX / Bilder / Video)</label>
-                                                    <div className="space-y-2">
+                                                    <div className="space-y-3">
                                                         {selectedTemplate.file_url && (
-                                                            <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 text-sm shadow-sm">
-                                                                <Icon name="file-text" className="text-emerald-500" size={18} />
-                                                                <span className="truncate font-medium flex-1">{selectedTemplate.file_name || 'Hauptdokument'}</span>
+                                                            <div className="flex items-center gap-6 p-6 bg-white/40 backdrop-blur-sm rounded-xl border border-gray-100/50 text-sm shadow-sm">
+                                                                <Icon name="file-text" className="text-emerald-500" size={24} />
+                                                                <span className="truncate font-medium flex-1 text-base">{selectedTemplate.file_name || 'Hauptdokument'}</span>
                                                             </div>
                                                         )}
                                                         {selectedTemplate.attachments?.map((att: any, idx: number) => (
-                                                            <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 text-sm shadow-sm">
-                                                                <Icon name={att.type === 'video' ? 'video' : 'file-text'} className={att.type === 'video' ? 'text-rose-500' : 'text-emerald-500'} size={18} />
-                                                                <span className="truncate font-medium flex-1">{att.file_name || 'Datei'}</span>
-                                                                <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">{att.type === 'video' ? 'Video' : 'Dokument'}</span>
+                                                            <div key={idx} className="flex items-center gap-6 p-6 bg-white/40 backdrop-blur-sm rounded-xl border border-gray-100/50 text-sm shadow-sm">
+                                                                <Icon name={att.type === 'video' ? 'video' : 'file-text'} className={att.type === 'video' ? 'text-rose-500' : 'text-emerald-500'} size={24} />
+                                                                <span className="truncate font-medium flex-1 text-base">{att.file_name || 'Datei'}</span>
+                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{att.type === 'video' ? 'Video' : 'Dokument'}</span>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1177,9 +1238,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="py-12 text-center border-2 border-dashed rounded-2xl bg-gray-50/50 border-gray-200">
-                                            <Icon name="book-open" size={48} className="mx-auto text-gray-300 mb-3" />
-                                            <p className="text-sm text-gray-400">Wähle eine Vorlage aus dem Katalog <br/> oder erstelle eine neue Übung.</p>
+                                        <div className="py-12 text-center border-2 border-dashed rounded-2xl bg-transparent border-gray-200/50">
+                                            <Icon name="book-open" size={48} className="mx-auto text-gray-400/50 mb-3" />
+                                            <p className="text-sm text-gray-500">Wähle eine Vorlage aus dem Katalog <br/> oder erstelle eine neue Übung.</p>
                                         </div>
                                     )}
                                 </div>
@@ -1209,11 +1270,11 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                     <div className="form-group">
                                         <label className="form-label">Video-Link (YouTube / Vimeo)</label>
                                         <div className="relative">
-                                            <div className="absolute left-3 top-3 text-gray-400">
+                                            <div className="absolute left-3 top-[14px] text-gray-400">
                                                 <Icon name="video" size={18} />
                                             </div>
                                             <input 
-                                                className="form-input pl-10" 
+                                                className="form-input pl-11" 
                                                 placeholder="https://youtube.com/watch?v=..."
                                                 value={customHomework.video_url} 
                                                 onChange={e => setCustomHomework(prev => ({ ...prev, video_url: e.target.value }))} 
@@ -1223,28 +1284,28 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
                                     <div className="form-group">
                                         <label className="form-label">Datei-Anhänge (PDF / PPTX / Bilder / Video)</label>
-                                        <div className="space-y-2 mb-3">
+                                        <div className="space-y-3 mb-4">
                                             {customHomework.attachments?.map((att, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm">
-                                                    <div className="flex items-center gap-3 overflow-hidden">
-                                                        <Icon name={att.type === 'video' ? 'video' : 'file-text'} className="text-primary-color" size={18} />
-                                                        <span className="truncate font-medium">{att.file_name}</span>
+                                                <div key={idx} className="flex items-center justify-between p-6 bg-white/40 backdrop-blur-sm rounded-xl border border-gray-100/50 text-sm shadow-sm">
+                                                    <div className="flex items-center gap-6 overflow-hidden">
+                                                        <Icon name={att.type === 'video' ? 'video' : 'file-text'} className="text-primary-color" size={24} />
+                                                        <span className="truncate font-medium text-base">{att.file_name}</span>
                                                     </div>
                                                     <button 
-                                                        className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors" 
+                                                        className="text-red-500 hover:bg-red-50/50 p-2.5 rounded-lg transition-colors" 
                                                         onClick={() => setCustomHomework(prev => ({ 
                                                             ...prev, 
                                                             attachments: prev.attachments.filter((_, i) => i !== idx) 
                                                         }))}
                                                     >
-                                                        <Icon name="trash-2" size={16} />
+                                                        <Icon name="trash-2" size={20} />
                                                     </button>
                                                 </div>
                                             ))}
                                         </div>
                                         
                                         <button 
-                                            className="w-full h-28 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary-color hover:bg-blue-50/30 transition-all group"
+                                            className="w-full h-28 border-2 border-dashed border-gray-200/50 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary-color hover:bg-blue-50/10 backdrop-blur-sm transition-all group bg-transparent"
                                             disabled={isUploadingHomeworkFile}
                                             onClick={() => homeworkFileInputRef.current?.click()}
                                         >
@@ -1252,8 +1313,8 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                                 <LoadingSpinner />
                                             ) : (
                                                 <>
-                                                    <div className="p-3 bg-gray-100 rounded-full group-hover:bg-blue-100 transition-colors">
-                                                        <Icon name="upload" size={24} className="text-gray-500 group-hover:text-primary-color" />
+                                                    <div className="p-3 bg-transparent group-hover:bg-blue-100/10 transition-colors">
+                                                        <Icon name="upload" size={28} className="text-gray-500 group-hover:text-primary-color" />
                                                     </div>
                                                     <span className="text-sm font-medium text-gray-500 group-hover:text-primary-color">Dateien oder Videos hinzufügen</span>
                                                 </>

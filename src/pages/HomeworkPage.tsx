@@ -3,6 +3,52 @@ import { useHomework } from '../hooks/queries/useHomework';
 import Icon from '../components/ui/Icon';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
+// Neue shadcn/ui Komponenten importieren
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "../components/ui/accordion";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Card, CardContent } from "../components/ui/card";
+import { Textarea } from "../components/ui/textarea";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "../components/ui/dialog";
+
+// Hilfsfunktion für Datei-Icons
+const getFileIcon = (fileName: string, type?: string) => {
+    if (type === 'video') return 'video';
+    if (type === 'image') return 'image';
+
+    const extension = fileName?.split('.').pop()?.toLowerCase();
+    switch (extension) {
+        case 'pdf': return 'file-text';
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif': return 'image';
+        case 'mp4':
+        case 'mov':
+        case 'avi': return 'video';
+        default: return 'file';
+    }
+};
+
+// Hilfsfunktion: Zuverlässiges Extrahieren von YouTube-Embed-Links
+const getYouTubeEmbedUrl = (url: string) => {
+    if (!url) return null;
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?]+)/);
+    return match && match[1] ? `https://www.youtube.com/embed/${match[1]}` : url;
+};
+
 interface HomeworkPageProps {
     currentUser: any;
     token: string | null;
@@ -11,6 +57,7 @@ interface HomeworkPageProps {
 const HomeworkPage: FC<HomeworkPageProps> = ({ currentUser, token }) => {
     const { userHomework, completeHomework } = useHomework(token);
     const homework = userHomework(currentUser.id);
+
     const [feedbackModal, setFeedbackModal] = useState<{ isOpen: boolean; assignmentId: number | null }>({
         isOpen: false,
         assignmentId: null
@@ -32,145 +79,229 @@ const HomeworkPage: FC<HomeworkPageProps> = ({ currentUser, token }) => {
         }
     };
 
-    if (homework.isLoading) return <LoadingSpinner />;
+    if (homework.isLoading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <LoadingSpinner size="lg" />
+            </div>
+        );
+    }
 
     const openTasks = homework.data?.filter((hw: any) => !hw.is_completed) || [];
     const completedTasks = homework.data?.filter((hw: any) => hw.is_completed) || [];
 
     return (
-        <div className="homework-page p-4">
-            <header className="mb-6">
-                <h1>Mein Trainingsplan</h1>
-                <p className="text-gray-600">Hier findest du deine aktuellen Hausaufgaben und Übungen.</p>
+        <div className="w-full max-w-4xl mx-auto p-4 md:p-6 space-y-10">
+            {/* Header Area */}
+            <header className="space-y-2">
+                <h1 className="text-3xl font-bold tracking-tight text-primary">Mein Trainingsplan</h1>
+                <p className="text-muted-foreground text-lg">
+                    Hier findest du deine aktuellen Hausaufgaben und Übungen.
+                </p>
             </header>
 
-            <section className="mb-8">
-                <h2 className="mb-4 flex items-center gap-2">
-                    <Icon name="calendar" /> Offene Aufgaben ({openTasks.length})
-                </h2>
+            {/* Offene Aufgaben */}
+            <section className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <div className="bg-primary/10 p-2 rounded-lg text-primary">
+                        <Icon name="calendar" size={20} />
+                    </div>
+                    <h2 className="text-xl font-semibold m-0">Offene Aufgaben</h2>
+                    <Badge variant="secondary" className="ml-2 rounded-full px-2.5">
+                        {openTasks.length}
+                    </Badge>
+                </div>
+
                 {openTasks.length > 0 ? (
-                    <div className="grid-container">
+                    <Accordion type="single" collapsible className="w-full space-y-4">
                         {openTasks.map((hw: any) => (
-                            <div key={hw.id} className="card p-4 flex flex-col gap-3">
-                                <div className="flex justify-between items-start">
-                                    <h3 className="m-0">{hw.title}</h3>
-                                    <span className="badge badge-blue">Offen</span>
-                                </div>
-                                <p className="text-gray-700">{hw.description}</p>
-                                
-                                {hw.video_url && (
-                                    <div className="video-container mt-2" style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
-                                        <iframe 
-                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 0 }}
-                                            src={hw.video_url.includes('youtube.com') || hw.video_url.includes('youtu.be') ? hw.video_url.replace('watch?v=', 'embed/') : hw.video_url} 
-                                            title="Video player" 
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                            allowFullScreen
-                                        />
+                            <AccordionItem
+                                key={hw.id}
+                                value={hw.id.toString()}
+                                className="bg-card border border-border rounded-xl px-2 sm:px-6 shadow-sm overflow-hidden"
+                            >
+                                <AccordionTrigger className="hover:no-underline py-4">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                            <Icon name="clipboard-list" size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-lg text-foreground">{hw.title}</h3>
+                                            <p className="text-sm text-muted-foreground font-normal line-clamp-1 mt-0.5">
+                                                Klicken, um Details und Übungen anzuzeigen
+                                            </p>
+                                        </div>
                                     </div>
-                                )}
+                                </AccordionTrigger>
 
-                                {hw.file_url && (
-                                    <a href={hw.file_url} target="_blank" rel="noopener noreferrer" className="button button-secondary flex items-center justify-center gap-2">
-                                        <Icon name="file" /> {hw.file_name || 'Anleitung öffnen'}
-                                    </a>
-                                )}
+                                <AccordionContent className="pt-2 pb-6 space-y-6">
+                                    <div className="prose prose-sm sm:prose-base text-muted-foreground max-w-none">
+                                        <p className="whitespace-pre-wrap leading-relaxed">{hw.description}</p>
+                                    </div>
 
-                                {hw.attachments?.map((att: any, idx: number) => (
-                                    <div key={idx} className="mt-2">
-                                        {att.type === 'video' ? (
-                                            <div className="video-upload-container mb-2">
-                                                <video 
-                                                    controls 
-                                                    className="w-full rounded-lg" 
-                                                    style={{ maxHeight: '300px', backgroundColor: '#000' }}
-                                                >
-                                                    <source src={att.file_url} type="video/mp4" />
-                                                    Ihr Browser unterstützt dieses Videoformat nicht.
-                                                </video>
-                                                <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
-                                                    <Icon name="video" size={12} /> {att.file_name}
-                                                </div>
+                                    {/* YouTube Video Embed */}
+                                    {hw.video_url && (
+                                        <div className="rounded-xl overflow-hidden border border-border shadow-sm bg-muted/30">
+                                            <div className="aspect-video w-full relative">
+                                                <iframe
+                                                    className="absolute inset-0 w-full h-full"
+                                                    src={getYouTubeEmbedUrl(hw.video_url) || ''}
+                                                    title="Übungsvideo"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowFullScreen
+                                                />
                                             </div>
-                                        ) : (
-                                            <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="button button-secondary w-full flex items-center justify-center gap-2">
-                                                <Icon name={att.type === 'image' ? 'image' : 'file'} /> {att.file_name || 'Datei öffnen'}
+                                        </div>
+                                    )}
+
+                                    {/* Datei Anhänge */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {hw.file_url && (
+                                            <a href={hw.file_url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:border-primary/50 hover:shadow-md transition-all">
+                                                <div className="bg-primary/10 p-3 rounded-lg text-primary group-hover:scale-110 transition-transform">
+                                                    <Icon name={getFileIcon(hw.file_name)} size={24} />
+                                                </div>
+                                                <span className="font-medium text-sm line-clamp-2">{hw.file_name || 'Anleitung öffnen'}</span>
                                             </a>
                                         )}
-                                    </div>
-                                ))}
 
-                                <button 
-                                    className="button-primary w-full mt-2" 
-                                    onClick={() => setFeedbackModal({ isOpen: true, assignmentId: hw.id })}
-                                >
-                                    Übung erledigt
-                                </button>
-                            </div>
+                                        {hw.attachments?.map((att: any, idx: number) => (
+                                            <React.Fragment key={idx}>
+                                                {att.type === 'video' ? (
+                                                    <div className="col-span-1 sm:col-span-2 space-y-2 mt-2">
+                                                        <video controls className="w-full rounded-xl border border-border shadow-sm max-h-[400px] bg-black">
+                                                            <source src={att.file_url} type="video/mp4" />
+                                                            Dein Browser unterstützt dieses Videoformat nicht.
+                                                        </video>
+                                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 ml-1">
+                                                            <Icon name="video" size={14} /> {att.file_name}
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:border-primary/50 hover:shadow-md transition-all">
+                                                        <div className="bg-primary/10 p-3 rounded-lg text-primary group-hover:scale-110 transition-transform">
+                                                            <Icon name={getFileIcon(att.file_name, att.type)} size={24} />
+                                                        </div>
+                                                        <span className="font-medium text-sm line-clamp-2">{att.file_name || 'Datei öffnen'}</span>
+                                                    </a>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+                                    </div>
+
+                                    <div className="pt-4 flex justify-end">
+                                        <Button
+                                            size="lg"
+                                            className="w-full sm:w-auto gap-2"
+                                            onClick={() => setFeedbackModal({ isOpen: true, assignmentId: hw.id })}
+                                        >
+                                            <Icon name="check-circle" size={18} />
+                                            Als erledigt markieren
+                                        </Button>
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
                         ))}
-                    </div>
+                    </Accordion>
                 ) : (
-                    <div className="card p-8 text-center text-gray-500">
-                        <Icon name="check" size={48} className="mb-2 opacity-20" />
-                        <p>Super! Du hast alle aktuellen Hausaufgaben erledigt.</p>
-                    </div>
+                    <Card className="bg-muted/30 border-dashed border-2">
+                        <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
+                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
+                                <Icon name="check" size={32} />
+                            </div>
+                            <h3 className="text-xl font-semibold text-foreground mb-2">Alles erledigt!</h3>
+                            <p>Super gemacht. Du hast aktuell keine offenen Hausaufgaben.</p>
+                        </CardContent>
+                    </Card>
                 )}
             </section>
 
+            {/* Erledigte Aufgaben */}
             {completedTasks.length > 0 && (
-                <section>
-                    <h2 className="mb-4 text-gray-500 flex items-center gap-2">
-                        <Icon name="check" /> Erledigte Aufgaben
-                    </h2>
-                    <div className="grid-container opacity-75">
-                        {completedTasks.map((hw: any) => (
-                            <div key={hw.id} className="card p-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h3 className="m-0 text-gray-600">{hw.title}</h3>
-                                    <Icon name="check" className="text-green-500" />
-                                </div>
-                                {hw.client_feedback && (
-                                    <p className="text-sm italic text-gray-500 mt-2 border-l-2 pl-3">
-                                        Dein Feedback: "{hw.client_feedback}"
-                                    </p>
-                                )}
-                                <div className="text-xs text-gray-400 mt-3">
-                                    Erledigt am {new Date(hw.completed_at).toLocaleDateString('de-DE')}
-                                </div>
-                            </div>
-                        ))}
+                <section className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b border-border opacity-70">
+                        <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
+                            <Icon name="check-circle" size={20} />
+                        </div>
+                        <h2 className="text-xl font-semibold m-0 text-muted-foreground">Bereits absolviert</h2>
                     </div>
+
+                    <Accordion type="multiple" className="w-full space-y-3 opacity-80 hover:opacity-100 transition-opacity">
+                        {completedTasks.map((hw: any) => (
+                            <AccordionItem
+                                key={hw.id}
+                                value={hw.id.toString()}
+                                className="bg-card/50 border border-border rounded-xl px-2 sm:px-6 overflow-hidden"
+                            >
+                                <AccordionTrigger className="hover:no-underline py-3">
+                                    <div className="flex items-center gap-3 text-left">
+                                        <Icon name="check" className="text-emerald-500 shrink-0" size={20} />
+                                        <span className="font-medium text-muted-foreground line-through decoration-muted-foreground/30">{hw.title}</span>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-0 pb-4">
+                                    <div className="pl-8 space-y-3 border-l-2 border-emerald-500/20 ml-2">
+                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                            <Icon name="calendar-check" size={14} />
+                                            Erledigt am {new Date(hw.completed_at).toLocaleDateString('de-DE')}
+                                        </div>
+                                        {hw.client_feedback && (
+                                            <div className="bg-muted p-3 rounded-lg text-sm text-muted-foreground italic">
+                                                "{hw.client_feedback}"
+                                            </div>
+                                        )}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
                 </section>
             )}
 
-            {feedbackModal.isOpen && (
-                <div className="modal-overlay">
-                    <div className="modal-content" style={{ maxWidth: '400px' }}>
-                        <div className="modal-header">
-                            <h3>Übung abgeschlossen</h3>
-                            <button className="modal-close" onClick={() => setFeedbackModal({ isOpen: false, assignmentId: null })}>
-                                <Icon name="x" />
-                            </button>
-                        </div>
-                        <div className="p-4">
-                            <p className="mb-4">Wie lief das Training? (Optionales Feedback für deinen Trainer)</p>
-                            <textarea 
-                                className="form-input w-full" 
-                                rows={4}
-                                placeholder="z.B. Lief gut, aber bei der Ablenkung hat er noch Probleme..."
-                                value={feedbackText}
-                                onChange={e => setFeedbackText(e.target.value)}
-                            />
-                            <div className="modal-footer px-0 mt-4">
-                                <button className="button-secondary" onClick={() => setFeedbackModal({ isOpen: false, assignmentId: null })}>Abbrechen</button>
-                                <button className="button-primary" onClick={handleComplete} disabled={completeHomework.isPending}>
-                                    Speichern & Abschließen
-                                </button>
-                            </div>
-                        </div>
+            {/* Feedback & Abschluss Modal (shadcn Dialog) */}
+            <Dialog
+                open={feedbackModal.isOpen}
+                onOpenChange={(open) => !open && setFeedbackModal({ isOpen: false, assignmentId: null })}
+            >
+                <DialogContent className="sm:max-w-[500px] rounded-xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl flex items-center gap-2">
+                            <Icon name="award" className="text-orange-500" />
+                            Übung abgeschlossen!
+                        </DialogTitle>
+                        <DialogDescription>
+                            Wie lief das Training? Teile optional kurzes Feedback mit deinem Trainer.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <Textarea
+                            rows={4}
+                            placeholder="z.B. Lief gut, aber bei der Ablenkung hat der Hund noch Probleme..."
+                            value={feedbackText}
+                            onChange={e => setFeedbackText(e.target.value)}
+                            className="resize-none"
+                        />
                     </div>
-                </div>
-            )}
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="outline"
+                            onClick={() => setFeedbackModal({ isOpen: false, assignmentId: null })}
+                        >
+                            Abbrechen
+                        </Button>
+                        <Button
+                            onClick={handleComplete}
+                            disabled={completeHomework.isPending}
+                            className="gap-2"
+                        >
+                            {completeHomework.isPending && <LoadingSpinner size="sm" className="text-white" />}
+                            Speichern & Abschließen
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

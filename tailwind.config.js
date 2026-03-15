@@ -8,48 +8,48 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(210, 10%, 90%)",
-        input: "hsl(210, 10%, 90%)",
-        ring: "hsl(142, 72%, 45%)",
-        background: "hsl(0, 0%, 100%)",
-        foreground: "hsl(210, 10%, 20%)",
+        border: "hsl(var(--color-border))",
+        input: "hsl(var(--color-input))",
+        ring: "hsl(var(--color-ring))",
+        background: "hsl(var(--color-background))",
+        foreground: "hsl(var(--color-foreground))",
         primary: {
-          DEFAULT: "hsl(142, 72%, 45%)",
-          foreground: "hsl(0, 0%, 100%)",
+          DEFAULT: "hsl(var(--color-primary))",
+          foreground: "hsl(var(--color-primary-foreground))",
         },
         secondary: {
-          DEFAULT: "hsl(142, 35%, 35%)",
-          foreground: "hsl(0, 0%, 100%)",
+          DEFAULT: "hsl(var(--color-secondary))",
+          foreground: "hsl(var(--color-secondary-foreground))",
         },
         tertiary: {
-          DEFAULT: "hsl(216, 80%, 35%)",
-          foreground: "hsl(0, 0%, 100%)",
+          DEFAULT: "hsl(var(--color-tertiary))",
+          foreground: "hsl(var(--color-tertiary-foreground))",
         },
         neutral: {
-          DEFAULT: "hsl(0, 0%, 98%)",
-          foreground: "hsl(210, 10%, 20%)",
+          DEFAULT: "hsl(var(--color-neutral))",
+          foreground: "hsl(var(--color-neutral-foreground))",
         },
-        success: "hsl(142, 72%, 35%)",
-        warning: "hsl(24, 92%, 50%)",
+        success: "hsl(var(--color-success))",
+        warning: "hsl(var(--color-warning))",
         accent: {
-          DEFAULT: "hsl(24, 92%, 58%)",
-          foreground: "hsl(0, 0%, 100%)",
+          DEFAULT: "hsl(var(--color-accent))",
+          foreground: "hsl(var(--color-accent-foreground))",
         },
         muted: {
-          DEFAULT: "hsl(210, 10%, 95%)",
-          foreground: "hsl(210, 6%, 35%)",
+          DEFAULT: "hsl(var(--color-muted))",
+          foreground: "hsl(var(--color-muted-foreground))",
         },
         destructive: {
-          DEFAULT: "hsl(0, 84%, 60%)",
-          foreground: "hsl(0, 0%, 100%)",
+          DEFAULT: "hsl(var(--color-destructive))",
+          foreground: "hsl(var(--color-destructive-foreground))",
         },
         popover: {
-          DEFAULT: "hsl(0, 0%, 100%)",
-          foreground: "hsl(210, 10%, 20%)",
+          DEFAULT: "hsl(var(--color-popover))",
+          foreground: "hsl(var(--color-popover-foreground))",
         },
         card: {
-          DEFAULT: "hsl(0, 0%, 100%)",
-          foreground: "hsl(210, 10%, 20%)",
+          DEFAULT: "hsl(var(--color-card))",
+          foreground: "hsl(var(--color-card-foreground))",
         },
         gray: {
           50: "hsl(0, 0%, 98%)",
