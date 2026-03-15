@@ -2,26 +2,7 @@ import React, { FC, useState } from 'react';
 import { useHomework } from '../hooks/queries/useHomework';
 import Icon from '../components/ui/Icon';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-
-// Neue shadcn/ui Komponenten importieren
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "../components/ui/accordion";
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { Card, CardContent } from "../components/ui/card";
-import { Textarea } from "../components/ui/textarea";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from "../components/ui/dialog";
+import InfoModal from '../components/modals/InfoModal';
 
 // Hilfsfunktion für Datei-Icons
 const getFileIcon = (fileName: string, type?: string) => {
@@ -58,11 +39,22 @@ const HomeworkPage: FC<HomeworkPageProps> = ({ currentUser, token }) => {
     const { userHomework, completeHomework } = useHomework(token);
     const homework = userHomework(currentUser.id);
 
+    const [openTaskIds, setOpenTaskIds] = useState<number[]>([]);
+    const [openCompletedIds, setOpenCompletedIds] = useState<number[]>([]);
+
     const [feedbackModal, setFeedbackModal] = useState<{ isOpen: boolean; assignmentId: number | null }>({
         isOpen: false,
         assignmentId: null
     });
     const [feedbackText, setFeedbackText] = useState('');
+
+    const toggleTask = (id: number, isCompletedList: boolean = false) => {
+        if (isCompletedList) {
+            setOpenCompletedIds(prev => prev.includes(id) ? prev.filter(taskId => taskId !== id) : [...prev, id]);
+        } else {
+            setOpenTaskIds(prev => prev.includes(id) ? prev.filter(taskId => taskId !== id) : [...prev, id]);
+        }
+    };
 
     const handleComplete = async () => {
         if (!feedbackModal.assignmentId) return;
@@ -74,6 +66,8 @@ const HomeworkPage: FC<HomeworkPageProps> = ({ currentUser, token }) => {
             });
             setFeedbackModal({ isOpen: false, assignmentId: null });
             setFeedbackText('');
+            // Optional: Task aus den "offenen" zuklappen
+            setOpenTaskIds(prev => prev.filter(id => id !== feedbackModal.assignmentId));
         } catch (error) {
             console.error("Completion failed", error);
         }
@@ -81,8 +75,8 @@ const HomeworkPage: FC<HomeworkPageProps> = ({ currentUser, token }) => {
 
     if (homework.isLoading) {
         return (
-            <div className="flex justify-center items-center h-64">
-                <LoadingSpinner size="lg" />
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                <LoadingSpinner message="Lade Trainingsplan..." />
             </div>
         );
     }
@@ -91,217 +85,229 @@ const HomeworkPage: FC<HomeworkPageProps> = ({ currentUser, token }) => {
     const completedTasks = homework.data?.filter((hw: any) => hw.is_completed) || [];
 
     return (
-        <div className="w-full max-w-4xl mx-auto p-4 md:p-6 space-y-10">
+        <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '4rem' }}>
             {/* Header Area */}
-            <header className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-primary">Mein Trainingsplan</h1>
-                <p className="text-muted-foreground text-lg">
-                    Hier findest du deine aktuellen Hausaufgaben und Übungen.
-                </p>
+            <header className="page-header">
+                <h1>Mein Trainingsplan</h1>
+                <p>Hier findest du deine aktuellen Hausaufgaben und Übungen.</p>
             </header>
 
             {/* Offene Aufgaben */}
-            <section className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b border-border">
-                    <div className="bg-primary/10 p-2 rounded-lg text-primary">
-                        <Icon name="calendar" size={20} />
+            <section style={{ marginBottom: '3rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--bg-accent-blue)', color: 'var(--brand-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Icon name="calendar" style={{ width: '20px', height: '20px' }} />
                     </div>
-                    <h2 className="text-xl font-semibold m-0">Offene Aufgaben</h2>
-                    <Badge variant="secondary" className="ml-2 rounded-full px-2.5">
+                    <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-primary)' }}>Offene Aufgaben</h2>
+                    <span style={{ backgroundColor: 'var(--card-background-hover)', color: 'var(--text-secondary)', padding: '0.2rem 0.6rem', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid var(--border-color)' }}>
                         {openTasks.length}
-                    </Badge>
+                    </span>
                 </div>
 
                 {openTasks.length > 0 ? (
-                    <Accordion type="single" collapsible className="w-full space-y-4">
-                        {openTasks.map((hw: any) => (
-                            <AccordionItem
-                                key={hw.id}
-                                value={hw.id.toString()}
-                                className="bg-card border border-border rounded-xl px-2 sm:px-6 shadow-sm overflow-hidden"
-                            >
-                                <AccordionTrigger className="hover:no-underline py-4">
-                                    <div className="flex items-center gap-4 text-left">
-                                        <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                                            <Icon name="clipboard-list" size={20} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {openTasks.map((hw: any) => {
+                            const isExpanded = openTaskIds.includes(hw.id);
+                            return (
+                                <div key={hw.id} className="content-box" style={{ padding: 0, overflow: 'hidden', transition: 'all 0.2s ease', borderColor: isExpanded ? 'var(--primary-color)' : 'var(--border-color)' }}>
+                                    {/* Accordion Trigger */}
+                                    <div
+                                        onClick={() => toggleTask(hw.id)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem 1.5rem', cursor: 'pointer',
+                                            backgroundColor: isExpanded ? 'var(--bg-accent-green)' : 'transparent',
+                                            transition: 'background-color 0.2s ease'
+                                        }}
+                                    >
+                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--bg-accent-orange)', color: 'var(--brand-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                            <Icon name="file-text" />
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold text-lg text-foreground">{hw.title}</h3>
-                                            <p className="text-sm text-muted-foreground font-normal line-clamp-1 mt-0.5">
-                                                Klicken, um Details und Übungen anzuzeigen
+                                        <div style={{ flex: 1 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>{hw.title}</h3>
+                                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                Zugeordnet am {new Date(hw.created_at).toLocaleDateString('de-DE')}
                                             </p>
                                         </div>
-                                    </div>
-                                </AccordionTrigger>
-
-                                <AccordionContent className="pt-2 pb-6 space-y-6">
-                                    <div className="prose prose-sm sm:prose-base text-muted-foreground max-w-none">
-                                        <p className="whitespace-pre-wrap leading-relaxed">{hw.description}</p>
+                                        <Icon
+                                            name="chevron-down"
+                                            style={{ color: 'var(--text-secondary)', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}
+                                        />
                                     </div>
 
-                                    {/* YouTube Video Embed */}
-                                    {hw.video_url && (
-                                        <div className="rounded-xl overflow-hidden border border-border shadow-sm bg-muted/30">
-                                            <div className="aspect-video w-full relative">
-                                                <iframe
-                                                    className="absolute inset-0 w-full h-full"
-                                                    src={getYouTubeEmbedUrl(hw.video_url) || ''}
-                                                    title="Übungsvideo"
-                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                    allowFullScreen
-                                                />
+                                    {/* Accordion Content */}
+                                    {isExpanded && (
+                                        <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                                            {hw.description && (
+                                                <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: 'var(--text-primary)', marginBottom: '1.5rem' }}>
+                                                    {hw.description}
+                                                </p>
+                                            )}
+
+                                            {/* YouTube Video Embed */}
+                                            {hw.video_url && (
+                                                <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '0.75rem', marginBottom: '1.5rem', backgroundColor: '#000' }}>
+                                                    <iframe
+                                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                                        src={getYouTubeEmbedUrl(hw.video_url) || ''}
+                                                        title="Übungsvideo"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Datei Anhänge im Stil der App Document-List */}
+                                            {(hw.file_url || (hw.attachments && hw.attachments.length > 0)) && (
+                                                <div style={{ marginBottom: '1.5rem' }}>
+                                                    <h4 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Anhänge & Materialien</h4>
+                                                    <ul className="document-list" style={{ marginTop: 0 }}>
+                                                        {hw.file_url && (
+                                                            <li>
+                                                                <Icon name={getFileIcon(hw.file_name)} className="doc-icon" style={{ color: 'var(--brand-green)' }} />
+                                                                <div className="doc-info" onClick={() => window.open(hw.file_url, '_blank')} role="button" tabIndex={0}>
+                                                                    <div className="doc-name">{hw.file_name || 'Hauptdokument'}</div>
+                                                                    <div className="doc-size">Datei ansehen</div>
+                                                                </div>
+                                                                <div className="doc-actions">
+                                                                    <button className="action-icon-btn" onClick={() => window.open(hw.file_url, '_blank')}><Icon name="download" /></button>
+                                                                </div>
+                                                            </li>
+                                                        )}
+                                                        {hw.attachments?.map((att: any, idx: number) => (
+                                                            <li key={idx}>
+                                                                <Icon name={att.type === 'video' ? 'video' : getFileIcon(att.file_name, att.type)} className="doc-icon" style={{ color: att.type === 'video' ? 'var(--brand-red)' : 'var(--brand-blue)' }} />
+                                                                <div className="doc-info" onClick={() => window.open(att.file_url, '_blank')} role="button" tabIndex={0}>
+                                                                    <div className="doc-name">{att.file_name || 'Anhang'}</div>
+                                                                    <div className="doc-size">{att.type === 'video' ? 'Video ansehen' : 'Datei ansehen'}</div>
+                                                                </div>
+                                                                <div className="doc-actions">
+                                                                    <button className="action-icon-btn" onClick={() => window.open(att.file_url, '_blank')}><Icon name="download" /></button>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                                <button
+                                                    className="button button-primary"
+                                                    onClick={() => setFeedbackModal({ isOpen: true, assignmentId: hw.id })}
+                                                >
+                                                    <Icon name="check-circle" /> Als erledigt markieren
+                                                </button>
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Datei Anhänge */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {hw.file_url && (
-                                            <a href={hw.file_url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:border-primary/50 hover:shadow-md transition-all">
-                                                <div className="bg-primary/10 p-3 rounded-lg text-primary group-hover:scale-110 transition-transform">
-                                                    <Icon name={getFileIcon(hw.file_name)} size={24} />
-                                                </div>
-                                                <span className="font-medium text-sm line-clamp-2">{hw.file_name || 'Anleitung öffnen'}</span>
-                                            </a>
-                                        )}
-
-                                        {hw.attachments?.map((att: any, idx: number) => (
-                                            <React.Fragment key={idx}>
-                                                {att.type === 'video' ? (
-                                                    <div className="col-span-1 sm:col-span-2 space-y-2 mt-2">
-                                                        <video controls className="w-full rounded-xl border border-border shadow-sm max-h-[400px] bg-black">
-                                                            <source src={att.file_url} type="video/mp4" />
-                                                            Dein Browser unterstützt dieses Videoformat nicht.
-                                                        </video>
-                                                        <p className="text-xs text-muted-foreground flex items-center gap-1.5 ml-1">
-                                                            <Icon name="video" size={14} /> {att.file_name}
-                                                        </p>
-                                                    </div>
-                                                ) : (
-                                                    <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-background hover:border-primary/50 hover:shadow-md transition-all">
-                                                        <div className="bg-primary/10 p-3 rounded-lg text-primary group-hover:scale-110 transition-transform">
-                                                            <Icon name={getFileIcon(att.file_name, att.type)} size={24} />
-                                                        </div>
-                                                        <span className="font-medium text-sm line-clamp-2">{att.file_name || 'Datei öffnen'}</span>
-                                                    </a>
-                                                )}
-                                            </React.Fragment>
-                                        ))}
-                                    </div>
-
-                                    <div className="pt-4 flex justify-end">
-                                        <Button
-                                            size="lg"
-                                            className="w-full sm:w-auto gap-2"
-                                            onClick={() => setFeedbackModal({ isOpen: true, assignmentId: hw.id })}
-                                        >
-                                            <Icon name="check-circle" size={18} />
-                                            Als erledigt markieren
-                                        </Button>
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
+                                </div>
+                            );
+                        })}
+                    </div>
                 ) : (
-                    <Card className="bg-muted/30 border-dashed border-2">
-                        <CardContent className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-                            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
-                                <Icon name="check" size={32} />
-                            </div>
-                            <h3 className="text-xl font-semibold text-foreground mb-2">Alles erledigt!</h3>
-                            <p>Super gemacht. Du hast aktuell keine offenen Hausaufgaben.</p>
-                        </CardContent>
-                    </Card>
+                    <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--card-background)', borderRadius: '1rem', border: '1px dashed var(--border-color)' }}>
+                        <div style={{ width: '64px', height: '64px', margin: '0 auto 1rem auto', backgroundColor: 'var(--bg-accent-green)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-green)' }}>
+                            <Icon name="check" style={{ width: '32px', height: '32px' }} />
+                        </div>
+                        <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Alles erledigt!</h3>
+                        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Super gemacht. Du hast aktuell keine offenen Hausaufgaben.</p>
+                    </div>
                 )}
             </section>
 
             {/* Erledigte Aufgaben */}
             {completedTasks.length > 0 && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b border-border opacity-70">
-                        <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600">
-                            <Icon name="check-circle" size={20} />
+                <section>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', opacity: 0.8 }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--bg-accent-green)', color: 'var(--brand-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="check-circle" style={{ width: '20px', height: '20px' }} />
                         </div>
-                        <h2 className="text-xl font-semibold m-0 text-muted-foreground">Bereits absolviert</h2>
+                        <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-secondary)' }}>Bereits absolviert</h2>
                     </div>
 
-                    <Accordion type="multiple" className="w-full space-y-3 opacity-80 hover:opacity-100 transition-opacity">
-                        {completedTasks.map((hw: any) => (
-                            <AccordionItem
-                                key={hw.id}
-                                value={hw.id.toString()}
-                                className="bg-card/50 border border-border rounded-xl px-2 sm:px-6 overflow-hidden"
-                            >
-                                <AccordionTrigger className="hover:no-underline py-3">
-                                    <div className="flex items-center gap-3 text-left">
-                                        <Icon name="check" className="text-emerald-500 shrink-0" size={20} />
-                                        <span className="font-medium text-muted-foreground line-through decoration-muted-foreground/30">{hw.title}</span>
-                                    </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="pt-0 pb-4">
-                                    <div className="pl-8 space-y-3 border-l-2 border-emerald-500/20 ml-2">
-                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Icon name="calendar-check" size={14} />
-                                            Erledigt am {new Date(hw.completed_at).toLocaleDateString('de-DE')}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', opacity: 0.85 }}>
+                        {completedTasks.map((hw: any) => {
+                            const isExpanded = openCompletedIds.includes(hw.id);
+                            return (
+                                <div key={hw.id} className="content-box" style={{ padding: 0, overflow: 'hidden' }}>
+                                    <div
+                                        onClick={() => toggleTask(hw.id, true)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.5rem', cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Icon name="check" style={{ color: 'var(--brand-green)' }} />
+                                        <div style={{ flex: 1 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-secondary)', textDecoration: 'line-through' }}>{hw.title}</h3>
                                         </div>
-                                        {hw.client_feedback && (
-                                            <div className="bg-muted p-3 rounded-lg text-sm text-muted-foreground italic">
-                                                "{hw.client_feedback}"
-                                            </div>
-                                        )}
+                                        <Icon
+                                            name="chevron-down"
+                                            style={{ color: 'var(--text-secondary)', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}
+                                        />
                                     </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
-                    </Accordion>
+
+                                    {isExpanded && (
+                                        <div style={{ padding: '0 1.5rem 1.5rem 4rem' }}>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                                <Icon name="calendar" style={{ width: '14px', height: '14px' }} />
+                                                Erledigt am {new Date(hw.completed_at).toLocaleDateString('de-DE')}
+                                            </div>
+                                            {hw.client_feedback && (
+                                                <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '1rem', borderRadius: '0.5rem', color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem', borderLeft: '3px solid var(--brand-green)' }}>
+                                                    "{hw.client_feedback}"
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </section>
             )}
 
-            {/* Feedback & Abschluss Modal (shadcn Dialog) */}
-            <Dialog
-                open={feedbackModal.isOpen}
-                onOpenChange={(open) => !open && setFeedbackModal({ isOpen: false, assignmentId: null })}
-            >
-                <DialogContent className="sm:max-w-[500px] rounded-xl">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl flex items-center gap-2">
-                            <Icon name="award" className="text-orange-500" />
-                            Übung abgeschlossen!
-                        </DialogTitle>
-                        <DialogDescription>
-                            Wie lief das Training? Teile optional kurzes Feedback mit deinem Trainer.
-                        </DialogDescription>
-                    </DialogHeader>
+            {/* Feedback Modal */}
+            {feedbackModal.isOpen && (
+                <InfoModal
+                    title="Übung abgeschlossen!"
+                    color="green"
+                    onClose={() => setFeedbackModal({ isOpen: false, assignmentId: null })}
+                >
+                    <div style={{ padding: '0.5rem 0' }}>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Wie lief das Training? Teile optional ein kurzes Feedback mit deinem Trainer.
+                        </p>
 
-                    <div className="py-4">
-                        <Textarea
-                            rows={4}
-                            placeholder="z.B. Lief gut, aber bei der Ablenkung hat der Hund noch Probleme..."
-                            value={feedbackText}
-                            onChange={e => setFeedbackText(e.target.value)}
-                            className="resize-none"
-                        />
+                        <div className="form-group">
+                            <label>Dein Feedback (Optional)</label>
+                            <textarea
+                                className="form-input"
+                                rows={4}
+                                placeholder="z.B. Lief gut, aber bei der Ablenkung hat der Hund noch Probleme..."
+                                value={feedbackText}
+                                onChange={e => setFeedbackText(e.target.value)}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                            <button
+                                className="button button-outline"
+                                style={{ flex: 1 }}
+                                onClick={() => setFeedbackModal({ isOpen: false, assignmentId: null })}
+                            >
+                                Abbrechen
+                            </button>
+                            <button
+                                className="button button-primary"
+                                style={{ flex: 1, backgroundColor: 'var(--brand-green)', borderColor: 'var(--brand-green)' }}
+                                onClick={handleComplete}
+                                disabled={completeHomework.isPending}
+                            >
+                                {completeHomework.isPending ? 'Speichere...' : 'Speichern & Abschließen'}
+                            </button>
+                        </div>
                     </div>
-
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button
-                            variant="outline"
-                            onClick={() => setFeedbackModal({ isOpen: false, assignmentId: null })}
-                        >
-                            Abbrechen
-                        </Button>
-                        <Button
-                            onClick={handleComplete}
-                            disabled={completeHomework.isPending}
-                            className="gap-2"
-                        >
-                            {completeHomework.isPending && <LoadingSpinner size="sm" className="text-white" />}
-                            Speichern & Abschließen
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                </InfoModal>
+            )}
         </div>
     );
 };

@@ -1129,20 +1129,9 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
 
             {isHomeworkModalOpen && (
                 <div className="modal-overlay" onClick={() => setIsHomeworkModalOpen(false)}>
-                    <div className="modal-content" style={{ maxWidth: isCreatingCustomHomework ? '600px' : '500px' }} onClick={e => e.stopPropagation()}>
+                    <div className="modal-content" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header blue">
-                            <div className="flex items-center gap-3">
-                                {isCreatingCustomHomework && (
-                                    <button 
-                                        className="close-button" 
-                                        onClick={() => setIsCreatingCustomHomework(false)}
-                                        style={{ transform: 'none' }}
-                                    >
-                                        <Icon name="arrow-left" size={20} />
-                                    </button>
-                                )}
-                                <h2 id="info-modal-title">{isCreatingCustomHomework ? 'Individuelle Hausaufgabe' : 'Hausaufgabe zuweisen'}</h2>
-                            </div>
+                            <h2>Hausaufgabe zuweisen</h2>
                             <button className="close-button" onClick={() => {
                                 setIsHomeworkModalOpen(false);
                                 setIsCreatingCustomHomework(false);
@@ -1152,178 +1141,177 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             </button>
                         </div>
                         <div className="modal-body">
+
+                            {/* Segmented Tabs für den sauberen Wechsel */}
+                            <div className="segmented-tabs" style={{ marginBottom: '1.5rem' }}>
+                                <button
+                                    type="button"
+                                    className={`segmented-tab-btn ${!isCreatingCustomHomework ? 'active' : ''}`}
+                                    onClick={() => setIsCreatingCustomHomework(false)}
+                                >
+                                    <Icon name="book-open" size={18} /> Aus Katalog
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`segmented-tab-btn ${isCreatingCustomHomework ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setIsCreatingCustomHomework(true);
+                                        setSelectedTemplate(null);
+                                    }}
+                                >
+                                    <Icon name="edit" size={18} /> Individuell erstellen
+                                </button>
+                            </div>
+
                             {!isCreatingCustomHomework ? (
-                                <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <div className="form-group flex-1" style={{ marginBottom: 0 }}>
-                                            <label className="form-label text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Aus Katalog wählen</label>
-                                            <div className="flex items-center gap-2">
-                                                <select 
-                                                    className="form-input flex-1" 
-                                                    value={selectedTemplate?.id || ''} 
-                                                    onChange={e => {
-                                                        const t = templates.data?.find((x: any) => x.id === parseInt(e.target.value));
-                                                        setSelectedTemplate(t || null);
-                                                    }}
-                                                >
-                                                    <option value="" disabled>Hausaufgabe wählen...</option>
-                                                    {templates.data?.map((t: any) => (
-                                                        <option key={t.id} value={t.id}>{t.title}</option>
-                                                    ))}
-                                                </select>
-                                                <button 
-                                                    className="button button-primary" 
-                                                    style={{ height: '46px', width: '46px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                                    onClick={() => {
-                                                        setIsCreatingCustomHomework(true);
-                                                        setSelectedTemplate(null);
-                                                    }}
-                                                    title="Individuelle Aufgabe erstellen"
-                                                >
-                                                    <Icon name="plus" size={24} />
-                                                </button>
-                                            </div>
-                                        </div>
+                                <div style={{ animation: 'slideIn 0.2s ease-out' }}>
+                                    <div className="form-group">
+                                        <label>Vorlage auswählen</label>
+                                        <select
+                                            className="form-input"
+                                            value={selectedTemplate?.id || ''}
+                                            onChange={e => {
+                                                const t = templates.data?.find((x: any) => x.id === parseInt(e.target.value));
+                                                setSelectedTemplate(t || null);
+                                            }}
+                                            style={{ fontSize: '1rem', padding: '0.75rem' }}
+                                        >
+                                            <option value="" disabled>-- Bitte wählen --</option>
+                                            {templates.data?.map((t: any) => (
+                                                <option key={t.id} value={t.id}>{t.title}</option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     {selectedTemplate ? (
-                                        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                                            <div className="form-group">
-                                                <label className="form-label">Titel der Übung</label>
-                                                <div className="form-input bg-transparent border-gray-200/50 flex items-center min-h-[46px] text-gray-900 font-medium">
-                                                    {selectedTemplate.title}
-                                                </div>
-                                            </div>
+                                        <div style={{ marginTop: '1.5rem', padding: '1.25rem', backgroundColor: 'var(--background-secondary)', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>
+                                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'var(--text-primary)' }}>{selectedTemplate.title}</h3>
+                                            <p style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                                                {selectedTemplate.description || <span style={{ fontStyle: 'italic', opacity: 0.7 }}>Keine Beschreibung hinterlegt.</span>}
+                                            </p>
 
-                                            <div className="form-group">
-                                                <label className="form-label">Beschreibung / Anleitung</label>
-                                                <div className="form-input bg-transparent border-gray-200/50 min-h-[120px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-                                                    {selectedTemplate.description || 'Keine Beschreibung vorhanden.'}
-                                                </div>
-                                            </div>
-
-                                            {selectedTemplate.video_url && (
-                                                <div className="form-group">
-                                                    <label className="form-label">Video-Link (YouTube / Vimeo)</label>
-                                                    <div className="relative">
-                                                        <div className="absolute left-3 top-[14px] text-gray-400">
-                                                            <Icon name="video" size={18} />
-                                                        </div>
-                                                        <div className="form-input pl-11 bg-transparent border-gray-200/50 flex items-center min-h-[46px] text-blue-600 truncate">
-                                                            {selectedTemplate.video_url}
-                                                        </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {selectedTemplate.video_url && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--brand-blue)', backgroundColor: 'var(--bg-accent-blue)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem' }}>
+                                                        <Icon name="video" size={16} /> Video verknüpft
                                                     </div>
-                                                </div>
-                                            )}
-
-                                            {(selectedTemplate.file_url || (selectedTemplate.attachments && selectedTemplate.attachments.length > 0)) && (
-                                                <div className="form-group">
-                                                    <label className="form-label">Datei-Anhänge (PDF / PPTX / Bilder / Video)</label>
-                                                    <div className="space-y-3">
-                                                        {selectedTemplate.file_url && (
-                                                            <div className="flex items-center gap-6 p-6 bg-white/40 backdrop-blur-sm rounded-xl border border-gray-100/50 text-sm shadow-sm">
-                                                                <Icon name="file-text" className="text-emerald-500" size={24} />
-                                                                <span className="truncate font-medium flex-1 text-base">{selectedTemplate.file_name || 'Hauptdokument'}</span>
-                                                            </div>
-                                                        )}
-                                                        {selectedTemplate.attachments?.map((att: any, idx: number) => (
-                                                            <div key={idx} className="flex items-center gap-6 p-6 bg-white/40 backdrop-blur-sm rounded-xl border border-gray-100/50 text-sm shadow-sm">
-                                                                <Icon name={att.type === 'video' ? 'video' : 'file-text'} className={att.type === 'video' ? 'text-rose-500' : 'text-emerald-500'} size={24} />
-                                                                <span className="truncate font-medium flex-1 text-base">{att.file_name || 'Datei'}</span>
-                                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{att.type === 'video' ? 'Video' : 'Dokument'}</span>
-                                                            </div>
-                                                        ))}
+                                                )}
+                                                {(selectedTemplate.file_url || (selectedTemplate.attachments && selectedTemplate.attachments.length > 0)) && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--brand-green)', backgroundColor: 'var(--bg-accent-green)', padding: '0.5rem 0.75rem', borderRadius: '0.5rem' }}>
+                                                        <Icon name="file" size={16} /> Datei(en) verknüpft
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="py-12 text-center border-2 border-dashed rounded-2xl bg-transparent border-gray-200/50">
-                                            <Icon name="book-open" size={48} className="mx-auto text-gray-400/50 mb-3" />
-                                            <p className="text-sm text-gray-500">Wähle eine Vorlage aus dem Katalog <br/> oder erstelle eine neue Übung.</p>
+                                        <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)', border: '1px dashed var(--border-color)', borderRadius: '0.75rem', marginTop: '1.5rem' }}>
+                                            <Icon name="book-open" size={32} style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
+                                            <p style={{ margin: 0, fontSize: '0.9rem' }}>Wähle eine Vorlage aus dem Dropdown.</p>
                                         </div>
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-200">
-                                    <div className="form-group">
-                                        <label className="form-label">Titel der Übung</label>
-                                        <input 
-                                            className="form-input" 
-                                            placeholder="z.B. Rückruftraining"
-                                            value={customHomework.title} 
-                                            onChange={e => setCustomHomework(prev => ({ ...prev, title: e.target.value }))} 
-                                        />
-                                    </div>
-                                    
-                                    <div className="form-group">
-                                        <label className="form-label">Beschreibung / Anleitung</label>
-                                        <textarea 
-                                            className="form-input" 
-                                            placeholder="Schreibe hier die Schritte der Übung auf..."
-                                            rows={5}
-                                            value={customHomework.description} 
-                                            onChange={e => setCustomHomework(prev => ({ ...prev, description: e.target.value }))} 
+                                <div style={{ animation: 'slideIn 0.2s ease-out', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>Titel der Übung *</label>
+                                        <input
+                                            className="form-input"
+                                            placeholder="z.B. Rückruftraining im Park"
+                                            value={customHomework.title}
+                                            onChange={e => setCustomHomework(prev => ({ ...prev, title: e.target.value }))}
                                         />
                                     </div>
 
-                                    <div className="form-group">
-                                        <label className="form-label">Video-Link (YouTube / Vimeo)</label>
-                                        <div className="relative">
-                                            <div className="absolute left-3 top-[14px] text-gray-400">
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>Beschreibung / Anleitung</label>
+                                        <textarea
+                                            className="form-input"
+                                            placeholder="Schreibe hier die Schritte der Übung auf..."
+                                            rows={4}
+                                            value={customHomework.description}
+                                            onChange={e => setCustomHomework(prev => ({ ...prev, description: e.target.value }))}
+                                        />
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>Video-Link (YouTube / Vimeo)</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}>
                                                 <Icon name="video" size={18} />
                                             </div>
-                                            <input 
-                                                className="form-input pl-11" 
+                                            <input
+                                                className="form-input"
+                                                style={{ paddingLeft: '2.5rem' }}
                                                 placeholder="https://youtube.com/watch?v=..."
-                                                value={customHomework.video_url} 
-                                                onChange={e => setCustomHomework(prev => ({ ...prev, video_url: e.target.value }))} 
+                                                value={customHomework.video_url}
+                                                onChange={e => setCustomHomework(prev => ({ ...prev, video_url: e.target.value }))}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="form-group">
-                                        <label className="form-label">Datei-Anhänge (PDF / PPTX / Bilder / Video)</label>
-                                        <div className="space-y-3 mb-4">
-                                            {customHomework.attachments?.map((att, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-6 bg-white/40 backdrop-blur-sm rounded-xl border border-gray-100/50 text-sm shadow-sm">
-                                                    <div className="flex items-center gap-6 overflow-hidden">
-                                                        <Icon name={att.type === 'video' ? 'video' : 'file-text'} className="text-primary-color" size={24} />
-                                                        <span className="truncate font-medium text-base">{att.file_name}</span>
-                                                    </div>
-                                                    <button 
-                                                        className="text-red-500 hover:bg-red-50/50 p-2.5 rounded-lg transition-colors" 
-                                                        onClick={() => setCustomHomework(prev => ({ 
-                                                            ...prev, 
-                                                            attachments: prev.attachments.filter((_, i) => i !== idx) 
-                                                        }))}
-                                                    >
-                                                        <Icon name="trash-2" size={20} />
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        
-                                        <button 
-                                            className="w-full h-28 border-2 border-dashed border-gray-200/50 rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-primary-color hover:bg-blue-50/10 backdrop-blur-sm transition-all group bg-transparent"
-                                            disabled={isUploadingHomeworkFile}
-                                            onClick={() => homeworkFileInputRef.current?.click()}
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label>Dateien & Materialien anhängen</label>
+
+                                        {/* Liste der bereits hochgeladenen Dateien */}
+                                        {customHomework.attachments && customHomework.attachments.length > 0 && (
+                                            <ul className="document-list" style={{ marginTop: '0', marginBottom: '1rem' }}>
+                                                {customHomework.attachments.map((att, idx) => (
+                                                    <li key={idx} style={{ padding: '0.5rem 0.75rem', backgroundColor: 'var(--background-secondary)', border: '1px solid var(--border-color)' }}>
+                                                        <Icon name={att.type === 'video' ? 'video' : 'file-text'} className="doc-icon" style={{ color: 'var(--primary-color)' }} />
+                                                        <div className="doc-info">
+                                                            <div className="doc-name">{att.file_name}</div>
+                                                        </div>
+                                                        <div className="doc-actions">
+                                                            <button
+                                                                className="action-icon-btn delete"
+                                                                onClick={() => setCustomHomework(prev => ({
+                                                                    ...prev,
+                                                                    attachments: prev.attachments.filter((_, i) => i !== idx)
+                                                                }))}
+                                                                title="Entfernen"
+                                                            >
+                                                                <Icon name="trash" />
+                                                            </button>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+
+                                        {/* Upload Button Area */}
+                                        <div
+                                            onClick={() => !isUploadingHomeworkFile && homeworkFileInputRef.current?.click()}
+                                            style={{
+                                                border: '2px dashed var(--border-color)',
+                                                padding: '1.5rem',
+                                                textAlign: 'center',
+                                                borderRadius: '0.75rem',
+                                                backgroundColor: 'var(--background-secondary)',
+                                                cursor: isUploadingHomeworkFile ? 'wait' : 'pointer',
+                                                transition: 'all 0.2s ease',
+                                            }}
+                                            onMouseOver={(e) => { if(!isUploadingHomeworkFile) e.currentTarget.style.borderColor = 'var(--primary-color)'; }}
+                                            onMouseOut={(e) => { if(!isUploadingHomeworkFile) e.currentTarget.style.borderColor = 'var(--border-color)'; }}
                                         >
                                             {isUploadingHomeworkFile ? (
-                                                <LoadingSpinner />
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-color)' }}>
+                                                    <Icon name="refresh" className="animate-spin" size={24} />
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Lädt hoch...</span>
+                                                </div>
                                             ) : (
-                                                <>
-                                                    <div className="p-3 bg-transparent group-hover:bg-blue-100/10 transition-colors">
-                                                        <Icon name="upload" size={28} className="text-gray-500 group-hover:text-primary-color" />
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--card-background)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                                        <Icon name="upload" size={20} />
                                                     </div>
-                                                    <span className="text-sm font-medium text-gray-500 group-hover:text-primary-color">Dateien oder Videos hinzufügen</span>
-                                                </>
+                                                    <span style={{ fontWeight: 500, fontSize: '0.95rem' }}>Weiteren Anhang hinzufügen</span>
+                                                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>Bilder, PDFs oder Videos</span>
+                                                </div>
                                             )}
-                                        </button>
-                                        <input 
-                                            type="file" 
+                                        </div>
+                                        <input
+                                            type="file"
                                             ref={homeworkFileInputRef}
-                                            className="hidden" 
+                                            style={{ display: 'none' }}
                                             onChange={handleHomeworkFileUpload}
                                             accept="image/*,.pdf,.pptx,.ppt,.docx,video/*"
                                             multiple
@@ -1333,31 +1321,15 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             )}
                         </div>
                         <div className="modal-footer">
-                            {!isCreatingCustomHomework ? (
-                                <>
-                                    <button className="button button-outline" onClick={() => setIsHomeworkModalOpen(false)}>Abbrechen</button>
-                                    <button 
-                                        className="button button-primary" 
-                                        onClick={handleAssignHomework} 
-                                        disabled={assignHomework.isPending || !selectedTemplate}
-                                        style={{ minWidth: '140px' }}
-                                    >
-                                        {assignHomework.isPending ? <LoadingSpinner size="sm" /> : 'Zuweisen'}
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="button button-outline" onClick={() => setIsCreatingCustomHomework(false)}>Zurück</button>
-                                    <button 
-                                        className="button button-primary" 
-                                        onClick={handleAssignHomework} 
-                                        disabled={assignHomework.isPending || !customHomework.title}
-                                        style={{ minWidth: '140px' }}
-                                    >
-                                        {assignHomework.isPending ? <LoadingSpinner size="sm" /> : 'Zuweisen'}
-                                    </button>
-                                </>
-                            )}
+                            <button className="button button-outline" onClick={() => setIsHomeworkModalOpen(false)}>Abbrechen</button>
+                            <button
+                                className="button button-primary"
+                                onClick={handleAssignHomework}
+                                disabled={assignHomework.isPending || (!isCreatingCustomHomework && !selectedTemplate) || (isCreatingCustomHomework && !customHomework.title)}
+                                style={{ minWidth: '140px' }}
+                            >
+                                {assignHomework.isPending ? 'Weist zu...' : 'Zuweisen'}
+                            </button>
                         </div>
                     </div>
                 </div>
