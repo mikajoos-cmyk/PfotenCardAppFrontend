@@ -1043,14 +1043,14 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                                 onChange={handleFileChange}
                                 style={{ display: 'none' }}
                                 multiple
-                                accept="image/*,.pdf"
+                                accept="image/*,.pdf,.mp4,.webm,.ogg,.mov"
                             />
                         </h2>
                         {customerDocuments.length > 0 ? (
                             <ul className="document-list">
                                 {customerDocuments.map((doc: any) => (
                                     <li key={doc.id}>
-                                        <Icon name="file" className="doc-icon" />
+                                        <Icon name={getFileIcon(doc.file_name, doc.file_type)} className="doc-icon" />
                                         <div className="doc-info" onClick={async () => {
                                             try {
                                                 // 1. Hole die signierte URL vom Backend (mit Auth-Token!)

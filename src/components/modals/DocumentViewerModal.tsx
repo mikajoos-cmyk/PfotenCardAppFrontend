@@ -8,8 +8,12 @@ interface DocumentViewerModalProps {
 }
 
 const DocumentViewerModal: FC<DocumentViewerModalProps> = ({ document, onClose }) => {
-    const isImage = document.type.startsWith('image/');
-    const isPDF = document.type === 'application/pdf';
+    const isImage = document.type.startsWith('image/') || 
+                    /\.(jpg|jpeg|png|gif|webp)$/i.test(document.name);
+    const isPDF = document.type === 'application/pdf' || 
+                  document.name.toLowerCase().endsWith('.pdf');
+    const isVideo = document.type.startsWith('video/') || 
+                    /\.(mp4|webm|ogg|mov)$/i.test(document.name);
 
     // Diese Funktion erzwingt den Download
     const handleDownload = async (e: React.MouseEvent) => {
@@ -40,50 +44,59 @@ const DocumentViewerModal: FC<DocumentViewerModalProps> = ({ document, onClose }
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '90%' }}>
+        <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '90vw', width: isPDF ? '85vw' : '800px', maxHeight: '95vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
 
                 {/* Header */}
-                <div className="modal-header blue">
-                    <h2>{document.name}</h2>
+                <div className="modal-header blue" style={{ flexShrink: 0, borderRadius: 0 }}>
+                    <h2 style={{ fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80%' }}>{document.name}</h2>
                     <button className="close-button" onClick={onClose}>
                         <Icon name="x" />
                     </button>
                 </div>
 
                 {/* Body: Vorschau */}
-                {/* KORREKTUR: backgroundColor entfernt, damit var(--card-background) greift */}
-                <div className="modal-body" style={{ minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+                <div className="modal-body" style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: isPDF ? '#f0f2f5' : 'var(--background-color)', padding: isPDF ? 0 : '1rem', minHeight: '400px' }}>
                     {isImage && (
                         <img
                             src={document.url}
                             alt={document.name}
-                            style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain', borderRadius: '4px' }}
+                            style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', borderRadius: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                         />
                     )}
                     {isPDF && (
-                        <embed
-                            src={document.url}
-                            type="application/pdf"
+                        <iframe
+                            src={`${document.url}#toolbar=0`}
+                            title={document.name}
                             width="100%"
-                            height="500px"
-                            style={{ borderRadius: '4px' }}
+                            height="100%"
+                            style={{ border: 'none', height: '75vh', minHeight: '500px' }}
                         />
                     )}
-                    {!isImage && !isPDF && (
-                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            <Icon name="file" style={{ width: '64px', height: '64px', margin: '0 auto 1rem', opacity: 0.5 }} />
-                            <p>Keine Vorschau verfügbar</p>
+                    {isVideo && (
+                        <video 
+                            src={document.url} 
+                            controls 
+                            style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: '4px' }}
+                        >
+                            Ihr Browser unterstützt das Video-Tag nicht.
+                        </video>
+                    )}
+                    {!isImage && !isPDF && !isVideo && (
+                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '3rem' }}>
+                            <Icon name="file" style={{ width: '80px', height: '80px', margin: '0 auto 1.5rem', opacity: 0.3, color: 'var(--primary-color)' }} />
+                            <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Keine Vorschau verfügbar</h3>
+                            <p style={{ fontSize: '0.9rem' }}>Diese Datei kann nicht direkt im Browser angezeigt werden.</p>
                         </div>
                     )}
                 </div>
 
                 {/* Footer: Buttons nebeneinander */}
-                <div className="modal-footer">
-                    <button className="button button-outline" onClick={onClose}>
+                <div className="modal-footer" style={{ flexShrink: 0, borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--card-background)', padding: '1rem' }}>
+                    <button className="button button-outline" onClick={onClose} style={{ marginRight: 'auto' }}>
                         Schließen
                     </button>
-                    <button className="button button-primary" onClick={handleDownload}>
+                    <button className="button button-primary" onClick={handleDownload} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Icon name="download" /> Herunterladen
                     </button>
                 </div>
