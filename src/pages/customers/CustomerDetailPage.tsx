@@ -937,93 +937,95 @@ const CustomerDetailPage: FC<CustomerDetailPageProps> = ({
                             Scannen um Kundenprofil direkt aufzurufen.
                         </p>
                     </div>
-                    <div className="side-card">
-                        <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            Trainingsplan
-                            {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
-                                <button 
-                                    onClick={() => setIsHomeworkModalOpen(true)} 
-                                    className="button-as-link"
-                                    style={{ color: 'var(--primary-color)', padding: '4px' }}
-                                    title="Hausaufgabe zuweisen"
-                                >
-                                    <Icon name="plus" size={20} />
-                                </button>
-                            )}
-                            {(currentUser.role === 'customer' || currentUser.role === 'kunde') && (
-                                <button 
-                                    onClick={() => setView({ page: 'homework' })} 
-                                    className="button button-primary"
-                                    style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }}
-                                >
-                                    Alle ansehen
-                                </button>
-                            )}
-                        </h2>
-                        {homework.isLoading ? <LoadingSpinner message="Hausaufgaben werden geladen..." /> : (
-                            <TooltipProvider>
-                                <ul className="document-list">
-                                    {homework.data?.length > 0 ? homework.data.map((hw: any) => (
-                                        <li key={hw.id} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                                            <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <Icon name={hw.is_completed ? "check" : "calendar"} style={{ color: hw.is_completed ? 'var(--brand-green)' : 'var(--text-secondary)' }} />
-                                                    <span style={{ fontWeight: 500 }}>{hw.title}</span>
+                    {activeModules?.includes('homework') && (
+                        <div className="side-card">
+                            <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                Trainingsplan
+                                {(currentUser.role === 'admin' || currentUser.role === 'mitarbeiter') && (
+                                    <button 
+                                        onClick={() => setIsHomeworkModalOpen(true)} 
+                                        className="button-as-link"
+                                        style={{ color: 'var(--primary-color)', padding: '4px' }}
+                                        title="Hausaufgabe zuweisen"
+                                    >
+                                        <Icon name="plus" size={20} />
+                                    </button>
+                                )}
+                                {(currentUser.role === 'customer' || currentUser.role === 'kunde') && (
+                                    <button 
+                                        onClick={() => setView({ page: 'homework' })} 
+                                        className="button button-primary"
+                                        style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }}
+                                    >
+                                        Alle ansehen
+                                    </button>
+                                )}
+                            </h2>
+                            {homework.isLoading ? <LoadingSpinner message="Hausaufgaben werden geladen..." /> : (
+                                <TooltipProvider>
+                                    <ul className="document-list">
+                                        {homework.data?.length > 0 ? homework.data.map((hw: any) => (
+                                            <li key={hw.id} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                                                <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <Icon name={hw.is_completed ? "check" : "calendar"} style={{ color: hw.is_completed ? 'var(--brand-green)' : 'var(--text-secondary)' }} />
+                                                        <span style={{ fontWeight: 500 }}>{hw.title}</span>
+                                                    </div>
+                                                    {hw.is_completed && <span className="badge badge-green">Erledigt</span>}
                                                 </div>
-                                                {hw.is_completed && <span className="badge badge-green">Erledigt</span>}
-                                            </div>
-                                            {hw.description && (
-                                                <div className="text-sm text-gray-600 mt-1" style={{ paddingLeft: '1.75rem' }}>
-                                                    {hw.description}
-                                                </div>
-                                            )}
-                                            <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '1.75rem', marginTop: '0.25rem' }}>
-                                                {hw.video_url && (
-                                                    <a href={hw.video_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
-                                                        <Icon name="video" size={16} />
-                                                    </a>
+                                                {hw.description && (
+                                                    <div className="text-sm text-gray-600 mt-1" style={{ paddingLeft: '1.75rem' }}>
+                                                        {hw.description}
+                                                    </div>
                                                 )}
-                                                {hw.file_url && (
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <a href={hw.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
-                                                                <Icon name={getFileIcon(hw.file_name)} size={16} />
-                                                            </a>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent aria-label={hw.file_name || 'Datei öffnen'}>
-                                                            <p>{hw.file_name || 'Datei öffnen'}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                )}
-                                                {hw.attachments?.map((att: any, idx: number) => (
-                                                    <Tooltip key={idx}>
-                                                        <TooltipTrigger asChild>
-                                                            <a href={att.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
-                                                                <Icon name={getFileIcon(att.file_name, att.type)} size={16} />
-                                                            </a>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent aria-label={att.file_name || 'Datei öffnen'}>
-                                                            <p>{att.file_name || 'Datei öffnen'}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                ))}
-                                            </div>
-                                            {hw.client_feedback && (
-                                                <div className="text-sm italic text-gray-500 mt-1" style={{ paddingLeft: '1.75rem', borderLeft: '2px solid #eee' }}>
-                                                    "{hw.client_feedback}"
+                                                <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '1.75rem', marginTop: '0.25rem' }}>
+                                                    {hw.video_url && (
+                                                        <a href={hw.video_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
+                                                            <Icon name="video" size={16} />
+                                                        </a>
+                                                    )}
+                                                    {hw.file_url && (
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <a href={hw.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
+                                                                    <Icon name={getFileIcon(hw.file_name)} size={16} />
+                                                                </a>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent aria-label={hw.file_name || 'Datei öffnen'}>
+                                                                <p>{hw.file_name || 'Datei öffnen'}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    )}
+                                                    {hw.attachments?.map((att: any, idx: number) => (
+                                                        <Tooltip key={idx}>
+                                                            <TooltipTrigger asChild>
+                                                                <a href={att.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)' }}>
+                                                                    <Icon name={getFileIcon(att.file_name, att.type)} size={16} />
+                                                                </a>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent aria-label={att.file_name || 'Datei öffnen'}>
+                                                                <p>{att.file_name || 'Datei öffnen'}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    ))}
                                                 </div>
-                                            )}
-                                            <div className="text-xs text-gray-400" style={{ paddingLeft: '1.75rem' }}>
-                                                Zugewiesen am {new Date(hw.created_at).toLocaleDateString('de-DE')}
-                                            </div>
-                                        </li>
-                                    )) : (
-                                        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Keine Hausaufgaben zugewiesen.</p>
-                                    )}
-                                </ul>
-                            </TooltipProvider>
-                        )}
-                    </div>
+                                                {hw.client_feedback && (
+                                                    <div className="text-sm italic text-gray-500 mt-1" style={{ paddingLeft: '1.75rem', borderLeft: '2px solid #eee' }}>
+                                                        "{hw.client_feedback}"
+                                                    </div>
+                                                )}
+                                                <div className="text-sm text-gray-400" style={{ paddingLeft: '1.75rem' }}>
+                                                    Zugewiesen am {new Date(hw.created_at).toLocaleDateString('de-DE')}
+                                                </div>
+                                            </li>
+                                        )) : (
+                                            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Keine Hausaufgaben zugewiesen.</p>
+                                        )}
+                                    </ul>
+                                </TooltipProvider>
+                            )}
+                        </div>
+                    )}
 
                     <div className="side-card">
                         <h2 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
