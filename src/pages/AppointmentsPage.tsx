@@ -301,7 +301,7 @@ const EventDetailsModal = ({ event, onClose, onAction, user, userRole, isBooked,
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className={`modal-header ${headerColorClass}`} style={headerStyle}>
-                    <h2 style={{ color: 'white' }}>{event.title}</h2>
+                    <h2>{event.title}</h2>
                     <button className="close-button" onClick={onClose}><Icon name="x" /></button>
                 </div>
 

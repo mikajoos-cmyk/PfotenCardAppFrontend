@@ -114,8 +114,8 @@ export const StripePaymentModal: FC<StripePaymentModalProps> = ({
                             <Wallet size={20} />
                         </div>
                         <div>
-                            <h2 style={{ color: 'white' }}>Zahlung abschließen</h2>
-                            <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9, color: 'white' }}>Sichere SSL-Verschlüsselung via Stripe</p>
+                            <h2 style={{ color: 'var(--text-primary)' }}>Zahlung abschließen</h2>
+                            <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.9, color: 'var(--text-secondary)' }}>Sichere SSL-Verschlüsselung via Stripe</p>
                         </div>
                     </div>
                     <button className="close-button" onClick={onClose}><Icon name="x" /></button>

@@ -2043,12 +2043,12 @@ body {
 }
 
 /* Indikatoren für farbige Modals ohne vollen Hintergrund */
-.modal-header.green h2, .modal-header.green h3, .modal-header.green .close-button { color: var(--brand-green); }
-.modal-header.orange h2, .modal-header.orange h3, .modal-header.orange .close-button { color: var(--brand-orange); }
-.modal-header.blue h2, .modal-header.blue h3, .modal-header.blue .close-button { color: var(--primary-color); }
-.modal-header.purple h2, .modal-header.purple h3, .modal-header.purple .close-button { color: var(--brand-purple); }
-.modal-header.red h2, .modal-header.red h3, .modal-header.red .close-button { color: var(--brand-red); }
-.modal-header.white h2, .modal-header.white h3, .modal-header.white .close-button { color: var(--text-primary); }
+.modal-header.green .close-button { color: var(--brand-green); }
+.modal-header.orange .close-button { color: var(--brand-orange); }
+.modal-header.blue .close-button { color: var(--primary-color); }
+.modal-header.purple .close-button { color: var(--brand-purple); }
+.modal-header.red .close-button { color: var(--brand-red); }
+.modal-header.white .close-button { color: var(--text-primary); }
 
 .modal-header.green .close-button:hover { background-color: color-mix(in srgb, var(--brand-green) 10%, transparent); }
 .modal-header.orange .close-button:hover { background-color: color-mix(in srgb, var(--brand-orange) 10%, transparent); }
@@ -2189,12 +2189,12 @@ body {
 .modal-header .confirmation-header-text h2 {
     font-size: 1.25rem;
     margin: 0 0 0.25rem;
-    color: white;
+    color: var(--text-primary);
 }
 
 .modal-header .confirmation-header-text p {
     margin: 0;
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-secondary);
     font-size: 0.9rem;
 }
 
@@ -3184,22 +3184,6 @@ input:checked+.slider:before {
     color: var(--text-primary) !important;
 }
 
-/* Colored Headers -> Light Cross */
-.modal-header.green .close-button,
-.modal-header.blue .close-button,
-.modal-header.purple .close-button,
-.modal-header.orange .close-button,
-.modal-header.red .close-button {
-    color: white !important;
-}
-
-.modal-header.green .close-button:hover,
-.modal-header.blue .close-button:hover,
-.modal-header.purple .close-button:hover,
-.modal-header.orange .close-button:hover,
-.modal-header.red .close-button:hover {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-}
 
 /* Styling für das Level-Listen-Design */
 
