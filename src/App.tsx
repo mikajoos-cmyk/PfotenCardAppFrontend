@@ -107,6 +107,29 @@ export default function App() {
     useVisualViewport();
 
     const queryClient = useQueryClient();
+
+    useEffect(() => {
+        // Prüfen, ob der Browser Service Worker unterstützt
+        if ('serviceWorker' in navigator) {
+            
+            // Das ist unser Lauscher für Nachrichten aus der sw.js
+            const handleMessage = (event: MessageEvent) => {
+                if (event.data && event.data.type === 'REFRESH_DATA') {
+                    console.log('Live-Update Signal empfangen. Aktualisiere Daten...');
+                    // Invalidiert den kompletten Cache von React Query -> Holt sofort die neuesten Daten vom Server!
+                    queryClient.invalidateQueries();
+                }
+            };
+
+            navigator.serviceWorker.addEventListener('message', handleMessage);
+
+            // Aufräumen, wenn die Komponente unmountet
+            return () => {
+                navigator.serviceWorker.removeEventListener('message', handleMessage);
+            };
+        }
+    }, [queryClient]);
+
     const [loggedInUser, setLoggedInUser] = useState<any | null>(null);
     const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('authToken'));
     const isPreviewMode = useMemo(() => new URLSearchParams(window.location.search).get('mode') === 'preview', []);
