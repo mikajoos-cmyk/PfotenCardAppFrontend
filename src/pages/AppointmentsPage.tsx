@@ -925,6 +925,18 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
     const [selectedEvent, setSelectedEvent] = useState<Appointment | null>(null);
     const [userDogs, setUserDogs] = useState<any[]>([]);
     const [selectedDogId, setSelectedDogId] = useState<number | null>(null);
+    const [isIcalModalOpen, setIsIcalModalOpen] = useState(false);
+    const [copySuccess, setCopySuccess] = useState(false);
+    const [icalActiveTab, setIcalActiveTab] = useState<'apple' | 'google' | 'outlook-web' | 'outlook-desktop'>('apple');
+    const [icalStep, setIcalStep] = useState<1 | 2>(1);
+
+    const icalUrl = useMemo(() => {
+        if (!user?.ical_token) return '';
+        const baseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+        return `${baseUrl}/functions/v1/ical-export?token=${user.ical_token}`;
+    }, [user?.ical_token]);
+
+    const webcalUrl = useMemo(() => icalUrl.replace('https://', 'webcal://'), [icalUrl]);
 
     useEffect(() => {
         if (user && user.dogs) {
@@ -1358,6 +1370,19 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                 </button>
             </div>
 
+            {/* Kalender Sync Button für Kunden */}
+            {activeTab === 'mine' && user?.ical_token && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                    <button 
+                        className="button button-outline" 
+                        style={{ borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}
+                        onClick={() => setIsIcalModalOpen(true)}
+                    >
+                        <Icon name="calendar" size={16} /> Kalender synchronisieren
+                    </button>
+                </div>
+            )}
+
             {/* Sub-Filter für "Meine Buchungen" */}
             {activeTab === 'mine' && (
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', gap: '0.5rem' }}>
@@ -1627,6 +1652,356 @@ export default function AppointmentsPage({ user, token, setView, appStatus, onUp
                     onClose={() => setIsStatusModalOpen(false)}
                     onSave={onUpdateStatus}
                 />
+            )}
+
+            {isIcalModalOpen && (
+                <InfoModal 
+                    title="Kalender synchronisieren" 
+                    onClose={() => { setIsIcalModalOpen(false); setCopySuccess(false); }}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div className="tabs-container" style={{ display: 'flex', overflowX: 'auto', gap: '0.5rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)', scrollbarWidth: 'none' }}>
+                            <button 
+                                onClick={() => { setIcalActiveTab('apple'); setIcalStep(1); }}
+                                style={{ 
+                                    padding: '0.5rem 0.75rem', 
+                                    borderRadius: '0.5rem', 
+                                    border: 'none', 
+                                    background: icalActiveTab === 'apple' ? 'var(--brand-orange-light)' : 'transparent',
+                                    color: icalActiveTab === 'apple' ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                    fontWeight: icalActiveTab === 'apple' ? 'bold' : 'normal',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem'
+                                }}
+                            >
+                                🍎 Apple
+                            </button>
+                            <button 
+                                onClick={() => { setIcalActiveTab('google'); setIcalStep(1); }}
+                                style={{ 
+                                    padding: '0.5rem 0.75rem', 
+                                    borderRadius: '0.5rem', 
+                                    border: 'none', 
+                                    background: icalActiveTab === 'google' ? 'var(--brand-orange-light)' : 'transparent',
+                                    color: icalActiveTab === 'google' ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                    fontWeight: icalActiveTab === 'google' ? 'bold' : 'normal',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem'
+                                }}
+                            >
+                                🌐 Google
+                            </button>
+                            <button 
+                                onClick={() => { setIcalActiveTab('outlook-web'); setIcalStep(1); }}
+                                style={{ 
+                                    padding: '0.5rem 0.75rem', 
+                                    borderRadius: '0.5rem', 
+                                    border: 'none', 
+                                    background: icalActiveTab === 'outlook-web' ? 'var(--brand-orange-light)' : 'transparent',
+                                    color: icalActiveTab === 'outlook-web' ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                    fontWeight: icalActiveTab === 'outlook-web' ? 'bold' : 'normal',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem'
+                                }}
+                            >
+                                ✉️ Outlook Web
+                            </button>
+                            <button 
+                                onClick={() => { setIcalActiveTab('outlook-desktop'); setIcalStep(1); }}
+                                style={{ 
+                                    padding: '0.5rem 0.75rem', 
+                                    borderRadius: '0.5rem', 
+                                    border: 'none', 
+                                    background: icalActiveTab === 'outlook-desktop' ? 'var(--brand-orange-light)' : 'transparent',
+                                    color: icalActiveTab === 'outlook-desktop' ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                    fontWeight: icalActiveTab === 'outlook-desktop' ? 'bold' : 'normal',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.4rem'
+                                }}
+                            >
+                                💻 Outlook App
+                            </button>
+                        </div>
+
+                        <div style={{ minHeight: '260px' }}>
+                            {icalActiveTab === 'apple' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <h4 style={{ fontSize: '1rem', fontWeight: 'bold' }}>iPhone & iPad (Apple Kalender)</h4>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Am Smartphone ist das mit einem einzigen Klick erledigt:</p>
+                                    <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                        <li style={{ marginBottom: '0.5rem' }}>Klicke hier in der App auf den Button <strong>"Mit Apple Kalender verbinden"</strong>.</li>
+                                        <li style={{ marginBottom: '0.5rem' }}>Es öffnet sich ein kleines Fenster auf deinem Handy. Klicke dort einfach auf <strong>Abonnieren</strong>.</li>
+                                        <li>Fertig! Deine Kurse sind jetzt in deiner Kalender-App sichtbar.</li>
+                                    </ol>
+                                    <a 
+                                        href={webcalUrl} 
+                                        className="button button-primary" 
+                                        style={{ marginTop: '0.5rem', textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                                    >
+                                        <Icon name="refresh" size={18} /> Mit Apple Kalender verbinden
+                                    </a>
+                                </div>
+                            )}
+
+                            {icalActiveTab === 'google' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <h4 style={{ fontSize: '1rem', fontWeight: 'bold' }}>🌐 Google Kalender</h4>
+                                    
+                                    <div className="step-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <button 
+                                            onClick={() => setIcalStep(1)}
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '0.5rem', 
+                                                border: '1px solid ' + (icalStep === 1 ? 'var(--brand-orange)' : 'var(--border-color)'), 
+                                                background: icalStep === 1 ? 'var(--brand-orange-light)' : 'transparent',
+                                                color: icalStep === 1 ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                                fontWeight: icalStep === 1 ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Schritt 1: Einrichtung
+                                        </button>
+                                        <button 
+                                            onClick={() => setIcalStep(2)}
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '0.5rem', 
+                                                border: '1px solid ' + (icalStep === 2 ? 'var(--brand-orange)' : 'var(--border-color)'), 
+                                                background: icalStep === 2 ? 'var(--brand-orange-light)' : 'transparent',
+                                                color: icalStep === 2 ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                                fontWeight: icalStep === 2 ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Schritt 2: Mobile App
+                                        </button>
+                                    </div>
+
+                                    {icalStep === 1 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <p style={{ fontSize: '0.85rem', padding: '0.75rem', background: 'var(--brand-orange-light)', borderRadius: '0.5rem', color: 'var(--brand-orange)', fontWeight: '500', borderLeft: '3px solid var(--brand-orange)' }}>
+                                                <strong>Hinweis:</strong> Die Ersteinrichtung muss zwingend einmalig an einem Computer (PC/Mac) im Browser durchgeführt werden.
+                                            </p>
+                                            <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Schritt 1: Einrichten am Computer</h5>
+                                            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                                <li style={{ marginBottom: '0.5rem' }}>Klicke hier in der App auf <strong>"Kalender-Link kopieren"</strong>.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Öffne den Google Kalender an einem Computer in deinem Webbrowser.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Klicke in der linken Seitenleiste neben dem Bereich "Weitere Kalender" auf das Plus-Symbol (+).</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Wähle im Menü den Punkt <strong>Per URL</strong> aus.</li>
+                                                <li>Füge den kopierten Link in das Feld ein und klicke auf <strong>Kalender hinzufügen</strong>.</li>
+                                            </ol>
+                                            <button 
+                                                className="button button-primary"
+                                                style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(icalUrl);
+                                                    setCopySuccess(true);
+                                                    setTimeout(() => setCopySuccess(false), 2000);
+                                                }}
+                                            >
+                                                {copySuccess ? <><Icon name="check" size={18} /> Kopiert!</> : <><Icon name="copy" size={18} /> Kalender-Link kopieren</>}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Schritt 2: 🤖 Google Kalender App (Android & iOS)</h5>
+                                            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                                <li style={{ marginBottom: '0.5rem' }}>Öffne die Google Kalender App auf deinem Handy.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Tippe oben links auf das Menü-Symbol (drei Striche).</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Scrolle ganz nach unten und tippe auf Einstellungen (Zahnrad-Symbol).</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Tippe unter deinem Google-Konto auf <strong>Weitere anzeigen</strong>, falls der neue Kalender noch versteckt ist.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Tippe auf den Namen deines neuen Kalenders.</li>
+                                                <li>Aktiviere ganz oben den Schalter bei <strong>Synchronisieren</strong>.</li>
+                                            </ol>
+                                            <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-secondary)', paddingLeft: '1.25rem' }}>
+                                                (Gehe danach zurück in die normale Kalenderansicht und prüfe im linken Menü, ob ein Häkchen neben dem Kalender gesetzt ist. Es kann 1-2 Minuten dauern, bis die Termine laden).
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {icalActiveTab === 'outlook-web' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <h4 style={{ fontSize: '1rem', fontWeight: 'bold' }}>✉️ Microsoft Outlook (Web)</h4>
+                                    
+                                    <div className="step-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <button 
+                                            onClick={() => setIcalStep(1)}
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '0.5rem', 
+                                                border: '1px solid ' + (icalStep === 1 ? 'var(--brand-orange)' : 'var(--border-color)'), 
+                                                background: icalStep === 1 ? 'var(--brand-orange-light)' : 'transparent',
+                                                color: icalStep === 1 ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                                fontWeight: icalStep === 1 ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Schritt 1: Web-Einrichtung
+                                        </button>
+                                        <button 
+                                            onClick={() => setIcalStep(2)}
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '0.5rem', 
+                                                border: '1px solid ' + (icalStep === 2 ? 'var(--brand-orange)' : 'var(--border-color)'), 
+                                                background: icalStep === 2 ? 'var(--brand-orange-light)' : 'transparent',
+                                                color: icalStep === 2 ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                                fontWeight: icalStep === 2 ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Schritt 2: Outlook App
+                                        </button>
+                                    </div>
+
+                                    {icalStep === 1 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Schritt 1: Einrichten im Web</h5>
+                                            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                                <li style={{ marginBottom: '0.5rem' }}>Klicke hier in der App auf <strong>"Kalender-Link kopieren"</strong>.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Öffne deinen Outlook-Kalender im Webbrowser.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Klicke in der linken Leiste auf <strong>Kalender hinzufügen</strong>.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Wähle im neuen Fenster den Punkt <strong>Aus dem Web abonnieren</strong> aus.</li>
+                                                <li>Füge den kopierten Link ein, gib dem Kalender einen Namen (z. B. "Meine Kurse") und klicke auf <strong>Importieren</strong>.</li>
+                                            </ol>
+                                            <button 
+                                                className="button button-primary"
+                                                style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(icalUrl);
+                                                    setCopySuccess(true);
+                                                    setTimeout(() => setCopySuccess(false), 2000);
+                                                }}
+                                            >
+                                                {copySuccess ? <><Icon name="check" size={18} /> Kopiert!</> : <><Icon name="copy" size={18} /> Kalender-Link kopieren</>}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Schritt 2: ✉️ Microsoft Outlook App (Android & iOS)</h5>
+                                            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                                <li style={{ marginBottom: '0.5rem' }}>Öffne die Outlook App auf deinem Handy und wechsle unten in die Kalender-Ansicht.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Tippe oben links auf dein Profilbild (oder das Home-Symbol), um das Seitenmenü zu öffnen.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Suche in der Liste unter deinem E-Mail-Konto nach dem neu hinzugefügten Kalender.</li>
+                                                <li>Tippe auf den Kreis neben dem Kalendernamen, sodass ein Häkchen erscheint.</li>
+                                            </ol>
+                                            <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-secondary)', paddingLeft: '1.25rem' }}>
+                                                (Sobald das Häkchen gesetzt ist, werden die Termine sofort in deiner Übersicht eingeblendet).
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {icalActiveTab === 'outlook-desktop' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <h4 style={{ fontSize: '1rem', fontWeight: 'bold' }}>💻 Microsoft Outlook (Desktop App)</h4>
+
+                                    <div className="step-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                        <button 
+                                            onClick={() => setIcalStep(1)}
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '0.5rem', 
+                                                border: '1px solid ' + (icalStep === 1 ? 'var(--brand-orange)' : 'var(--border-color)'), 
+                                                background: icalStep === 1 ? 'var(--brand-orange-light)' : 'transparent',
+                                                color: icalStep === 1 ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                                fontWeight: icalStep === 1 ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Schritt 1: Desktop-Einrichtung
+                                        </button>
+                                        <button 
+                                            onClick={() => setIcalStep(2)}
+                                            style={{ 
+                                                padding: '0.4rem 0.8rem', 
+                                                borderRadius: '0.5rem', 
+                                                border: '1px solid ' + (icalStep === 2 ? 'var(--brand-orange)' : 'var(--border-color)'), 
+                                                background: icalStep === 2 ? 'var(--brand-orange-light)' : 'transparent',
+                                                color: icalStep === 2 ? 'var(--brand-orange)' : 'var(--text-secondary)',
+                                                fontWeight: icalStep === 2 ? 'bold' : 'normal',
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem'
+                                            }}
+                                        >
+                                            Schritt 2: Outlook App
+                                        </button>
+                                    </div>
+
+                                    {icalStep === 1 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Schritt 1: Einrichten am Computer</h5>
+                                            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                                <li style={{ marginBottom: '0.5rem' }}>Klicke hier in der App auf <strong>"Kalender-Link kopieren"</strong>.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Öffne das Outlook-Programm auf deinem Computer und wechsle in die Kalender-Ansicht.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Klicke oben im Menüband auf <strong>Kalender hinzufügen</strong> (oder "Kalender öffnen" &rarr; "Aus dem Internet").</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Füge den kopierten Link ein und bestätige mit <strong>OK</strong>.</li>
+                                                <li>Klicke auf <strong>Ja</strong>, um das Abonnement zu bestätigen.</li>
+                                            </ol>
+                                            <button 
+                                                className="button button-primary"
+                                                style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(icalUrl);
+                                                    setCopySuccess(true);
+                                                    setTimeout(() => setCopySuccess(false), 2000);
+                                                }}
+                                            >
+                                                {copySuccess ? <><Icon name="check" size={18} /> Kopiert!</> : <><Icon name="copy" size={18} /> Kalender-Link kopieren</>}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            <h5 style={{ fontSize: '0.9rem', fontWeight: 'bold', margin: 0 }}>Schritt 2: ✉️ Microsoft Outlook App (Android & iOS)</h5>
+                                            <ol style={{ fontSize: '0.85rem', paddingLeft: '1.5rem', color: 'var(--text-primary)' }}>
+                                                <li style={{ marginBottom: '0.5rem' }}>Öffne die Outlook App auf deinem Handy und wechsle unten in die Kalender-Ansicht.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Tippe oben links auf dein Profilbild (oder das Home-Symbol), um das Seitenmenü zu öffnen.</li>
+                                                <li style={{ marginBottom: '0.5rem' }}>Suche in der Liste unter deinem E-Mail-Konto nach dem neu hinzugefügten Kalender.</li>
+                                                <li>Tippe auf den Kreis neben dem Kalendernamen, sodass ein Häkchen erscheint.</li>
+                                            </ol>
+                                            <p style={{ fontSize: '0.8rem', fontStyle: 'italic', color: 'var(--text-secondary)', paddingLeft: '1.25rem' }}>
+                                                (Sobald das Häkchen gesetzt ist, werden die Termine sofort in deiner Übersicht eingeblendet).
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-light)', fontStyle: 'italic', marginTop: '0.5rem' }}>
+                            Hinweis: Bitte beachte, dass die Daten im Kalender nicht immer sofort aktuell sind. Bei Unklarheiten schaue bitte immer direkt in der App nach.
+                        </p>
+
+                        <div style={{ fontSize: '0.8rem', padding: '0.5rem', borderLeft: '3px solid var(--brand-orange)', background: 'rgba(249, 115, 22, 0.05)', marginTop: '0.5rem' }}>
+                            <strong>Wichtiger Hinweis:</strong> Gib diesen Link nicht an Dritte weiter, da er persönlichen Zugriff auf deine Terminübersicht gewährt.
+                        </div>
+                    </div>
+                </InfoModal>
             )}
 
             {isCreateOpen && (
